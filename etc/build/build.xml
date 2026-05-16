@@ -430,6 +430,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 				<file name="Dialogs.js" />
 				<file name="Editor.js" />
 				<file name="EditorUi.js" />
+				<file name="ConfigEditor.js" />
 				<file name="DiffSync.js" />
 				<file name="Settings.js" />
 				<file name="DrawioFilePolling.js" />
@@ -528,6 +529,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 				<file name="Dialogs.js" />
 				<file name="Editor.js" />
 				<file name="EditorUi.js" />
+				<file name="ConfigEditor.js" />
 				<file name="DiffSync.js" />
 				<file name="Settings.js" />
 				<file name="DrawioFilePolling.js" />

@@ -1222,6 +1222,27 @@ Graph = function(container, model, renderHint, stylesheet, themes, standalone)
 				rect.width, rect.height, null, null,
 				isect, null, true);
 
+			// Collapses descendants of locked groups into the group itself
+			if (cells != null && cells.length > 0)
+			{
+				var seen = new mxDictionary();
+				var filtered = [];
+
+				for (var i = 0; i < cells.length; i++)
+				{
+					var anc = this.getLockedGroupAncestor(this.model.getParent(cells[i]));
+					var eff = (anc != null) ? anc : cells[i];
+
+					if (!seen.get(eff))
+					{
+						seen.put(eff, true);
+						filtered.push(eff);
+					}
+				}
+
+				cells = filtered;
+			}
+
 			if (this.isToggleEvent(evt))
 			{
 				for (var i = 0; i < cells.length; i++)
@@ -1233,7 +1254,7 @@ Graph = function(container, model, renderHint, stylesheet, themes, standalone)
 			{
 				this.selectCellsForEvent(cells, evt);
 			}
-			
+
 			return cells;
 		};
 
@@ -1275,10 +1296,16 @@ Graph = function(container, model, renderHint, stylesheet, themes, standalone)
 			return me;
 		};
 
-		// Cells in locked layers are not selectable
+		// Cells in locked layers and descendants of locked groups are not selectable
 		var graphIsCellSelectable = this.isCellSelectable;
 		this.isCellSelectable = function(cell)
 		{
+			if (cell != null && this.getLockedGroupAncestor(
+				this.model.getParent(cell)) != null)
+			{
+				return false;
+			}
+
 			return graphIsCellSelectable.apply(this, arguments) &&
 				!this.isCellLocked(this.getLayerForCell(cell));
 		};
@@ -1598,8 +1625,7 @@ Graph.newBackgroundPlaceholder = 'rgb(0, 0, 0)';
 /**
  * Default value for adaptiveColors. Default is 'auto'.
  */
-Graph.defaultAdaptiveColors = (window.mxIsElectron ||
-	urlParams['contrast'] == '0') ? 'simple' : 'auto';
+Graph.defaultAdaptiveColors = (urlParams['contrast'] == '0') ? 'simple' : 'auto';
 
 /**
  * Default value for adaptiveColors. Default is 'auto'.
@@ -3590,13 +3616,23 @@ Graph.prototype.init = function(container)
 	if (this.tooltipHandler != null)
 	{
 		var tooltipHandlerInit = this.tooltipHandler.init;
-		
+
 		this.tooltipHandler.init = function()
 		{
 			tooltipHandlerInit.apply(this, arguments);
-			
+
 			if (this.div != null)
 			{
+				if (Editor.tooltipFontSize != null)
+				{
+					this.div.style.fontSize = Editor.tooltipFontSize + 'px';
+				}
+
+				if (Editor.tooltipMaxWidth > 0)
+				{
+					this.div.style.maxWidth = Editor.tooltipMaxWidth + 'px';
+				}
+
 				mxEvent.addListener(this.div, 'click', mxUtils.bind(this, function(evt)
 				{
 					var source = mxEvent.getSource(evt);
@@ -4265,10 +4301,10 @@ Graph.prototype.destroy = function()
 	Graph.prototype.isGlassState = function(state)
 	{
 		var shape = mxUtils.getValue(state.style, mxConstants.STYLE_SHAPE, null);
-		
+
 		return (shape == 'label' || shape == 'rectangle' || shape == 'internalStorage' ||
 				shape == 'ext' || shape == 'umlLifeline' || shape == 'swimlane' ||
-				shape == 'process');
+				shape == 'process' || shape == 'ellipse' || shape == 'rhombus');
 	};
 	
 	/**
@@ -6715,14 +6751,78 @@ Graph.prototype.restoreSelection = function(cells)
 };
 
 /**
- * Adds table range selection with Shift+Click.
+ * Returns true if the given cell has the lockedGroup=1 style (active lock).
+ */
+Graph.prototype.isLockedGroup = function(cell)
+{
+	return cell != null && mxUtils.getValue(
+		this.getCurrentCellStyle(cell), 'lockedGroup', '0') == '1';
+};
+
+/**
+ * Returns true if the cell has the lockedGroup style key (either '0' or '1').
+ * Used to decide whether the lock-toggle handle should be rendered and
+ * whether double-clicks inside the group should route to the mermaid editor.
+ */
+Graph.prototype.hasLockedGroupStyle = function(cell)
+{
+	return cell != null && this.getCurrentCellStyle(cell)['lockedGroup'] != null;
+};
+
+/**
+ * Returns the nearest ancestor (including cell) with lockedGroup=1, or null.
+ */
+Graph.prototype.getLockedGroupAncestor = function(cell)
+{
+	while (cell != null)
+	{
+		if (this.isLockedGroup(cell))
+		{
+			return cell;
+		}
+
+		cell = this.model.getParent(cell);
+	}
+
+	return null;
+};
+
+/**
+ * Returns the nearest ancestor (including cell) with any lockedGroup style
+ * (locked or unlocked), or null.
+ */
+Graph.prototype.getLockedGroupStyleAncestor = function(cell)
+{
+	while (cell != null)
+	{
+		if (this.hasLockedGroupStyle(cell))
+		{
+			return cell;
+		}
+
+		cell = this.model.getParent(cell);
+	}
+
+	return null;
+};
+
+/**
+ * Adds table range selection with Shift+Click. Redirects clicks on descendants
+ * of locked groups to the locked ancestor so the group is selected as a unit.
  */
 Graph.prototype.selectCellForEvent = function(cell, evt)
 {
+	var anc = this.getLockedGroupAncestor(this.model.getParent(cell));
+
+	if (anc != null)
+	{
+		cell = anc;
+	}
+
 	if (!mxEvent.isShiftDown(evt) || this.isSelectionEmpty() ||
 		!this.selectTableRange(this.getSelectionCell(), cell))
 	{
-		mxGraph.prototype.selectCellForEvent.apply(this, arguments);
+		mxGraph.prototype.selectCellForEvent.apply(this, [cell, evt]);
 	}
 };
 
@@ -8061,10 +8161,18 @@ Graph.prototype.convertValueToTooltip = function(cell)
 };
 
 /**
- * Overrides tooltips to show custom tooltip or metadata.
+ * Overrides tooltips to show custom tooltip or metadata. Descendants of a
+ * locked group inherit the group's tooltip.
  */
 Graph.prototype.getTooltipForCell = function(cell)
 {
+	var lockedAncestor = this.getLockedGroupAncestor(cell);
+
+	if (lockedAncestor != null)
+	{
+		cell = lockedAncestor;
+	}
+
 	var tip = '';
 	
 	if (mxUtils.isNode(cell.value))
@@ -13358,7 +13466,8 @@ if (typeof mxVertexHandler !== 'undefined')
 					state.text.boundingBox == null || (!mxUtils.contains(state.text.boundingBox,
 					pt.x, pt.y) && !mxUtils.isAncestorNode(state.text.node, mxEvent.getSource(evt))))) &&
 					((state == null && !this.isCellLocked(this.getDefaultParent())) ||
-					(state != null && !this.isCellLocked(state.cell))) &&
+					(state != null && !this.isCellLocked(state.cell) &&
+					this.getLockedGroupAncestor(this.model.getParent(state.cell)) == null)) &&
 					(state != null ||
 					(mxClient.IS_SVG && src == this.view.getCanvas().ownerSVGElement)))
 				{
@@ -15326,51 +15435,79 @@ if (typeof mxVertexHandler !== 'undefined')
 					var rows = model.getChildCells(table, true);
 					row = rows[(before) ? 0 : rows.length - 1];
 				}
-				
-				var cells = model.getChildCells(row, true);
-				var index = table.getIndex(row);
-				row = model.cloneCell(row, false);
-				row.value = null;
-				
-				var rowGeo = this.getCellGeometry(row);
-				
-				if (rowGeo != null)
+
+				if (row != null)
 				{
-					for (var i = 0; i < cells.length; i++)
+					var cells = model.getChildCells(row, true);
+					var index = table.getIndex(row);
+					row = model.cloneCell(row, false);
+					row.value = null;
+
+					var rowGeo = this.getCellGeometry(row);
+
+					if (rowGeo != null)
 					{
-						var cell = model.cloneCell(cells[i], false);
-
-						// Removes value, col/rowspan and alternate bounds
-						cell.value = null;
-						cell.style = mxUtils.setStyle(mxUtils.setStyle(
-							cell.style, 'rowspan', null), 'colspan', null);
-
-						var geo = this.getCellGeometry(cell);
-						
-						if (geo != null)
+						for (var i = 0; i < cells.length; i++)
 						{
-							if (geo.alternateBounds != null)
+							var cell = model.cloneCell(cells[i], false);
+
+							// Removes value, col/rowspan and alternate bounds
+							cell.value = null;
+							cell.style = mxUtils.setStyle(mxUtils.setStyle(
+								cell.style, 'rowspan', null), 'colspan', null);
+
+							var geo = this.getCellGeometry(cell);
+
+							if (geo != null)
 							{
-								geo.width = geo.alternateBounds.width;
-								geo.height = geo.alternateBounds.height;
-								geo.alternateBounds = null;
+								if (geo.alternateBounds != null)
+								{
+									geo.width = geo.alternateBounds.width;
+									geo.height = geo.alternateBounds.height;
+									geo.alternateBounds = null;
+								}
+
+								geo.height = rowGeo.height;
 							}
 
-							geo.height = rowGeo.height;
+							row.insert(cell);
 						}
-						
-						row.insert(cell);
-					}
 
-					model.add(table, row, index + ((before) ? 0 : 1));
-					
+						model.add(table, row, index + ((before) ? 0 : 1));
+
+						var tableGeo = this.getCellGeometry(table);
+
+						if (tableGeo != null)
+						{
+							tableGeo = tableGeo.clone();
+							tableGeo.height += rowGeo.height;
+
+							model.setGeometry(table, tableGeo);
+						}
+					}
+				}
+				else
+				{
+					// Empty table: insert initial row with a single column
 					var tableGeo = this.getCellGeometry(table);
-					
+
 					if (tableGeo != null)
 					{
+						var rowHeight = 40;
+						var rowWidth = tableGeo.width;
+
+						var rowStyle = 'shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;' +
+							'top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fixedHeader=1;';
+						var cellStyle = 'shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;' +
+							'overflow=hidden;fillColor=none;top=0;left=0;bottom=0;right=0;pointerEvents=1;';
+
+						row = this.createVertex(null, null, '', 0, 0, rowWidth, rowHeight, rowStyle);
+						row.insert(this.createVertex(null, null, '', 0, 0, rowWidth, rowHeight, cellStyle));
+
+						model.add(table, row);
+
 						tableGeo = tableGeo.clone();
-						tableGeo.height += rowGeo.height;
-						
+						tableGeo.height += rowHeight;
 						model.setGeometry(table, tableGeo);
 					}
 				}
@@ -15380,9 +15517,9 @@ if (typeof mxVertexHandler !== 'undefined')
 				model.endUpdate();
 			}
 		};
-	
+
 		/**
-		 * 
+		 *
 		 */
 		Graph.prototype.deleteTableColumn = function(cell)
 		{
@@ -16889,7 +17026,7 @@ if (typeof mxVertexHandler !== 'undefined')
 		var vertexHandlerIsCustomHandleVisible = mxVertexHandler.prototype.isCustomHandleVisible;
 		mxVertexHandler.prototype.isCustomHandleVisible = function(handle)
 		{
-			return handle.tableHandle ||
+			return handle.tableHandle || handle.lockHandle ||
 				(vertexHandlerIsCustomHandleVisible.apply(this, arguments) &&
 				(!this.graph.isTable(this.state.cell) ||
 				this.graph.isCellSelected(this.state.cell)));
@@ -17209,6 +17346,83 @@ if (typeof mxVertexHandler !== 'undefined')
 				}
 			}
 			
+			// Adds lock-toggle handle whenever the lockedGroup style key is
+			// present (renders a lock icon when locked, unlock icon when not).
+			if (this.graph.hasLockedGroupStyle(this.state.cell) &&
+				this.graph.isCellMovable(this.state.cell))
+			{
+				if (handles == null)
+				{
+					handles = [];
+				}
+
+				var self = this;
+				var graph = this.graph;
+				var cell = this.state.cell;
+				var size = 16;
+				var isLocked = this.graph.isLockedGroup(cell);
+
+				var shape = new mxImageShape(new mxRectangle(0, 0, size, size),
+					(isLocked ? HoverIcons.prototype.lockHandle :
+						HoverIcons.prototype.unlockHandle).src);
+				shape.preserveImageAspect = false;
+
+				var handle = new mxHandle(this.state, 'pointer', null, shape);
+				handle.lockHandle = true;
+
+				// Non-draggable: position directly, ignore drag events
+				handle.setPosition = function() {};
+				handle.positionChanged = function() {};
+				handle.reset = function() {};
+
+				handle.redraw = function()
+				{
+					if (this.shape != null)
+					{
+						// Top-left corner 12px outside / 12px above, mirroring the
+						// rotate handle's offset. Rotated around the cell center by
+						// the cell's current rotation so the icon tracks the rotated
+						// corner, and the icon shape itself rotates to match.
+						var pt = new mxPoint(
+							self.bounds.x - 12,
+							self.bounds.y - 12);
+						var deg = Number((self.currentAlpha != null) ? self.currentAlpha :
+							(self.state.style[mxConstants.STYLE_ROTATION] || '0'));
+						var alpha = mxUtils.toRadians(deg);
+
+						if (alpha != 0)
+						{
+							var ct = new mxPoint(self.state.getCenterX(),
+								self.state.getCenterY());
+							pt = mxUtils.getRotatedPoint(pt,
+								Math.cos(alpha), Math.sin(alpha), ct);
+						}
+
+						this.shape.bounds.width = size;
+						this.shape.bounds.height = size;
+						this.shape.bounds.x = pt.x - size / 2;
+						this.shape.bounds.y = pt.y - size / 2;
+						this.shape.rotation = deg;
+						this.shape.redraw();
+					}
+				};
+
+				handle.execute = function(me)
+				{
+					graph.getModel().beginUpdate();
+					try
+					{
+						graph.setCellStyles('lockedGroup', isLocked ? '0' : '1', [cell]);
+					}
+					finally
+					{
+						graph.getModel().endUpdate();
+					}
+				};
+
+				handles.push(handle);
+			}
+
 			// Reserve gives point handles precedence over line handles
 			return (handles != null) ? handles.reverse() : null;
 		};
@@ -17708,6 +17922,14 @@ if (typeof mxVertexHandler !== 'undefined')
 		HoverIcons.prototype.connectHandle = Graph.createSvgImage(16, 16,
 			'<circle cx="12" cy="12" r="10" stroke="#fff" fill="' + HoverIcons.prototype.arrowFill + '"/>' +
 				'<path transform="translate(5,5) scale(0.583)" d="M6 18v-3h7.6L4 5.4 5.4 4 15 13.6V6h3v12z" fill="#fff"/>',
+				24, 24);
+		HoverIcons.prototype.lockHandle = Graph.createSvgImage(16, 16,
+			'<path stroke="' + HoverIcons.prototype.arrowFill + '" stroke-width="0.7" fill="' + HoverIcons.prototype.arrowFill +
+				'" d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>',
+				24, 24);
+		HoverIcons.prototype.unlockHandle = Graph.createSvgImage(16, 16,
+			'<path stroke="' + HoverIcons.prototype.arrowFill + '" stroke-width="0.7" fill="' + HoverIcons.prototype.arrowFill +
+				'" d="M18 8h-1V6c0-2.76-2.24-5-5-5-2.28 0-4.27 .54-4.84 2.75-.14.54.18 1.08.72 1.22.53.14 1.08-.18 1.22-.72C9.44 3.93 10.63 3 12 3c1.65 0 3 1.35 3 3v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>',
 				24, 24);
 	
 		mxConstraintHandler.prototype.pointImage = Graph.createSvgImage(5, 5,
@@ -18668,6 +18890,21 @@ if (typeof mxVertexHandler !== 'undefined')
 			}
 
 			vertexHandlerRedrawHandles.apply(this);
+
+			// Rotates the rotation handle image itself so it visually matches
+			// the cell's orientation (base mxVertexHandler only translates it
+			// to the rotated corner, keeping the icon axis-aligned).
+			if (this.rotationShape != null && this.rotationShape.node != null)
+			{
+				var deg = Number((this.currentAlpha != null) ? this.currentAlpha :
+					(this.state.style[mxConstants.STYLE_ROTATION] || '0'));
+
+				if (this.rotationShape.rotation !== deg)
+				{
+					this.rotationShape.rotation = deg;
+					this.rotationShape.redraw();
+				}
+			}
 
 			// Shows connect handle only if one vertex is selected
 			// Must be after base redrawHandles to override sizer visibility

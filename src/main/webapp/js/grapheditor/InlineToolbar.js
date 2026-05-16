@@ -601,6 +601,24 @@ InlineToolbar.prototype.repaint = function()
 					}
 				}
 
+				// Clamp to visible viewport so toolbar stays inside the
+				// diagram container (not clipped behind sidebar/overflow).
+				var container = this.graph.container;
+				var minX = container.scrollLeft + 4;
+				var maxX = container.scrollLeft + container.clientWidth - toolbarWidth - 4;
+				var minY = container.scrollTop + 4;
+				var maxY = container.scrollTop + container.clientHeight - toolbarHeight - 4;
+
+				if (maxX > minX)
+				{
+					x = Math.max(minX, Math.min(x, maxX));
+				}
+
+				if (maxY > minY)
+				{
+					y = Math.max(minY, Math.min(y, maxY));
+				}
+
 				this.toolbar.style.left = Math.round(x) + 'px';
 				this.toolbar.style.top = Math.round(y) + 'px';
 			}
@@ -751,8 +769,13 @@ InlineToolbar.prototype.createPopover = function(anchorBtn, opts)
 			popY = toolbarRect.bottom - containerRect.top + scrollTop + 2;
 		}
 
-		var maxX = container.scrollWidth - popoverWidth - 4;
-		popX = Math.max(4, Math.min(popX, maxX));
+		var minX = scrollLeft + 4;
+		var maxX = scrollLeft + container.clientWidth - popoverWidth - 4;
+
+		if (maxX > minX)
+		{
+			popX = Math.max(minX, Math.min(popX, maxX));
+		}
 
 		popover.style.left = Math.round(popX) + 'px';
 		popover.style.top = Math.round(popY) + 'px';
@@ -1130,8 +1153,13 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 
 		var panelX = ddRect.left - containerRect.left + scrollLeft;
 		var panelY = ddRect.bottom - containerRect.top + scrollTop + 4;
-		var maxX = container.scrollWidth - panel.offsetWidth - 4;
-		panelX = Math.max(4, Math.min(panelX, maxX));
+		var minX = scrollLeft + 4;
+		var maxX = scrollLeft + container.clientWidth - panel.offsetWidth - 4;
+
+		if (maxX > minX)
+		{
+			panelX = Math.max(minX, Math.min(panelX, maxX));
+		}
 
 		panel.style.left = Math.round(panelX) + 'px';
 		panel.style.top = Math.round(panelY) + 'px';
@@ -1733,9 +1761,14 @@ InlineToolbar.prototype.showMarkerSubPanel = function(dropdown, prefix, items, c
 	var panelX = dropdownRect.left - containerRect.left + scrollLeft;
 	var panelY = dropdownRect.bottom - containerRect.top + scrollTop + 4;
 
-	// Keep within container bounds
-	var maxX = container.scrollWidth - panelWidth - 4;
-	panelX = Math.max(4, Math.min(panelX, maxX));
+	// Keep within visible viewport
+	var minX = scrollLeft + 4;
+	var maxX = scrollLeft + container.clientWidth - panelWidth - 4;
+
+	if (maxX > minX)
+	{
+		panelX = Math.max(minX, Math.min(panelX, maxX));
+	}
 
 	panel.style.left = Math.round(panelX) + 'px';
 	panel.style.top = Math.round(panelY) + 'px';

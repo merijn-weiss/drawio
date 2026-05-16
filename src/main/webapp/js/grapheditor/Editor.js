@@ -2188,6 +2188,23 @@ var PageSetupDialog = function(editorUi)
 	var graph = editorUi.editor.graph;
 	var div = document.createElement('div');
 
+	// Consistent label width and content spacing across rows so inputs
+	// align even with longer translations (e.g. German "Gitternetzgröße").
+	var labelMinWidth = '140px';
+	var contentMargin = '8px';
+
+	var styleLabel = function(lbl)
+	{
+		lbl.style.minWidth = labelMinWidth;
+		return lbl;
+	};
+
+	var styleContent = function(elt)
+	{
+		elt.style.marginLeft = contentMargin;
+		return elt;
+	};
+
 	var hd = document.createElement('h3');
 	mxUtils.write(hd, mxResources.get('pageSetup'));
 	hd.style.cssText = 'width:100%;text-align:center;margin-top:0px;margin-bottom:10px';
@@ -2203,7 +2220,7 @@ var PageSetupDialog = function(editorUi)
 	var paperLabel = document.createElement('span');
 	paperLabel.className = 'geDialogFormLabel';
 	mxUtils.write(paperLabel, mxResources.get('paperSize') + ':');
-	paperRow.appendChild(paperLabel);
+	paperRow.appendChild(styleLabel(paperLabel));
 
 	var paperContent = document.createElement('div');
 	paperContent.style.flex = '1';
@@ -2212,7 +2229,7 @@ var PageSetupDialog = function(editorUi)
 	var accessor = PageSetupDialog.addPageFormatPanel(paperContent,
 		'pagesetupdialog', graph.pageFormat);
 
-	paperRow.appendChild(paperContent);
+	paperRow.appendChild(styleContent(paperContent));
 	paperSection.appendChild(paperRow);
 	div.appendChild(paperSection);
 
@@ -2226,14 +2243,15 @@ var PageSetupDialog = function(editorUi)
 	var gridLabel = document.createElement('span');
 	gridLabel.className = 'geDialogFormLabel';
 	mxUtils.write(gridLabel, mxResources.get('gridSize') + ':');
-	gridRow.appendChild(gridLabel);
+	gridRow.appendChild(styleLabel(gridLabel));
 
 	var gridSizeInput = document.createElement('input');
 	gridSizeInput.setAttribute('type', 'number');
 	gridSizeInput.setAttribute('min', '0');
 	gridSizeInput.style.width = '60px';
+	gridSizeInput.style.flex = '0 0 auto';
 	gridSizeInput.value = graph.getGridSize();
-	gridRow.appendChild(gridSizeInput);
+	gridRow.appendChild(styleContent(gridSizeInput));
 
 	mxEvent.addListener(gridSizeInput, 'change', function()
 	{
@@ -2254,7 +2272,7 @@ var PageSetupDialog = function(editorUi)
 	var bgLabel = document.createElement('span');
 	bgLabel.className = 'geDialogFormLabel';
 	mxUtils.write(bgLabel, mxResources.get('background') + ':');
-	bgRow.appendChild(bgLabel);
+	bgRow.appendChild(styleLabel(bgLabel));
 
 	var bgContent = document.createElement('div');
 	bgContent.style.display = 'flex';
@@ -2262,6 +2280,7 @@ var PageSetupDialog = function(editorUi)
 	bgContent.style.gap = '8px';
 	bgContent.style.flex = '1';
 	bgContent.style.minWidth = '0';
+	styleContent(bgContent);
 
 	var imgPreview = document.createElement('div');
 	imgPreview.style.display = 'inline-block';
@@ -2348,6 +2367,52 @@ var PageSetupDialog = function(editorUi)
 	bgSection.appendChild(bgRow);
 	div.appendChild(bgSection);
 
+	// Adaptive colors section
+	var adaptiveSection = document.createElement('div');
+	adaptiveSection.className = 'geDialogSection';
+
+	var adaptiveRow = document.createElement('div');
+	adaptiveRow.className = 'geDialogFormRow';
+
+	var adaptiveLabel = document.createElement('span');
+	adaptiveLabel.className = 'geDialogFormLabel';
+	mxUtils.write(adaptiveLabel, mxResources.get('adaptiveColors') + ':');
+	adaptiveRow.appendChild(styleLabel(adaptiveLabel));
+
+	var adaptiveDropdown = document.createElement('select');
+	styleContent(adaptiveDropdown);
+
+	var addAdaptiveOption = function(value, label)
+	{
+		var opt = document.createElement('option');
+		opt.setAttribute('value', value);
+		mxUtils.write(opt, label);
+		adaptiveDropdown.appendChild(opt);
+	};
+
+	addAdaptiveOption('default', mxResources.get('default') + ' (' +
+		mxResources.get(Graph.getDefaultAdaptiveColorsKey()) + ')');
+	addAdaptiveOption('auto', mxResources.get('automatic'));
+	addAdaptiveOption('simple', mxResources.get('simple'));
+	addAdaptiveOption('none', mxResources.get('none'));
+
+	adaptiveDropdown.value = (graph.adaptiveColors == null) ?
+		'default' : graph.adaptiveColors;
+
+	adaptiveRow.appendChild(adaptiveDropdown);
+
+	if (editorUi.menus != null && editorUi.menus.createHelpLink != null &&
+		(!editorUi.isOffline() || mxClient.IS_CHROMEAPP || EditorUi.isElectronApp))
+	{
+		var helpLink = editorUi.menus.createHelpLink(
+			'https://github.com/jgraph/drawio/discussions/4713');
+		helpLink.style.marginLeft = '8px';
+		adaptiveRow.appendChild(helpLink);
+	}
+
+	adaptiveSection.appendChild(adaptiveRow);
+	div.appendChild(adaptiveSection);
+
 	// Apply function
 	var applyFn = function()
 	{
@@ -2372,10 +2437,21 @@ var PageSetupDialog = function(editorUi)
 			change.shadowVisible = newShadowVisible;
 		}
 
+		var newAdaptive = adaptiveDropdown.value;
+		var currentAdaptive = (graph.adaptiveColors == null) ?
+			'default' : graph.adaptiveColors;
+		var adaptiveChanged = newAdaptive != currentAdaptive;
+
+		if (adaptiveChanged)
+		{
+			change.adaptiveColors = newAdaptive;
+		}
+
 		if (graph.pageFormat.width != change.previousFormat.width ||
 			graph.pageFormat.height != change.previousFormat.height ||
-			!change.ignoreColor || !change.ignoreImage||
-			change.shadowVisible != graph.shadowVisible)
+			!change.ignoreColor || !change.ignoreImage ||
+			change.shadowVisible != graph.shadowVisible ||
+			adaptiveChanged)
 		{
 			graph.model.execute(change);
 		}
@@ -2414,12 +2490,13 @@ PageSetupDialog.addPageFormatPanel = function(div, namePostfix, pageFormat, page
 	paperSizeSelect.style.width = '210px';
 
 	var formatDiv = document.createElement('div');
+	formatDiv.style.alignItems = 'center';
 	formatDiv.style.whiteSpace = 'nowrap';
 	formatDiv.style.marginLeft = '4px';
 	formatDiv.style.width = '210px';
 	formatDiv.style.height = '24px';
 
-	portraitCheckBox.style.marginRight = '6px';
+	portraitCheckBox.style.margin = '0 6px 0 0';
 	formatDiv.appendChild(portraitCheckBox);
 	
 	var portraitSpan = document.createElement('span');
@@ -2427,8 +2504,7 @@ PageSetupDialog.addPageFormatPanel = function(div, namePostfix, pageFormat, page
 	mxUtils.write(portraitSpan, mxResources.get('portrait'));
 	formatDiv.appendChild(portraitSpan);
 
-	landscapeCheckBox.style.marginLeft = '10px';
-	landscapeCheckBox.style.marginRight = '6px';
+	landscapeCheckBox.style.margin = '0 6px 0 10px';
 	formatDiv.appendChild(landscapeCheckBox);
 	
 	var landscapeSpan = document.createElement('span');
@@ -2565,7 +2641,7 @@ PageSetupDialog.addPageFormatPanel = function(div, namePostfix, pageFormat, page
 		}
 		else
 		{
-			formatDiv.style.display = '';
+			formatDiv.style.display = 'flex';
 			customDiv.style.display = 'none';
 		}
 	};
@@ -2589,7 +2665,7 @@ PageSetupDialog.addPageFormatPanel = function(div, namePostfix, pageFormat, page
 				f.format.height : f.format.width, unitSelect.value);
 
 			customDiv.style.display = 'none';
-			formatDiv.style.display = '';
+			formatDiv.style.display = 'flex';
 		}
 		else
 		{

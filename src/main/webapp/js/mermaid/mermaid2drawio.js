@@ -1366,13 +1366,44 @@ mxMermaidToDrawio = function(graph, diagramtype, extra)
 
     function convertGitGraphDiagram(graph, drawGraph)
     {
-        var branchMap = {}, maxX = 0, maxY = 0, colorIndex = 0, isTD = false;
+        var branchMap = {}, maxX = 0, maxY = 0, colorIndex = 0, isTD = false, uniqueYs = {};
 
         for (var commit in graph.commitPos)
         {
+            var y = graph.commitPos[commit].y;
+            uniqueYs[y] = true;
             maxX = Math.max(maxX, graph.commitPos[commit].x);
-            maxY = Math.max(maxY, graph.commitPos[commit].y);
+            maxY = Math.max(maxY, y);
             isTD = isTD || graph.commitPos[commit].x == 0;
+        }
+
+        if (!isTD)
+        {
+            var ys = [], bys = [];
+
+            for (var y in uniqueYs)
+            {
+                ys.push(y);
+            }
+
+            ys.sort(function(a, b) { return a - b; });
+
+            for (var name in graph.branchPos)
+            {
+                bys.push(graph.branchPos[name].pos);
+            }
+
+            bys.sort(function(a, b) { return a - b; });
+
+            for (var i = 0; i < ys.length; i++)
+            {
+                uniqueYs[ys[i]] = bys[i];
+            }
+
+            for (var commit in graph.commitPos)
+            {
+                graph.commitPos[commit].y = uniqueYs[graph.commitPos[commit].y];
+            }
         }
 
         for (var name in graph.branchPos)

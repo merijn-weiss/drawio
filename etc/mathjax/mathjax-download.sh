@@ -6,7 +6,7 @@
 set -e  # Exit on error
 
 # Configuration
-MATHJAX_VERSION="4.1.1"  # Change to specific version
+MATHJAX_VERSION="4.1.2"  # Change to specific version
 CDN_BASE="https://cdn.jsdelivr.net/npm/mathjax@${MATHJAX_VERSION}"
 FONT_BASE="https://cdn.jsdelivr.net/npm/@mathjax"
 TARGET_DIR="$(pwd)/../../src/main/webapp/math4/es5"

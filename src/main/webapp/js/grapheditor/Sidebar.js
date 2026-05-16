@@ -1214,7 +1214,8 @@ Sidebar.prototype.searchEntries = function(searchTerms, count, page, success, er
 		}
 
 		var len = results.length;
-		success(results.slice(page * count, (page + 1) * count), len, false, tmp);
+		var more = (page + 1) * count < len;
+		success(results.slice(page * count, (page + 1) * count), len, more, tmp);
 	}
 	else
 	{
@@ -1621,9 +1622,9 @@ Sidebar.prototype.addSearchPalette = function(expand)
 				});
 			}
 
-			if (matchingPages.length > 0)
+			for (var i = 0; i < Math.min(4, matchingPages.length); i++)
 			{
-				(function(page)
+				(function(page, isFirst)
 				{
 					var fn = function()
 					{
@@ -1636,13 +1637,16 @@ Sidebar.prototype.addSearchPalette = function(expand)
 						' (' + mxResources.get('page') + ')',
 						null, fn, parent);
 
-					if (enterAction == null)
+					if (isFirst)
 					{
-						setEnterAction(item, fn);
-					}
+						if (enterAction == null)
+						{
+							setEnterAction(item, fn);
+						}
 
-					setCtrlEnterAction(item, fn);
-				})(matchingPages[0]);
+						setCtrlEnterAction(item, fn);
+					}
+				})(matchingPages[i], i == 0);
 			}
 		}
 		
@@ -2447,7 +2451,7 @@ Sidebar.prototype.createAdvancedShapes = function()
 		this.createVertexTemplateEntry('shape=ext;double=1;whiteSpace=wrap;html=1;aspect=fixed;', 80, 80, '', 'Double Square', null, null, 'double square'),
 		this.createVertexTemplateEntry('ellipse;shape=doubleEllipse;whiteSpace=wrap;html=1;aspect=fixed;', 80, 80, '', 'Double Circle', null, null, 'double circle'),
 	 	this.createVertexTemplateEntry('shape=tapeData;whiteSpace=wrap;html=1;perimeter=ellipsePerimeter;', 80, 80, '', 'Tape Data'),
-	 	this.createVertexTemplateEntry('shape=manualInput;whiteSpace=wrap;html=1;', 80, 80, '', 'Manual Input'),
+	 	this.createVertexTemplateEntry('shape=manualInput;boundedLbl=1;whiteSpace=wrap;html=1;', 80, 80, '', 'Manual Input'),
 	 	this.createVertexTemplateEntry('shape=loopLimit;whiteSpace=wrap;html=1;', 100, 80, '', 'Loop Limit'),
 	 	this.createVertexTemplateEntry('shape=offPageConnector;whiteSpace=wrap;html=1;', 80, 80, '', 'Off Page Connector'),
 	 	this.createVertexTemplateEntry('shape=delay;whiteSpace=wrap;html=1;', 80, 40, '', 'Delay'),

@@ -657,25 +657,33 @@ mxSvgCanvas2D.prototype.createSvgGradient = function(start, end, alpha1, alpha2,
 
 /**
  * Function: createFillPatternId
- * 
- * Private helper function to create fillPattern Id
+ *
+ * Private helper function to create fillPattern Id. The id must encode every
+ * input that affects the resulting pattern element (type, dimensions, stroke
+ * width, both light and dark color components, scale) so that two patterns
+ * that differ in any of those attributes get distinct ids and are never
+ * shared via getElementById lookups across shapes.
  */
 mxSvgCanvas2D.prototype.createFillPatternId = function(type, strokeSize, color, scale)
 {
+	var parts = ['mx-pattern', type,
+		Math.round(strokeSize * 100),
+		color.light, color.dark,
+		Math.round(scale * 100)];
+
 	// Removes illegal characters from gradient ID
-	return ('mx-pattern-' + type + '-' + strokeSize + '-' + color + '-' + Math.round(scale * 100)).
-		toLowerCase().replace(/^[^a-z]+|[^\w:.-]+/gi, '_');
+	return parts.join('-').toLowerCase().replace(/^[^a-z]+|[^\w:.-]+/gi, '_');
 };
 
 /**
  * Function: getFillPattern
- * 
+ *
  * Private helper function to create FillPattern SVG elements
  */
 mxSvgCanvas2D.prototype.getFillPattern = function(type, strokeSize, color, scale)
 {
 	color = this.getLightDarkColor(color);
-	var id = this.createFillPatternId(type, strokeSize, color.cssText, scale);
+	var id = this.createFillPatternId(type, strokeSize, color, scale);
 	var fillPattern = this.fillPatterns[id];
 
 	if (fillPattern == null)

@@ -321,7 +321,7 @@
 			editorUi.getPublicUrl(editorUi.getCurrentFile(), function(url)
 			{
 				var dlg = new FilePropertiesDialog(editorUi, url);
-				editorUi.showDialog(dlg.container, 340, 200, true, true);
+				editorUi.showDialog(dlg.container, 360, null, true, true);
 				dlg.init();
 			});
 		}).isEnabled = isGraphEnabled;
@@ -4997,12 +4997,12 @@
 
 				this.addSubmenu('diagramLanguage', menu, parent);
 				menu.addSeparator(parent);
-				
-				if (editorUi.mode != App.MODE_ATLAS) 
+
+				if (editorUi.mode != App.MODE_ATLAS)
 				{
 					editorUi.menus.addMenuItem(menu, 'configuration', parent);
 				}
-				
+
 				// Adds trailing separator in case new plugin entries are added
 				menu.addSeparator(parent);
 			}
@@ -5030,13 +5030,7 @@
 				}
 				
 				menu.addSeparator(parent);
-				var item = this.addSubmenu('adaptiveColors', menu, parent);
 
-				if (!editorUi.isOffline() || mxClient.IS_CHROMEAPP || EditorUi.isElectronApp)
-				{
-					editorUi.menus.addLinkToItem(item, 'https://github.com/jgraph/drawio/discussions/4713');
-				}
-				
 				if (typeof(MathJax) !== 'undefined')
 				{
 					var item = this.addMenuItem(menu, 'mathematicalTypesetting', parent);
@@ -5232,8 +5226,18 @@
 				this.addSubmenu('newLibrary', menu, parent);
 				this.addSubmenu('openLibraryFrom', menu, parent);
 			}
-	
-			menu.addSeparator(parent);
+
+			// Sketch already shows pageSetup just above; keep it adjacent to
+			// print without a separator. Simple/min add pageSetup here.
+			if (Editor.currentTheme != 'sketch')
+			{
+				menu.addSeparator(parent);
+			}
+
+			if (Editor.currentTheme == 'simple' || Editor.currentTheme == 'min')
+			{
+				editorUi.menus.addMenuItems(menu, ['pageSetup'], parent);
+			}
 
 			// Cannot use print in standalone mode on iOS as we cannot open new windows
 			if (urlParams['noFileMenu'] != '1' && (!mxClient.IS_IOS || !navigator.standalone))
@@ -5476,14 +5480,14 @@
 				{
 					var filename = (file.getTitle() != null) ?
 						file.getTitle() : editorUi.defaultFilename;
-					
+
 					if ((file.constructor == DriveFile && file.sync != null &&
 						file.sync.isConnected()) || !/(\.html)$/i.test(filename))
 					{
 						this.addMenuItems(menu, ['properties'], parent);
 					}
 				}
-					
+
 				if (Editor.currentTheme == 'simple')
 				{
 					editorUi.menus.addMenuItems(menu, ['-', 'autosave'], parent);
@@ -5928,8 +5932,7 @@
 						}
 					}
 				}));
-				this.editorUi.showDialog(dlg.container, 380, 
-					130 + (Editor.enableWebFonts ? 70 : 0) + (urlParams['isGoogleFontsEnabled'] != '0'? 50 : 0), true, true);
+				this.editorUi.showDialog(dlg.container, 380, null, true, true);
 				dlg.init();
 			}), parent, null, true);
 		})));

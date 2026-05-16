@@ -473,9 +473,85 @@
 	EditorUi.prototype.emptyDiagramXml = '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel>';
 
 	/**
-	 * 
+	 *
 	 */
 	EditorUi.prototype.emptyLibraryXml = '<mxlibrary>[]</mxlibrary>';
+
+	/**
+	 * Returns true if the given file data contains no user-added cells —
+	 * i.e. every page has just the root cell (id=0) and the default layer
+	 * (id=1) with no children. Used to suppress storing empty drafts.
+	 */
+	EditorUi.prototype.isDiagramDataEmpty = function(data)
+	{
+		if (data == null || data.length == 0 || data == this.emptyDiagramXml)
+		{
+			return true;
+		}
+
+		try
+		{
+			var doc = mxUtils.parseXml(data);
+			var root = doc.documentElement;
+
+			var checkModel = function(modelNode)
+			{
+				return modelNode == null ||
+					modelNode.getElementsByTagName('mxCell').length <= 2;
+			};
+
+			if (root.nodeName == 'mxGraphModel')
+			{
+				return checkModel(root);
+			}
+
+			if (root.nodeName == 'mxfile')
+			{
+				var diagrams = root.getElementsByTagName('diagram');
+
+				if (diagrams.length == 0)
+				{
+					return true;
+				}
+
+				for (var i = 0; i < diagrams.length; i++)
+				{
+					var models = diagrams[i].getElementsByTagName('mxGraphModel');
+
+					if (models.length > 0)
+					{
+						if (!checkModel(models[0])) return false;
+					}
+					else
+					{
+						// Compressed diagram payload — decompress and re-check
+						var text = mxUtils.getNodeValue(diagrams[i]);
+
+						if (text != null && text.length > 0)
+						{
+							var decompressed = Graph.decompress(text);
+
+							if (decompressed != null && decompressed.length > 0)
+							{
+								var modelDoc = mxUtils.parseXml(decompressed);
+
+								if (!checkModel(modelDoc.documentElement)) return false;
+							}
+						}
+					}
+				}
+
+				return true;
+			}
+		}
+		catch (e)
+		{
+			// Unparseable data — treat as non-empty so we don't drop a
+			// draft the user might still recover by hand.
+		}
+
+		return false;
+	};
 
 	/**
 	 * Sets the delay for autosave in milliseconds. Default is 2000.
@@ -4759,8 +4835,29 @@
 		}
 		catch (e) {}
 
-		var latestIframeConfig = configObj;
+		var latestEditorConfig = configObj;
 		var activeTab = 'editor';
+		var modified = false;
+		var allowClose = false;
+
+		function confirmDiscard(onConfirm)
+		{
+			if (!modified)
+			{
+				onConfirm();
+			}
+			else
+			{
+				editorUi.confirm(mxResources.get('allChangesLost'), null, onConfirm,
+					mxResources.get('cancel'), mxResources.get('discardChanges'));
+			}
+		}
+
+		function closeDialog()
+		{
+			allowClose = true;
+			editorUi.hideDialog();
+		}
 
 		// Main container
 		var div = document.createElement('div');
@@ -4816,7 +4913,7 @@
 
 		div.appendChild(tabBar);
 
-		// Editor content (iframe)
+		// Visual editor content
 		var editorContent = document.createElement('div');
 		editorContent.style.position = 'absolute';
 		editorContent.style.left = '0';
@@ -4824,20 +4921,7 @@
 		editorContent.style.top = '30px';
 		editorContent.style.bottom = '50px';
 
-		var iframe = document.createElement('iframe');
-		iframe.style.width = '100%';
-		iframe.style.height = '100%';
-		iframe.style.border = 'none';
-		iframe.style.borderRadius = '4px';
-
-		var baseUrl = window.DRAWIO_BASE_URL || '';
-
-		if (baseUrl.length > 0 && baseUrl.charAt(baseUrl.length - 1) === '/')
-		{
-			baseUrl = baseUrl.substring(0, baseUrl.length - 1);
-		}
-
-		var hashData = {};
+		var editorContext = {};
 
 		try
 		{
@@ -4845,12 +4929,12 @@
 
 			if (graph.currentVertexStyle != null)
 			{
-				hashData.currentVertexStyle = graph.currentVertexStyle;
+				editorContext.currentVertexStyle = graph.currentVertexStyle;
 			}
 
 			if (graph.currentEdgeStyle != null)
 			{
-				hashData.currentEdgeStyle = graph.currentEdgeStyle;
+				editorContext.currentEdgeStyle = graph.currentEdgeStyle;
 			}
 		}
 		catch (e)
@@ -4858,9 +4942,17 @@
 			// ignore
 		}
 
-		iframe.src = baseUrl + '/config-editor.html#' +
-			encodeURIComponent(JSON.stringify(hashData));
-		editorContent.appendChild(iframe);
+		var configEditor = DrawioConfigEditor.install(editorContent, {
+			initialConfig: configObj,
+			editorContext: editorContext,
+			darkMode: Editor.isDarkMode != null && Editor.isDarkMode(),
+			highContrast: editorUi.isHighContrast(),
+			onConfigChanged: function(obj)
+			{
+				latestEditorConfig = obj;
+				modified = true;
+			}
+		});
 
 		// JSON content (textarea)
 		var jsonContent = document.createElement('div');
@@ -4892,6 +4984,8 @@
 			textarea.value = value || '';
 		}
 
+		mxEvent.addListener(textarea, 'input', function() { modified = true; });
+
 		jsonContent.appendChild(textarea);
 
 		div.appendChild(editorContent);
@@ -4904,9 +4998,9 @@
 
 			if (tab === 'json')
 			{
-				if (latestIframeConfig != null)
+				if (latestEditorConfig != null)
 				{
-					textarea.value = JSON.stringify(latestIframeConfig, null, 2);
+					textarea.value = JSON.stringify(latestEditorConfig, null, 2);
 				}
 
 				editorContent.style.display = 'none';
@@ -4924,12 +5018,8 @@
 				try
 				{
 					var obj = JSON.parse(textarea.value);
-					latestIframeConfig = obj;
-
-					if (iframe.contentWindow != null)
-					{
-						iframe.contentWindow.postMessage({type: 'setConfig', config: obj}, '*');
-					}
+					latestEditorConfig = obj;
+					configEditor.setConfig(obj);
 				}
 				catch (e) {}
 
@@ -4948,39 +5038,6 @@
 
 		mxEvent.addListener(editorTabBtn, 'click', function() { setActiveTab('editor'); });
 		mxEvent.addListener(jsonTabBtn, 'click', function() { setActiveTab('json'); });
-
-		// Handle messages from iframe
-		var messageHandler = function(event)
-		{
-			if (iframe.contentWindow != null && event.source === iframe.contentWindow)
-			{
-				if (event.data != null)
-				{
-					if (event.data.type === 'configChanged')
-					{
-						latestIframeConfig = event.data.config;
-					}
-					else if (event.data.type === 'ready')
-					{
-						iframe.contentWindow.postMessage({type: 'setConfig', config: configObj}, '*');
-
-						// Send dark mode state
-						if (Editor.isDarkMode != null && Editor.isDarkMode())
-						{
-							iframe.contentWindow.postMessage({type: 'setDarkMode', dark: true}, '*');
-						}
-
-						// Send high contrast state
-						if (editorUi.isHighContrast())
-						{
-							iframe.contentWindow.postMessage({type: 'setHighContrast', highContrast: true}, '*');
-						}
-					}
-				}
-			}
-		};
-
-		window.addEventListener('message', messageHandler);
 
 		// Buttons
 		var buttons = document.createElement('div');
@@ -5011,9 +5068,9 @@
 					var btn = mxUtils.button(label, function(e)
 					{
 						// Sync textarea from editor before calling button handler
-						if (activeTab === 'editor' && latestIframeConfig != null)
+						if (activeTab === 'editor' && latestEditorConfig != null)
 						{
-							textarea.value = JSON.stringify(latestIframeConfig, null, 2);
+							textarea.value = JSON.stringify(latestEditorConfig, null, 2);
 						}
 
 						origFn(e, textarea);
@@ -5032,7 +5089,7 @@
 
 		var closeBtn = mxUtils.button(mxResources.get('close'), function()
 		{
-			editorUi.hideDialog();
+			confirmDiscard(closeDialog);
 		});
 
 		closeBtn.setAttribute('title', 'Escape');
@@ -5044,8 +5101,8 @@
 
 			if (activeTab === 'editor')
 			{
-				newValue = (latestIframeConfig != null && Object.keys(latestIframeConfig).length > 0) ?
-					JSON.stringify(latestIframeConfig, null, 2) : '';
+				newValue = (latestEditorConfig != null && Object.keys(latestEditorConfig).length > 0) ?
+					JSON.stringify(latestEditorConfig, null, 2) : '';
 			}
 			else
 			{
@@ -5061,7 +5118,8 @@
 
 				if (newValue == value)
 				{
-					editorUi.hideDialog();
+					modified = false;
+					closeDialog();
 				}
 				else
 				{
@@ -5075,7 +5133,8 @@
 						localStorage.removeItem(key);
 					}
 
-					editorUi.hideDialog();
+					modified = false;
+					closeDialog();
 					editorUi.alert(mxResources.get('restartForChangeRequired'));
 				}
 			}
@@ -5111,9 +5170,15 @@
 
 		var w = (customButtons != null && customButtons.length > 2) ? 500 : 440;
 		editorUi.showDialog(div, 800, 600, true, false,
-			function()
+			function(cancel, isEsc)
 			{
-				window.removeEventListener('message', messageHandler);
+				if (allowClose || !modified)
+				{
+					return;
+				}
+
+				confirmDiscard(closeDialog);
+				return false;
 			}, null, null, new mxRectangle(0, 0, w, 400));
 
 		textarea.scrollTop = 0;
@@ -10140,6 +10205,133 @@
 	};
 
 	/**
+	 * Replaces the children of a locked-group Mermaid cell with the result of
+	 * a fresh parse. The parsed XML is expected to carry a single wrapper
+	 * vertex; its children become the new children of `cell`. The cell is
+	 * resized to the new content bounds (preserving top-left) and the
+	 * mermaidData attribute is updated to match the new source.
+	 */
+	EditorUi.prototype.replaceLockedGroupChildren = function(cell, xml, text, config)
+	{
+		var graph = this.editor.graph;
+		var doc = mxUtils.parseXml(xml);
+		var codec = new mxCodec(doc);
+		var tempModel = new mxGraphModel();
+		codec.decode(doc.documentElement, tempModel);
+
+		// Locate wrapper: first vertex under a layer that has children.
+		var tempRoot = tempModel.getRoot();
+		var wrapper = null;
+
+		if (tempRoot != null)
+		{
+			for (var i = 0; i < tempModel.getChildCount(tempRoot) && wrapper == null; i++)
+			{
+				var layer = tempModel.getChildAt(tempRoot, i);
+
+				for (var j = 0; j < tempModel.getChildCount(layer); j++)
+				{
+					var c = tempModel.getChildAt(layer, j);
+
+					if (tempModel.isVertex(c) && tempModel.getChildCount(c) > 0)
+					{
+						wrapper = c;
+						break;
+					}
+				}
+			}
+		}
+
+		if (wrapper == null)
+		{
+			return;
+		}
+
+		// Collect wrapper's children and compute content bounds.
+		var tempChildren = [];
+		var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+		for (var i = 0; i < tempModel.getChildCount(wrapper); i++)
+		{
+			var c = tempModel.getChildAt(wrapper, i);
+			tempChildren.push(c);
+
+			if (tempModel.isVertex(c))
+			{
+				var g = c.getGeometry();
+
+				if (g != null)
+				{
+					minX = Math.min(minX, g.x);
+					minY = Math.min(minY, g.y);
+					maxX = Math.max(maxX, g.x + g.width);
+					maxY = Math.max(maxY, g.y + g.height);
+				}
+			}
+		}
+
+		if (tempChildren.length == 0)
+		{
+			return;
+		}
+
+		// Clone for the live graph (fresh IDs, edges remapped to clones).
+		var liveChildren = graph.cloneCells(tempChildren, true);
+
+		graph.getModel().beginUpdate();
+		try
+		{
+			// Remove existing children of the locked group.
+			var childCount = graph.model.getChildCount(cell);
+
+			for (var j = childCount - 1; j >= 0; j--)
+			{
+				graph.model.remove(graph.model.getChildAt(cell, j));
+			}
+
+			// Shift child geometries so the content origin sits at (0, 0)
+			// inside the group, then add them.
+			var dx = isFinite(minX) ? minX : 0;
+			var dy = isFinite(minY) ? minY : 0;
+
+			for (var i = 0; i < liveChildren.length; i++)
+			{
+				var lc = liveChildren[i];
+
+				if (graph.model.isVertex(lc) && lc.geometry != null)
+				{
+					lc.geometry = lc.geometry.clone();
+					lc.geometry.x -= dx;
+					lc.geometry.y -= dy;
+				}
+
+				graph.model.add(cell, lc);
+			}
+
+			// Resize the group to the new content bounds, preserving top-left.
+			if (isFinite(maxX - minX) && isFinite(maxY - minY))
+			{
+				var geo = graph.model.getGeometry(cell);
+
+				if (geo != null)
+				{
+					geo = geo.clone();
+					geo.width = maxX - minX;
+					geo.height = maxY - minY;
+					graph.model.setGeometry(cell, geo);
+				}
+			}
+
+			graph.setAttributeForCell(cell, 'mermaidData',
+				JSON.stringify({data: text, config: config}, null, 2));
+		}
+		finally
+		{
+			graph.getModel().endUpdate();
+		}
+	};
+
+	/**
 	 * Generates a Mermaid image.
 	 */
 	EditorUi.prototype.getSvgForXml = function(xml)
@@ -12390,48 +12582,79 @@
 			dlg.init();
 		};
 		
-		// Starts editing Mermaid data
+		// Starts editing Mermaid data. Branches on the current cell's shape:
+		// - shape=image: legacy image path (regenerate SVG via generateMermaidImage)
+		// - otherwise:   native subgraph path (re-parse and replace children)
 		graph.cellEditor.editMermaidData = function(cell, trigger, data)
 		{
 			var obj = JSON.parse(data);
-			
+			var style = graph.getCurrentCellStyle(cell);
+			var isImage = mxUtils.getValue(style, mxConstants.STYLE_SHAPE, '') ==
+				mxConstants.SHAPE_IMAGE;
+
 	    	var dlg = new SimpleTextareaDialog(ui, obj.data, function(text)
 			{
-	    		if (text != null)
+	    		if (text == null)
 				{
-	    			if (ui.spinner.spin(document.body, mxResources.get('inserting')))
-	    			{
-	    				ui.generateMermaidImage(text, obj.config, function(data, w, h)
-	    				{
-	    					ui.spinner.stop();
+	    			return;
+				}
 
-	    					graph.getModel().beginUpdate();
-	    					try
+	    		if (!ui.spinner.spin(document.body, mxResources.get('inserting')))
+	    		{
+	    			return;
+				}
+
+	    		var onError = function(e)
+	    		{
+	    			ui.spinner.stop();
+	    			ui.handleError(e);
+	    		};
+
+	    		if (isImage)
+				{
+	    			ui.generateMermaidImage(text, obj.config, function(imageData, w, h)
+	    			{
+	    				ui.spinner.stop();
+
+	    				graph.getModel().beginUpdate();
+	    				try
+	    				{
+	    					graph.setCellStyles('image', imageData, [cell]);
+	    					var geo = graph.model.getGeometry(cell);
+
+	    					if (geo != null)
 	    					{
-	    						graph.setCellStyles('image', data, [cell]);
-    							var geo = graph.model.getGeometry(cell);
-    							
-    							if (geo != null)
-    							{
-    								geo = geo.clone();
-    								geo.width = Math.max(geo.width, w);
-    								geo.height = Math.max(geo.height, h);
-    								graph.cellsResized([cell], [geo], false);
-    							}
-	    						
-	    						graph.setAttributeForCell(cell, 'mermaidData',
-		    						JSON.stringify({data: text, config:
-		    						obj.config}, null, 2));
+	    						geo = geo.clone();
+	    						geo.width = Math.max(geo.width, w);
+	    						geo.height = Math.max(geo.height, h);
+	    						graph.cellsResized([cell], [geo], false);
 	    					}
-	    					finally
-	    					{
-	    						graph.getModel().endUpdate();
-	    					}
-	    				}, function(e)
+
+	    					graph.setAttributeForCell(cell, 'mermaidData',
+	    						JSON.stringify({data: text, config:
+	    						obj.config}, null, 2));
+	    				}
+	    				finally
+	    				{
+	    					graph.getModel().endUpdate();
+	    				}
+	    			}, onError);
+				}
+	    		else
+				{
+	    			ui.parseMermaidDiagram(text, obj.config, function(xml)
+	    			{
+	    				ui.spinner.stop();
+
+	    				try
+	    				{
+	    					ui.replaceLockedGroupChildren(cell, xml, text, obj.config);
+	    				}
+	    				catch (e)
 	    				{
 	    					ui.handleError(e);
-	    				});
-	    			}
+	    				}
+	    			}, onError, null, true);
 				}
 			});
 			ui.showDialog(dlg.container, 640, 420, true, true, null,
@@ -12441,12 +12664,22 @@
 		
 		// Overrides function to add editing for Plant UML.
 		var cellEditorStartEditing = graph.cellEditor.startEditing;
-		graph.cellEditor.startEditing = function(cell, trigger)
+		graph.cellEditor.startEditing = function(cell, trigger, initialText)
 		{
 			try
 			{
+				// When the enclosing group is actively locked, double-click
+				// on any item in the group (or the group itself) edits the
+				// group. Unlocked groups let children be edited individually.
+				var lockedAncestor = this.graph.getLockedGroupAncestor(cell);
+
+				if (lockedAncestor != null)
+				{
+					cell = lockedAncestor;
+				}
+
 				var data = this.graph.getAttributeForCell(cell, 'plantUmlData');
-				
+
 				if (data != null)
 				{
 					this.editPlantUmlData(cell, trigger, data);
@@ -12454,7 +12687,7 @@
 				else
 				{
 					data = this.graph.getAttributeForCell(cell, 'mermaidData');
-				
+
 					if (data != null && window.isMermaidEnabled)
 					{
 						this.editMermaidData(cell, trigger, data);
@@ -12462,14 +12695,14 @@
 					else
 					{
 						var style = graph.getCellStyle(cell);
-						
+
 						if (mxUtils.getValue(style, 'metaEdit', '0') == '1')
 						{
 							ui.showDataDialog(cell);
 						}
 						else
 						{
-							cellEditorStartEditing.apply(this, arguments);
+							cellEditorStartEditing.call(this, cell, trigger, initialText);
 						}
 					}
 				}
@@ -14555,13 +14788,19 @@
 	{
 		var wnd = wrapperWindow.window;
 
+		// When minimized, div height reflects the title bar; mxWindow stores
+		// the pre-minimize height in wnd.height for use on normalize.
+		var h = (wnd.minimized && wnd.height != null) ?
+			parseInt(wnd.height) : parseInt(wnd.div.style.height);
+
 		mxSettings.setWindowState(name,
 		{
 			x: wnd.getX(),
 			y: wnd.getY(),
 			w: parseInt(wnd.div.style.width),
-			h: parseInt(wnd.div.style.height),
+			h: h,
 			visible: wnd.isVisible(),
+			minimized: wnd.minimized || false,
 			dockState: wnd.dockState || null,
 			dockAnchorRight: wnd._dockAnchorRight || null,
 			dockAnchorBottom: wnd._dockAnchorBottom || null,
@@ -14620,6 +14859,13 @@
 		if (state.visible != null)
 		{
 			wnd.setVisible(state.visible);
+		}
+
+		// Restore minimized state after sizing so the saved full height
+		// is retained as the restore target on un-minimize.
+		if (state.minimized && !wnd.minimized)
+		{
+			wnd.toggleMinimized();
 		}
 
 		return state;

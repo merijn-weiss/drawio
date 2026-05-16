@@ -1,3 +1,71 @@
+11-MAY-2026: 30.0.1
+
+- Corrects rounded of Archimate Techonology Functions shape [jgraph/drawio#5571]
+- ci: fix MCP index trigger tag pattern
+- Shows up to 4 matching pages in omnisearch dropdown
+
+09-MAY-2026: 30.0.0
+
+- Uses cached sanitized label for SVG support detection
+- Updates DOMPurify from 3.4.0 to 3.4.2
+- Persists minimized state of floating windows
+- Moves adaptive colors to page setup, adds page setup in simple+min UI
+- Adds mermaid shapes from native-ports branch
+- Sizes math labels and view to rendered MathJax output [jgraph/drawio#3311]
+- Fixes math fit-to-window on page switch with sync MathJax typeset
+- Adds configurable tooltipFontSize and tooltipMaxWidth
+- Adds lockedGroup cell style for grouping cells as one image
+- Adds Mindmap Bang, Git Tag, and Smiley Faces in Basic sidebar
+- Fixes dropped initialText in cellEditor.startEditing override
+- Fixes tab scroller jumping left when switching from rightmost page
+- Keeps inline toolbar and popovers inside visible viewport
+- Fixed Lucid import chrome extension
+- Skips empty drafts on save and cleans up existing ones on startup
+- Default adaptive colours no longer simple in desktop
+
+05-MAY-2026: 29.7.12
+
+- Adds boundedLbl for manual input shape
+- Removes quip references
+- Adds label sanitize https://github.com/jgraph/docker-drawio/security/advisories/GHSA-wj8x-4c77-v8v3
+
+04-MAY-2026: 29.7.11
+
+- Upgrades to JDK 21
+- Fixes offline local shape search pagination [jgraph/drawio-desktop#2409]
+- Updated mermaid to v11.14.0
+- Fixes NPE in insertTableRow on empty table; inserts initial row with single column
+- Disables insert column buttons in Format panel for empty tables
+- Updates MathJax from 4.1.1 to 4.1.2
+- Replaces diagramly source in GAE release
+
+01-MAY-2026: 29.7.10
+
+- Fixed lightbox mode for MS360 files
+- Conf Cloud: Added configuration editor
+- Added Confluence specific configurations to config-editor
+- Inline configuration editor into dialog instead of iframe
+- Update i18n submodule with normalized English capitalization
+- Add missed lineend/linestart capitalization in i18n submodule
+- Remove unused hateApp/loveIt keys and expand procEng in i18n submodule
+- Expand Proc. Eng. abbreviation in PID sidebar and i18n submodule
+- Fixes page format options vertical alignment
+- Fixes print dialog inconsistencies
+- Fixes inconsistent sections in Format panel
+- Adds rounding for arrow handle values
+- Fixes inconsistent padding for Format sections
+- Adds glass style support for ellipse and rhombus shapes
+- Show style tiles for mixed selections including edge labels
+- Fixes fill pattern issues with crop print and color leak [jgraph/drawio#5546]
+- Adjusts padding for edge geometry and stroke panels for improved layout
+- Fixes ignored current dark mode in config editor
+- Replaces rounded button with checkbox in diagram style panel
+- Restyles file properties dialog using dialog style guide
+- Restyles font dialog using dialog style guide
+- Saving embed macro preview with the actual diagram [DID-18496]
+- Recovers broken desktop saved PDFs jgraph/drawio-desktop#2394]
+- Removed incorrect gitlinks added for submodules
+
 20-APR-2026: 29.7.9
 
 - Skip clipboard init in read-only chromeless EditorUi

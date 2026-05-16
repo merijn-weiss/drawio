@@ -43,7 +43,72 @@ mxStencilRegistry.allowEval = false;
 	
 	// Automatic sync on conflicts
 	Editor.desktopAutoSync = true;
-	
+
+	// Recovers drawio XML from PDFs where pdf-lib 2.6.0+ wrote the
+	// hex-encoded /Subject as a top-level indirect object instead of
+	// inside /ObjStm [jgraph/drawio-desktop#2394]
+	var origExtractGraphModelFromPdf = Editor.extractGraphModelFromPdf;
+
+	Editor.extractGraphModelFromPdf = function(base64)
+	{
+		var result = origExtractGraphModelFromPdf.apply(this, arguments);
+
+		if (result != null)
+		{
+			return result;
+		}
+
+		try
+		{
+			var data = base64.substring(base64.indexOf(',') + 1);
+			var f = (window.atob && !mxClient.IS_SF) ? atob(data) : Base64.decode(data, true);
+
+			// UTF-16-BE encoding of BOM + '%3Cmxfile' (URL-encoded '<mxfile')
+			var anchor = 'FEFF002500330043006D007800660069006C0065';
+			var pos = 0;
+
+			while ((pos = f.indexOf('/Subject <', pos)) > -1)
+			{
+				var hexStart = pos + 10;
+				var hexEnd = f.indexOf('>', hexStart);
+
+				if (hexEnd < 0)
+				{
+					break;
+				}
+
+				var hex = f.substring(hexStart, hexEnd).replace(/\s/g, '').toUpperCase();
+
+				if (hex.indexOf(anchor) === 0)
+				{
+					var decoded = '';
+
+					// Skip FEFF BOM, decode UTF-16-BE code units
+					for (var i = 4; i + 4 <= hex.length; i += 4)
+					{
+						decoded += String.fromCharCode(parseInt(hex.substr(i, 4), 16));
+					}
+
+					var xml = decodeURIComponent(decoded.
+						replace(/\\\(/g, '(').replace(/\\\)/g, ')'));
+
+					if (xml.indexOf('<mxfile') === 0)
+					{
+						return xml;
+					}
+				}
+
+				pos = hexEnd;
+			}
+		}
+		catch (e)
+		{
+			// Fall through to null
+		}
+
+		return null;
+	};
+
 	// Disables all external transmission functionality
 	App.prototype.isExternalDataComms = function()
 	{

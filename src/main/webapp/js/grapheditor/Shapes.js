@@ -1142,6 +1142,91 @@
 
 	mxCellRenderer.registerShape('umlState', UMLStateShape);
 
+	// Smiley face shape used by the mermaid journey renderer.
+	// Supports smileyType=happy (default), neutral, sad.
+	function SmileyFaceShape()
+	{
+		mxShape.call(this);
+	};
+
+	mxUtils.extend(SmileyFaceShape, mxShape);
+
+	SmileyFaceShape.prototype.featureColor = '#666666';
+
+	SmileyFaceShape.prototype.paintVertexShape = function(c, x, y, w, h)
+	{
+		var smileyType = mxUtils.getValue(this.style, 'smileyType', 'happy');
+		var featureColor = mxUtils.getValue(this.style, 'smileyFeatureColor',
+			SmileyFaceShape.prototype.featureColor);
+
+		c.translate(x, y);
+
+		// Face circle uses cell's own fill/stroke + strokeWidth
+		var r = Math.min(w, h) / 2;
+		c.ellipse(w / 2 - r, h / 2 - r, r * 2, r * 2);
+		c.fillAndStroke();
+
+		var s = Math.min(w, h) / 30;
+		var cx = w / 2;
+		var cy = h / 2;
+
+		// Eyes: r=1.5 circles at (cx±5, cy-5) with fill & stroke = featureColor,
+		// stroke-width=2 to match mermaid's stroke-width="2" on the eye circles
+		c.setFillColor(featureColor);
+		c.setStrokeColor(featureColor);
+		c.setStrokeWidth(2 * s);
+
+		var eyeR = 1.5 * s;
+		var eyeXOffset = 5 * s;
+		var eyeYOffset = 5 * s;
+
+		c.ellipse(cx - eyeXOffset - eyeR, cy - eyeYOffset - eyeR, eyeR * 2, eyeR * 2);
+		c.fillAndStroke();
+		c.ellipse(cx + eyeXOffset - eyeR, cy - eyeYOffset - eyeR, eyeR * 2, eyeR * 2);
+		c.fillAndStroke();
+
+		// Mouth: happy/sad are filled crescents (default mermaid fill = black,
+		// stroke = #666 from .mouth CSS), neutral is a grey line
+		c.setStrokeWidth(1 * s);
+		c.setFillColor('#000000');
+
+		if (smileyType == 'happy')
+		{
+			var mcx = cx;
+			var mcy = cy + 2 * s;
+
+			c.begin();
+			c.moveTo(mcx + 7.5 * s, mcy);
+			c.arcTo(7.5 * s, 7.5 * s, 0, 1, 1, mcx - 7.5 * s, mcy);
+			c.lineTo(mcx - 6.818 * s, mcy);
+			c.arcTo(6.818 * s, 6.818 * s, 0, 1, 0, mcx + 6.818 * s, mcy);
+			c.close();
+			c.fillAndStroke();
+		}
+		else if (smileyType == 'sad')
+		{
+			var mcx = cx;
+			var mcy = cy + 7 * s;
+
+			c.begin();
+			c.moveTo(mcx - 7.5 * s, mcy);
+			c.arcTo(7.5 * s, 7.5 * s, 0, 1, 1, mcx + 7.5 * s, mcy);
+			c.lineTo(mcx + 6.818 * s, mcy);
+			c.arcTo(6.818 * s, 6.818 * s, 0, 1, 0, mcx - 6.818 * s, mcy);
+			c.close();
+			c.fillAndStroke();
+		}
+		else
+		{
+			c.begin();
+			c.moveTo(cx - 5 * s, cy + 7 * s);
+			c.lineTo(cx + 5 * s, cy + 7 * s);
+			c.stroke();
+		}
+	};
+
+	mxCellRenderer.registerShape('smileyFace', SmileyFaceShape);
+
 	// Card shape
 	function CardShape()
 	{
@@ -1994,16 +2079,19 @@
 		{
 			var margin = (Math.max(2, this.strokewidth + 1) * 2 + parseFloat(
 				this.style[mxConstants.STYLE_MARGIN] || 0)) * this.scale;
-		
+
 			return new mxRectangle(rect.x + margin, rect.y + margin,
 				rect.width - 2 * margin, rect.height - 2 * margin);
 		}
-		
+
 		return rect;
 	};
 	mxRhombus.prototype.paintVertexShape = function(c, x, y, w, h)
 	{
 		mxRhombusPaintVertexShape.apply(this, arguments);
+
+		// Stash original bounds; double-handling below mutates x, y, w, h.
+		var gx = x, gy = y, gw = w, gh = h;
 
 		if (!this.outline && this.style['double'] == 1)
 		{
@@ -2013,15 +2101,93 @@
 			y += margin;
 			w -= 2 * margin;
 			h -= 2 * margin;
-			
+
 			if (w > 0 && h > 0)
 			{
 				c.setShadow(false);
-				
+
 				// Workaround for closure compiler bug where the lines with x and y above
 				// are removed if arguments is used as second argument in call below.
 				mxRhombusPaintVertexShape.apply(this, [c, x, y, w, h]);
 			}
+		}
+
+		if (this.glass && !this.outline && this.fill != null && this.fill != mxConstants.NONE)
+		{
+			this.paintGlassEffect(c, gx, gy, gw, gh, 0);
+		}
+	};
+
+	// Refactors paintGlassEffect to delegate path drawing to a paintGlassEffectPath hook,
+	// allowing non-rectangular shapes (ellipse, rhombus) to provide silhouette-matching paths.
+	mxShape.prototype.paintGlassEffect = function(c, x, y, w, h, arc)
+	{
+		var sw = Math.ceil(this.strokewidth / 2);
+		c.setGradient('#ffffff', '#ffffff', x, y, w, h * 0.6, 'south', 0.9, 0.1);
+		c.begin();
+		this.paintGlassEffectPath(c, x, y, w, h, sw, arc);
+		c.close();
+		c.fill();
+	};
+
+	mxShape.prototype.paintGlassEffectPath = function(c, x, y, w, h, sw, arc)
+	{
+		arc += 2 * sw;
+
+		if (this.isRounded)
+		{
+			c.moveTo(x - sw + arc, y - sw);
+			c.quadTo(x - sw, y - sw, x - sw, y - sw + arc);
+			c.lineTo(x - sw, y + h * 0.4);
+			c.quadTo(x + w * 0.5, y + h * 0.7, x + w + sw, y + h * 0.4);
+			c.lineTo(x + w + sw, y - sw + arc);
+			c.quadTo(x + w + sw, y - sw, x + w + sw - arc, y - sw);
+		}
+		else
+		{
+			c.moveTo(x - sw, y - sw);
+			c.lineTo(x - sw, y + h * 0.4);
+			c.quadTo(x + w * 0.5, y + h * 0.7, x + w + sw, y + h * 0.4);
+			c.lineTo(x + w + sw, y - sw);
+		}
+	};
+
+	// Cubic bezier approximation of the top half of the ellipse, then a wave back through
+	// the middle to close the highlight (matches the dip in the rectangular variant).
+	mxEllipse.prototype.paintGlassEffectPath = function(c, x, y, w, h, sw, arc)
+	{
+		var kappa = 0.5522847498;
+		var rx = w / 2 + sw;
+		var ry = h / 2 + sw;
+		var cx = x + w / 2;
+		var cy = y + h / 2;
+
+		c.moveTo(cx - rx, cy);
+		c.curveTo(cx - rx, cy - ry * kappa, cx - rx * kappa, cy - ry, cx, cy - ry);
+		c.curveTo(cx + rx * kappa, cy - ry, cx + rx, cy - ry * kappa, cx + rx, cy);
+		c.quadTo(cx, cy + h * 0.2, cx - rx, cy);
+	};
+
+	mxRhombus.prototype.paintGlassEffectPath = function(c, x, y, w, h, sw, arc)
+	{
+		var hw = w / 2;
+		var hh = h / 2;
+		var arcSize = mxUtils.getValue(this.style, mxConstants.STYLE_ARCSIZE, mxConstants.LINE_ARCSIZE) / 2;
+
+		this.addPoints(c, [new mxPoint(x, y + hh), new mxPoint(x + hw, y), new mxPoint(x + w, y + hh)],
+			this.isRounded, arcSize, false);
+
+		c.quadTo(x + hw, y + h * 0.7, x, y + hh);
+	};
+
+	var mxEllipsePaintVertexShape = mxEllipse.prototype.paintVertexShape;
+	mxEllipse.prototype.paintVertexShape = function(c, x, y, w, h)
+	{
+		mxEllipsePaintVertexShape.apply(this, arguments);
+
+		if (this.glass && !this.outline && this.fill != null && this.fill != mxConstants.NONE)
+		{
+			this.paintGlassEffect(c, x, y, w, h, 0);
 		}
 	};
 
@@ -3207,6 +3373,18 @@
 	ManualInputShape.prototype.isRoundable = function()
 	{
 		return true;
+	};
+
+	ManualInputShape.prototype.getLabelMargins = function(rect)
+	{
+		if (mxUtils.getValue(this.style, 'boundedLbl', false))
+		{
+			var s = parseFloat(mxUtils.getValue(this.style, 'size', this.size)) * this.scale;
+			
+			return new mxRectangle(0, s, 0, 0);
+		}
+		
+		return null;
 	};
 
 	ManualInputShape.prototype.redrawPath = function(c, x, y, w, h)
@@ -6220,6 +6398,470 @@
 
 	mxCellRenderer.registerShape('curvedText', CurvedTextShape);
 
+	// Gitgraph commit tag shape — a paper-tag silhouette with a pointed
+	// left tab and a pierce-hole circle, matching upstream mermaid's
+	// tag-label-bkg polygon. Params:
+	//   tabSize    — horizontal extent of the pointed tab (default 8)
+	//   tabInset   — height of the flat tip of the tab (default 4)
+	//   holeSize   — radius of the pierce hole (default 1.5)
+	//   holeColor  — fill color of the pierce hole (default #333)
+	function GitTagShape()
+	{
+		mxActor.call(this);
+	};
+
+	mxUtils.extend(GitTagShape, mxActor);
+
+	GitTagShape.prototype.tabSize = 8;
+	GitTagShape.prototype.tabInset = 4;
+	GitTagShape.prototype.holeSize = 1.0;
+
+	GitTagShape.prototype.isRoundable = function()
+	{
+		return false;
+	};
+
+	GitTagShape.prototype.redrawPath = function(c, x, y, w, h)
+	{
+		var tabSize = Math.max(0, Math.min(w,
+			parseFloat(mxUtils.getValue(this.style, 'tabSize', this.tabSize))));
+		var tabInset = Math.max(0, Math.min(h,
+			parseFloat(mxUtils.getValue(this.style, 'tabInset', this.tabInset))));
+		var tabY1 = (h - tabInset) / 2;
+		var tabY2 = tabY1 + tabInset;
+
+		c.moveTo(0, tabY1);
+		c.lineTo(0, tabY2);
+		c.lineTo(tabSize, h);
+		c.lineTo(w, h);
+		c.lineTo(w, 0);
+		c.lineTo(tabSize, 0);
+		c.close();
+		c.end();
+	};
+
+	// mxActor's paintVertexShape applies c.translate(x, y) then calls
+	// redrawPath + fillAndStroke, and does not invoke paintForeground. So
+	// we override paintVertexShape to call super and then draw the hole in
+	// the same translated frame (local coords starting at 0, 0).
+	GitTagShape.prototype.paintVertexShape = function(c, x, y, w, h)
+	{
+		mxActor.prototype.paintVertexShape.apply(this, arguments);
+
+		var holeSize = Math.max(0,
+			parseFloat(mxUtils.getValue(this.style, 'holeSize', this.holeSize)));
+
+		if (holeSize <= 0)
+		{
+			return;
+		}
+
+		var tabSize = parseFloat(mxUtils.getValue(this.style, 'tabSize', this.tabSize));
+		var holeColor = mxUtils.getValue(this.style, 'holeColor',
+			mxUtils.getValue(this.style, mxConstants.STYLE_FONTCOLOR, '#333333'));
+
+		c.setFillColor(holeColor);
+		c.setStrokeColor(holeColor);
+		c.begin();
+		c.ellipse(tabSize / 2 - holeSize, h / 2 - holeSize, holeSize * 2, holeSize * 2);
+		c.fillAndStroke();
+	};
+
+	GitTagShape.prototype.getLabelBounds = function(rect)
+	{
+		// Label lives in the body (to the right of the tab), not the tab.
+		var tabSize = parseFloat(mxUtils.getValue(this.style, 'tabSize', this.tabSize)) * this.scale;
+		return new mxRectangle(rect.x + tabSize, rect.y, rect.width - tabSize, rect.height);
+	};
+
+	mxCellRenderer.registerShape('gitTag', GitTagShape);
+
+	// Gitgraph merge-commit shape — outer branch-colored circle with an
+	// inner lavender circle, rendered as a single cell (no group/children).
+	function GitMergeCommitShape()
+	{
+		mxShape.call(this);
+	};
+
+	mxUtils.extend(GitMergeCommitShape, mxShape);
+
+	GitMergeCommitShape.prototype.paintVertexShape = function(c, x, y, w, h)
+	{
+		var innerColor = mxUtils.getValue(this.style, 'innerColor', '#ECECFF');
+
+		c.translate(x, y);
+
+		c.ellipse(0, 0, w, h);
+		c.fillAndStroke();
+
+		var innerD = Math.min(w, h) * 0.6;
+		var ix = (w - innerD) / 2;
+		var iy = (h - innerD) / 2;
+
+		c.setFillColor(innerColor);
+		c.setStrokeColor(innerColor);
+		c.ellipse(ix, iy, innerD, innerD);
+		c.fillAndStroke();
+	};
+
+	mxCellRenderer.registerShape('gitMergeCommit', GitMergeCommitShape);
+
+	// Gitgraph cherry-pick shape — dark circle with two white "eye"
+	// circles and two white stem lines forming an inverted V, matching
+	// upstream mermaid's cherry-pick bullet.
+	function GitCherryPickShape()
+	{
+		mxShape.call(this);
+	};
+
+	mxUtils.extend(GitCherryPickShape, mxShape);
+
+	GitCherryPickShape.prototype.paintVertexShape = function(c, x, y, w, h)
+	{
+		var featureColor = mxUtils.getValue(this.style, 'featureColor', '#fff');
+
+		c.translate(x, y);
+
+		var cx = w / 2;
+		var cy = h / 2;
+		var s = Math.min(w, h) / 20;
+
+		c.ellipse(0, 0, w, h);
+		c.fillAndStroke();
+
+		c.setFillColor(featureColor);
+		c.setStrokeColor(featureColor);
+		c.setStrokeWidth(0);
+
+		var eyeR = 2.75 * s;
+
+		c.ellipse(cx - 3 * s - eyeR, cy + 2 * s - eyeR, eyeR * 2, eyeR * 2);
+		c.fillAndStroke();
+		c.ellipse(cx + 3 * s - eyeR, cy + 2 * s - eyeR, eyeR * 2, eyeR * 2);
+		c.fillAndStroke();
+
+		c.setStrokeWidth(1 * s);
+		c.begin();
+		c.moveTo(cx + 3 * s, cy + 1 * s);
+		c.lineTo(cx, cy - 5 * s);
+		c.stroke();
+		c.begin();
+		c.moveTo(cx - 3 * s, cy + 1 * s);
+		c.lineTo(cx, cy - 5 * s);
+		c.stroke();
+	};
+
+	mxCellRenderer.registerShape('gitCherryPick', GitCherryPickShape);
+
+	// Mermaid mindmap bang shape: starburst silhouette used for `id))label((`
+	// nodes. Drawn as a sequence of elliptical arcs forming 4 scallops on
+	// top, 3 on each side and 4 on bottom — direct port of mermaid's
+	// `bang.ts` shape (chunk-C7LX3TON.mjs). Mermaid's path occupies
+	// `1.25*W x ~1.30*H` outside its design (W,H), so we scale the
+	// drawio cell down to 80% and offset M to leave room for the
+	// outermost spike tips against the cell bounds.
+	function MindmapBangShape()
+	{
+		mxActor.call(this);
+	};
+
+	mxUtils.extend(MindmapBangShape, mxActor);
+
+	MindmapBangShape.prototype.isRoundable = function()
+	{
+		return false;
+	};
+
+	MindmapBangShape.prototype.redrawPath = function(c, x, y, w, h)
+	{
+		// Path natural bbox = 1.25*W wide × 1.25*H tall (corner spikes
+		// extend 0.10–0.15 in each direction). To fit the cell rect,
+		// cap design dims at 0.8 of cell and offset M by `0.10*W` /
+		// `0.10*H` so the outermost spike tips touch the cell edges
+		// without clipping.
+		var W = w * 0.8;
+		var H = h * 0.8;
+		var r = W * 0.15;
+		var r80 = r * 0.8;
+		var ox = W * 0.10;
+		var oy = H * 0.10;
+
+		// Start point — top-left of the design rectangle.
+		var px = ox;
+		var py = oy;
+		c.moveTo(px, py);
+
+		// Top: 4 arcs left→right; corners spike up by 0.1*H.
+		px += W * 0.25; py += -H * 0.10; c.arcTo(r, r, 0, 0, 0, px, py);
+		px += W * 0.25; py += 0;          c.arcTo(r, r, 0, 0, 0, px, py);
+		px += W * 0.25; py += 0;          c.arcTo(r, r, 0, 0, 0, px, py);
+		px += W * 0.25; py += H * 0.10;   c.arcTo(r, r, 0, 0, 0, px, py);
+
+		// Right: 3 arcs top→bottom; middle spike protrudes right.
+		px += W * 0.15; py += H * 0.33; c.arcTo(r, r, 0, 0, 0, px, py);
+		px += 0;         py += H * 0.34; c.arcTo(r80, r80, 0, 0, 0, px, py);
+		px += -W * 0.15; py += H * 0.33; c.arcTo(r, r, 0, 0, 0, px, py);
+
+		// Bottom: 4 arcs right→left; corners spike down by 0.15*H.
+		px += -W * 0.25; py += H * 0.15;  c.arcTo(r, r, 0, 0, 0, px, py);
+		px += -W * 0.25; py += 0;          c.arcTo(r, r, 0, 0, 0, px, py);
+		px += -W * 0.25; py += 0;          c.arcTo(r, r, 0, 0, 0, px, py);
+		px += -W * 0.25; py += -H * 0.15; c.arcTo(r, r, 0, 0, 0, px, py);
+
+		// Left: 3 arcs bottom→top; middle spike protrudes left.
+		px += -W * 0.10; py += -H * 0.33; c.arcTo(r, r, 0, 0, 0, px, py);
+		px += 0;          py += -H * 0.34; c.arcTo(r80, r80, 0, 0, 0, px, py);
+		px += W * 0.10;  py += -H * 0.33; c.arcTo(r, r, 0, 0, 0, px, py);
+
+		c.close();
+		c.end();
+	};
+
+	MindmapBangShape.prototype.getLabelBounds = function(rect)
+	{
+		// Constrain the label to the inner design rectangle (80%) so
+		// text doesn't spill onto the spike tips.
+		var insetX = rect.width * 0.10;
+		var insetY = rect.height * 0.10;
+		return new mxRectangle(rect.x + insetX, rect.y + insetY,
+			rect.width - insetX * 2, rect.height - insetY * 2);
+	};
+
+	mxCellRenderer.registerShape('mindmapBang', MindmapBangShape);
+
+	// Ishikawa fish-head shape — flat left edge with a quadratic-curve
+	// right side forming a pointed teardrop, matching upstream mermaid's
+	// ishikawa-head path: M 0 -h/2 L 0 h/2 Q 2w 0 0 -h/2 Z
+	function IshikawaHeadShape()
+	{
+		mxActor.call(this);
+	};
+
+	mxUtils.extend(IshikawaHeadShape, mxActor);
+
+	IshikawaHeadShape.prototype.isRoundable = function()
+	{
+		return false;
+	};
+
+	IshikawaHeadShape.prototype.redrawPath = function(c, x, y, w, h)
+	{
+		c.moveTo(0, 0);
+		c.lineTo(0, h);
+		c.quadTo(2 * w, h / 2, 0, 0);
+		c.close();
+		c.end();
+	};
+
+	mxCellRenderer.registerShape('ishikawaHead', IshikawaHeadShape);
+
+	// Mermaid "odd" / rect_left_inv_arrow shape: a rectangle with a
+	// left-pointing chevron on the left side.
+	function OddShape()
+	{
+		mxActor.call(this);
+	};
+
+	mxUtils.extend(OddShape, mxActor);
+
+	OddShape.prototype.isRoundable = function()
+	{
+		return false;
+	};
+
+	OddShape.prototype.redrawPath = function(c, x, y, w, h)
+	{
+		var notch = h / 4;
+
+		c.moveTo(0, 0);
+		c.lineTo(notch, h / 2);
+		c.lineTo(0, h);
+		c.lineTo(w, h);
+		c.lineTo(w, 0);
+		c.close();
+		c.end();
+	};
+
+	OddShape.prototype.getLabelBounds = function(rect)
+	{
+		var notch = rect.height / 4;
+		return new mxRectangle(rect.x + notch, rect.y,
+			rect.width - notch, rect.height);
+	};
+
+	mxCellRenderer.registerShape('mermaidOdd', OddShape);
+
+	// Block-arrow shape used by the mermaid block diagram. Verbatim port
+	// of mermaid's blockArrowHelper getArrowPoints — every direction
+	// combination renders as one closed polygon.
+	function MermaidBlockArrowShape()
+	{
+		mxActor.call(this);
+	};
+
+	mxUtils.extend(MermaidBlockArrowShape, mxActor);
+
+	MermaidBlockArrowShape.prototype.isRoundable = function()
+	{
+		return false;
+	};
+
+	MermaidBlockArrowShape.prototype.paintVertexShape = function(c, x, y, w, h)
+	{
+		if (c.setLineJoin) c.setLineJoin('round');
+		mxActor.prototype.paintVertexShape.apply(this, arguments);
+	};
+
+	MermaidBlockArrowShape.prototype.redrawPath = function(c, x, y, w, h)
+	{
+		var dirsStr = mxUtils.getValue(this.style, 'dirs', 'right');
+		var directions = {};
+		dirsStr.split(/[,| ]+/).forEach(function (d)
+		{
+			d = d.trim().toLowerCase();
+			if (d === 'x') { directions.right = true; directions.left = true; }
+			else if (d === 'y') { directions.up = true; directions.down = true; }
+			else if (d) { directions[d] = true; }
+		});
+
+		var nodePad = parseFloat(mxUtils.getValue(this.style, 'nodePadding', '8'));
+		var midpoint = h / 2;
+		var pad = nodePad / 2;
+		var pts;
+
+		if (directions.right && directions.left && directions.up && directions.down)
+		{
+			pts = [
+				[0, 0], [midpoint, 0],
+				[w / 2, 2 * pad],
+				[w - midpoint, 0], [w, 0],
+				[w, -h / 3], [w + 2 * pad, -h / 2], [w, -2 * h / 3], [w, -h],
+				[w - midpoint, -h], [w / 2, -h - 2 * pad], [midpoint, -h],
+				[0, -h], [0, -2 * h / 3], [-2 * pad, -h / 2], [0, -h / 3]
+			];
+		}
+		else if (directions.right && directions.left && directions.up)
+		{
+			pts = [
+				[midpoint, 0], [w - midpoint, 0],
+				[w, -h / 2],
+				[w - midpoint, -h], [midpoint, -h],
+				[0, -h / 2]
+			];
+		}
+		else if (directions.right && directions.left && directions.down)
+		{
+			pts = [
+				[0, 0], [midpoint, -h], [w - midpoint, -h], [w, 0]
+			];
+		}
+		else if (directions.right && directions.up && directions.down)
+		{
+			pts = [
+				[0, 0], [w, -midpoint], [w, -h + midpoint], [0, -h]
+			];
+		}
+		else if (directions.left && directions.up && directions.down)
+		{
+			pts = [
+				[w, 0], [0, -midpoint], [0, -h + midpoint], [w, -h]
+			];
+		}
+		else if (directions.right && directions.left)
+		{
+			pts = [
+				[midpoint, 0], [midpoint, -pad],
+				[w - midpoint, -pad], [w - midpoint, 0],
+				[w, -h / 2],
+				[w - midpoint, -h], [w - midpoint, -h + pad],
+				[midpoint, -h + pad], [midpoint, -h],
+				[0, -h / 2]
+			];
+		}
+		else if (directions.up && directions.down)
+		{
+			pts = [
+				[w / 2, 0],
+				[0, -pad], [midpoint, -pad],
+				[midpoint, -h + pad], [0, -h + pad],
+				[w / 2, -h],
+				[w, -h + pad],
+				[w - midpoint, -h + pad], [w - midpoint, -pad],
+				[w, -pad]
+			];
+		}
+		else if (directions.right && directions.up)
+		{
+			pts = [[0, 0], [w, -midpoint], [0, -h]];
+		}
+		else if (directions.right && directions.down)
+		{
+			pts = [[0, 0], [w, 0], [0, -h]];
+		}
+		else if (directions.left && directions.up)
+		{
+			pts = [[w, 0], [0, -midpoint], [w, -h]];
+		}
+		else if (directions.left && directions.down)
+		{
+			pts = [[w, 0], [0, 0], [w, -h]];
+		}
+		else if (directions.right)
+		{
+			pts = [
+				[midpoint, -pad], [w - midpoint, -pad], [w - midpoint, 0],
+				[w, -h / 2],
+				[w - midpoint, -h], [w - midpoint, -h + pad],
+				[midpoint, -h + pad]
+			];
+		}
+		else if (directions.left)
+		{
+			pts = [
+				[midpoint, 0], [midpoint, -pad],
+				[w - midpoint, -pad], [w - midpoint, -h + pad],
+				[midpoint, -h + pad], [midpoint, -h],
+				[0, -h / 2]
+			];
+		}
+		else if (directions.up)
+		{
+			pts = [
+				[midpoint, -pad],
+				[midpoint, -h + pad], [0, -h + pad],
+				[w / 2, -h],
+				[w, -h + pad],
+				[w - midpoint, -h + pad], [w - midpoint, -pad]
+			];
+		}
+		else if (directions.down)
+		{
+			pts = [
+				[w / 2, 0],
+				[0, -pad], [midpoint, -pad],
+				[midpoint, -h + pad],
+				[w - midpoint, -h + pad], [w - midpoint, -pad],
+				[w, -pad]
+			];
+		}
+		else
+		{
+			pts = [[0, 0], [w, 0], [w, -h], [0, -h]];
+		}
+
+		c.moveTo(pts[0][0], h + pts[0][1]);
+
+		for (var i = 1; i < pts.length; i++)
+		{
+			c.lineTo(pts[i][0], h + pts[i][1]);
+		}
+
+		c.close();
+		c.end();
+	};
+
+	mxCellRenderer.registerShape('mermaidBlockArrow', MermaidBlockArrowShape);
+
 	// Handlers are only added if mxVertexHandler is defined (ie. not in embedded graph)
 	if (typeof mxVertexHandler !== 'undefined')
 	{
@@ -6505,8 +7147,8 @@
 				return new mxPoint(p0.x + nx * dist / 4 + ny * w / 2, p0.y + ny * dist / 4 - nx * w / 2);
 			}, function(dist, nx, ny, p0, p1, pt)
 			{
-				var w = Math.sqrt(mxUtils.ptSegDistSq(p0.x, p0.y, p1.x, p1.y, pt.x, pt.y));					
-				state.style['width'] = Math.round(w * 2) / state.view.scale - spacing;
+				var w = Math.sqrt(mxUtils.ptSegDistSq(p0.x, p0.y, p1.x, p1.y, pt.x, pt.y));
+				state.style['width'] = Math.round(Math.round(w * 2) / state.view.scale - spacing);
 			});
 		};
 		
@@ -6547,10 +7189,10 @@
 					{
 						var w = Math.sqrt(mxUtils.ptSegDistSq(p0.x, p0.y, p1.x, p1.y, pt.x, pt.y));
 						var l = mxUtils.ptLineDist(p0.x, p0.y, p0.x + ny, p0.y - nx, pt.x, pt.y);
-						
-						state.style[mxConstants.STYLE_STARTSIZE] = Math.round((l - state.shape.strokewidth) * 100 / 3) / 100 / state.view.scale;
-						state.style['width'] = Math.round(w * 2) / state.view.scale;
-						
+
+						state.style[mxConstants.STYLE_STARTSIZE] = Math.round((l - state.shape.strokewidth) / 3 / state.view.scale);
+						state.style['width'] = Math.round(w * 2 / state.view.scale);
+
 						// Applies to opposite side
 						if (mxEvent.isShiftDown(me.getEvent()) || mxEvent.isControlDown(me.getEvent()))
 						{
@@ -6578,10 +7220,10 @@
 					{
 						var w = Math.sqrt(mxUtils.ptSegDistSq(p0.x, p0.y, p1.x, p1.y, pt.x, pt.y));
 						var l = mxUtils.ptLineDist(p0.x, p0.y, p0.x + ny, p0.y - nx, pt.x, pt.y);
-						
-						state.style[mxConstants.STYLE_STARTSIZE] = Math.round((l - state.shape.strokewidth) * 100 / 3) / 100 / state.view.scale;
-						state.style['startWidth'] = Math.max(0, Math.round(w * 2) - state.shape.getEdgeWidth()) / state.view.scale;
-						
+
+						state.style[mxConstants.STYLE_STARTSIZE] = Math.round((l - state.shape.strokewidth) / 3 / state.view.scale);
+						state.style['startWidth'] = Math.round(Math.max(0, Math.round(w * 2) - state.shape.getEdgeWidth()) / state.view.scale);
+
 						// Applies to opposite side
 						if (mxEvent.isShiftDown(me.getEvent()) || mxEvent.isControlDown(me.getEvent()))
 						{
@@ -6618,16 +7260,16 @@
 					{
 						var w = Math.sqrt(mxUtils.ptSegDistSq(p0.x, p0.y, p1.x, p1.y, pt.x, pt.y));
 						var l = mxUtils.ptLineDist(p0.x, p0.y, p0.x + ny, p0.y - nx, pt.x, pt.y);
-						
-						state.style[mxConstants.STYLE_ENDSIZE] = Math.round((l - state.shape.strokewidth) * 100 / 3) / 100 / state.view.scale;
-						state.style['width'] = Math.round(w * 2) / state.view.scale;
-						
+
+						state.style[mxConstants.STYLE_ENDSIZE] = Math.round((l - state.shape.strokewidth) / 3 / state.view.scale);
+						state.style['width'] = Math.round(w * 2 / state.view.scale);
+
 						// Applies to opposite side
 						if (mxEvent.isShiftDown(me.getEvent()) || mxEvent.isControlDown(me.getEvent()))
 						{
 							state.style[mxConstants.STYLE_STARTSIZE] = state.style[mxConstants.STYLE_ENDSIZE];
 						}
-					
+
 						// Snaps to start geometry
 						if (!mxEvent.isAltDown(me.getEvent()))
 						{
@@ -6649,10 +7291,10 @@
 					{
 						var w = Math.sqrt(mxUtils.ptSegDistSq(p0.x, p0.y, p1.x, p1.y, pt.x, pt.y));
 						var l = mxUtils.ptLineDist(p0.x, p0.y, p0.x + ny, p0.y - nx, pt.x, pt.y);
-						
-						state.style[mxConstants.STYLE_ENDSIZE] = Math.round((l - state.shape.strokewidth) * 100 / 3) / 100 / state.view.scale;
-						state.style['endWidth'] = Math.max(0, Math.round(w * 2) - state.shape.getEdgeWidth()) / state.view.scale;
-						
+
+						state.style[mxConstants.STYLE_ENDSIZE] = Math.round((l - state.shape.strokewidth) / 3 / state.view.scale);
+						state.style['endWidth'] = Math.round(Math.max(0, Math.round(w * 2) - state.shape.getEdgeWidth()) / state.view.scale);
+
 						// Applies to opposite side
 						if (mxEvent.isShiftDown(me.getEvent()) || mxEvent.isControlDown(me.getEvent()))
 						{
@@ -7573,6 +8215,10 @@
 	mxSwimlane.prototype.constraints = mxRectangleShape.prototype.constraints;
 	PlusShape.prototype.constraints = mxRectangleShape.prototype.constraints;
 	mxLabel.prototype.constraints = mxRectangleShape.prototype.constraints;
+	GitTagShape.prototype.constraints = mxRectangleShape.prototype.constraints;
+	MindmapBangShape.prototype.constraints = mxEllipse.prototype.constraints;
+	OddShape.prototype.constraints = mxEllipse.prototype.constraints;
+	SmileyFaceShape.prototype.constraints = mxEllipse.prototype.constraints;
 	
 	NoteShape.prototype.getConstraints = function(style, w, h)
 	{

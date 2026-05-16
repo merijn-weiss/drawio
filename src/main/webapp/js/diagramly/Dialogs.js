@@ -13004,62 +13004,53 @@ var BtnDialog = function(editorUi, peer, btnLbl, fn)
  */
 var FontDialog = function(editorUi, curFontname, curUrl, curType, fn)
 {
-	var row, td, label;
-	
-	var table = document.createElement('table');
-	var tbody = document.createElement('tbody');
-	table.style.marginTop = '8px';
+	var div = document.createElement('div');
 
-	//System fonts section
-	row = document.createElement('tr');
-	
-	td = document.createElement('td');
-	td.colSpan = 2;
-	td.style.whiteSpace = 'nowrap';
-	td.style.fontSize = '10pt';
-	td.style.fontWeight = 'bold';
-	
-	var sysFontRadio = document.createElement('input');
-	sysFontRadio.style.cssText = 'margin-right:8px;margin-bottom:8px;';
-	sysFontRadio.setAttribute('value', 'sysfonts');
-	sysFontRadio.setAttribute('type', 'radio');
-	sysFontRadio.setAttribute('name', 'current-fontdialog');
-	sysFontRadio.setAttribute('id', 'fontdialog-sysfonts');
-	td.appendChild(sysFontRadio);
-	
-	label = document.createElement('label');
-	label.setAttribute('for', 'fontdialog-sysfonts');
-	mxUtils.write(label, (mxResources.get('sysFonts', null, 'System Fonts')));
-	td.appendChild(label);
-	
-	row.appendChild(td);
-	tbody.appendChild(row);
-	
-	row = document.createElement('tr');
-	
-	td = document.createElement('td');
-	td.style.whiteSpace = 'nowrap';
-	td.style.fontSize = '10pt';
-	td.style.width = '120px';
-	td.style.paddingLeft = '15px';
-	mxUtils.write(td, (mxResources.get('fontname', null, 'Font Name')) + ':');
+	var hd = document.createElement('h3');
+	mxUtils.write(hd, mxResources.get('font'));
+	hd.style.cssText = 'width:100%;text-align:center;margin-top:0px;margin-bottom:10px';
+	div.appendChild(hd);
 
-	row.appendChild(td);
-	
+	function addFormRow(section, labelText, input)
+	{
+		var row = document.createElement('div');
+		row.className = 'geDialogFormRow';
+		row.style.paddingLeft = '24px';
+
+		var lbl = document.createElement('span');
+		lbl.className = 'geDialogFormLabel';
+		mxUtils.write(lbl, labelText + ':');
+		row.appendChild(lbl);
+
+		row.appendChild(input);
+		section.appendChild(row);
+
+		return row;
+	};
+
+	// System fonts section
+	var sysSection = document.createElement('div');
+	sysSection.className = 'geDialogSection';
+
+	var sysFontRadio = editorUi.addCheckbox(sysSection,
+		mxResources.get('sysFonts', null, 'System Fonts'),
+		false, null, null, null, true, 'current-fontdialog', true);
+
 	var sysFontInput = document.createElement('input');
+	sysFontInput.setAttribute('type', 'text');
 
 	if (curType == 's')
 	{
 		sysFontInput.setAttribute('value', curFontname);
 	}
 
-	sysFontInput.style.marginLeft = '4px';
-	sysFontInput.style.width = '250px';
 	sysFontInput.className = 'dlg_fontName_s';
+
+	var datalist = null;
 
 	if (Editor.localFonts != null)
 	{
-		var datalist = document.createElement('datalist');
+		datalist = document.createElement('datalist');
 		datalist.id = 'fontdialog-localfonts';
 
 		for (var i = 0; i < Editor.localFonts.length; i++)
@@ -13072,126 +13063,57 @@ var FontDialog = function(editorUi, curFontname, curUrl, curType, fn)
 		sysFontInput.setAttribute('list', 'fontdialog-localfonts');
 	}
 
-	td = document.createElement('td');
-	td.appendChild(sysFontInput);
+	var sysFontRow = addFormRow(sysSection,
+		mxResources.get('fontname', null, 'Font Name'), sysFontInput);
 
 	if (datalist != null)
 	{
-		td.appendChild(datalist);
+		sysFontRow.appendChild(datalist);
 	}
 
-	row.appendChild(td);
+	div.appendChild(sysSection);
 
-	tbody.appendChild(row);
+	// Google fonts section
+	var googleSection = document.createElement('div');
+	googleSection.className = 'geDialogSection';
 
-	//Google fonts section
-	row = document.createElement('tr');
-	
-	td = document.createElement('td');
-	td.colSpan = 2;
-	td.style.whiteSpace = 'nowrap';
-	td.style.fontSize = '10pt';
-	td.style.fontWeight = 'bold';
-	
-	var googleFontRadio = document.createElement('input');
-	googleFontRadio.style.cssText = 'margin-right:8px;margin-bottom:8px;';
-	googleFontRadio.setAttribute('value', 'googlefonts');
-	googleFontRadio.setAttribute('type', 'radio');
-	googleFontRadio.setAttribute('name', 'current-fontdialog');
-	googleFontRadio.setAttribute('id', 'fontdialog-googlefonts');
-	td.appendChild(googleFontRadio);
-	
-	label = document.createElement('label');
-	label.setAttribute('for', 'fontdialog-googlefonts');
-	mxUtils.write(label, (mxResources.get('googleFonts', null, 'Google Fonts')));
-	td.appendChild(label);
-	
-	// Link to Google Fonts
+	var googleFontRadio = editorUi.addCheckbox(googleSection,
+		mxResources.get('googleFonts', null, 'Google Fonts'),
+		false, null, null, null, true, 'current-fontdialog', true);
+
 	if (!editorUi.isOffline() || EditorUi.isElectronApp)
 	{
-		var link = editorUi.createHelpIcon('https://fonts.google.com/');
-		td.appendChild(link);
-	}
-	
-	row.appendChild(td);
-
-	if (urlParams['isGoogleFontsEnabled'] != '0')
-	{
-		tbody.appendChild(row);
+		googleFontRadio.checkRow.appendChild(
+			editorUi.createHelpIcon('https://fonts.google.com/'));
 	}
 
-	row = document.createElement('tr');
-	
-	td = document.createElement('td');
-	td.style.whiteSpace = 'nowrap';
-	td.style.fontSize = '10pt';
-	td.style.width = '120px';
-	td.style.paddingLeft = '15px';
-	mxUtils.write(td, (mxResources.get('fontname', null, 'Font Name')) + ':');
-
-	row.appendChild(td);
-	
 	var googleFontInput = document.createElement('input');
+	googleFontInput.setAttribute('type', 'text');
 
 	if (curType == 'g')
 	{
 		googleFontInput.setAttribute('value', curFontname);
 	}
-	
-	googleFontInput.style.marginLeft = '4px';
-	googleFontInput.style.width = '250px';
+
 	googleFontInput.className = 'dlg_fontName_g';
-	
-	td = document.createElement('td');
-	td.appendChild(googleFontInput);
-	row.appendChild(td);
+	addFormRow(googleSection,
+		mxResources.get('fontname', null, 'Font Name'), googleFontInput);
 
 	if (urlParams['isGoogleFontsEnabled'] != '0')
 	{
-		tbody.appendChild(row);
+		div.appendChild(googleSection);
 	}
-	
-	//Generic remote fonts section
-	row = document.createElement('tr');
-	
-	td = document.createElement('td');
-	td.colSpan = 2;
-	td.style.whiteSpace = 'nowrap';
-	td.style.fontSize = '10pt';
-	td.style.fontWeight = 'bold';
 
-	var webFontRadio = document.createElement('input');
-	webFontRadio.style.cssText = 'margin-right:8px;margin-bottom:8px;';
-	webFontRadio.setAttribute('value', 'webfonts');
-	webFontRadio.setAttribute('type', 'radio');
-	webFontRadio.setAttribute('name', 'current-fontdialog');
-	webFontRadio.setAttribute('id', 'fontdialog-webfonts');
-	td.appendChild(webFontRadio);
-	
-	label = document.createElement('label');
-	label.setAttribute('for', 'fontdialog-webfonts');
-	mxUtils.write(label, (mxResources.get('webfonts', null, 'Web Fonts')));
-	td.appendChild(label);
-	
-	row.appendChild(td);
+	// Web fonts section
+	var webSection = document.createElement('div');
+	webSection.className = 'geDialogSection';
 
-	if (Editor.enableWebFonts)
-	{
-		tbody.appendChild(row);
-	}
-	
-	row = document.createElement('tr');
-	
-	td = document.createElement('td');
-	td.style.whiteSpace = 'nowrap';
-	td.style.fontSize = '10pt';
-	td.style.width = '120px';
-	td.style.paddingLeft = '15px';
-	mxUtils.write(td, (mxResources.get('fontname', null, 'Font Name')) + ':');
+	var webFontRadio = editorUi.addCheckbox(webSection,
+		mxResources.get('webfonts', null, 'Web Fonts'),
+		false, null, null, null, true, 'current-fontdialog', true);
 
-	row.appendChild(td);
-	
 	var webFontInput = document.createElement('input');
+	webFontInput.setAttribute('type', 'text');
 
 	if (curType == 'w')
 	{
@@ -13204,50 +13126,27 @@ var FontDialog = function(editorUi, curFontname, curUrl, curType, fn)
 			sysFontInput.setAttribute('value', curFontname);
 		}
 	}
-	
-	webFontInput.style.marginLeft = '4px';
-	webFontInput.style.width = '250px';
+
 	webFontInput.className = 'dlg_fontName_w';
-	
-	td = document.createElement('td');
-	td.appendChild(webFontInput);
-	row.appendChild(td);
+	addFormRow(webSection,
+		mxResources.get('fontname', null, 'Font Name'), webFontInput);
 
-	if (Editor.enableWebFonts)
-	{
-		tbody.appendChild(row);
-	}
-	
-	row = document.createElement('tr');
-	
-	td = document.createElement('td');
-	td.style.whiteSpace = 'nowrap';
-	td.style.fontSize = '10pt';
-	td.style.width = '120px';
-	td.style.paddingLeft = '15px';
-	mxUtils.write(td, (mxResources.get('fontUrl', null, 'Font URL')) + ':');
-
-	row.appendChild(td);
-	
 	var webFontUrlInput = document.createElement('input');
+	webFontUrlInput.setAttribute('type', 'text');
 	webFontUrlInput.setAttribute('value', curUrl || '');
-	webFontUrlInput.style.marginLeft = '4px';
-	webFontUrlInput.style.width = '250px';
 	webFontUrlInput.className = 'dlg_fontUrl';
-	
-	td = document.createElement('td');
-	td.appendChild(webFontUrlInput);
-	row.appendChild(td);
+	addFormRow(webSection,
+		mxResources.get('fontUrl', null, 'Font URL'), webFontUrlInput);
 
 	if (Editor.enableWebFonts)
 	{
-		tbody.appendChild(row);
+		div.appendChild(webSection);
 	}
-	
+
 	this.init = function()
 	{
 		var input = sysFontInput;
-		
+
 		if (curType == 'g')
 		{
 			input = googleFontInput;
@@ -13256,9 +13155,9 @@ var FontDialog = function(editorUi, curFontname, curUrl, curType, fn)
 		{
 			input = webFontInput;
 		}
-		
+
 		input.focus();
-		
+
 		if (mxClient.IS_GC || mxClient.IS_FF || document.documentMode >= 5)
 		{
 			input.select();
@@ -13269,56 +13168,53 @@ var FontDialog = function(editorUi, curFontname, curUrl, curType, fn)
 		}
 	};
 
-	row = document.createElement('tr');
-	td = document.createElement('td');
-	td.colSpan = 2;
-	td.style.paddingTop = '20px';
-	td.style.whiteSpace = 'nowrap';
-	td.setAttribute('align', 'right');
-	
-	if (!editorUi.isOffline())
-	{
-		td.appendChild(editorUi.createHelpIcon('https://www.drawio.com/blog/external-fonts'));
-	}
-	
-	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
-	{
-		editorUi.hideDialog();
-		fn();
-	});
-	cancelBtn.className = 'geBtn';
-	
-	if (editorUi.editor.cancelFirst)
-	{
-		td.appendChild(cancelBtn);
-	}
-	
 	function validateFn(fontName, fontUrl, type)
 	{
 		var urlPattern = /(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/;
-		var elt = table.querySelector('.dlg_fontName_' + type);
-		
+		var elt = div.querySelector('.dlg_fontName_' + type);
+
 		if (elt != null && (fontName == null || fontName.length == 0))
 		{
 			elt.style.border = '1px solid red';
 			return false;
 		}
 
-		elt = table.querySelector('.dlg_fontUrl');
-		
+		elt = div.querySelector('.dlg_fontUrl');
+
 		if (elt != null && type == 'w' && !urlPattern.test(fontUrl))
 		{
 			elt.style.border = '1px solid red';
 			return false;
 		}
-		
+
 		return true;
 	};
-	
+
+	// Manual button row matches CustomDialog spacing (34px top, 10px padding-bottom)
+	div.style.paddingBottom = '10px';
+
+	var btns = document.createElement('div');
+	btns.style.marginTop = '34px';
+	btns.style.textAlign = 'right';
+	btns.style.whiteSpace = 'nowrap';
+
+	if (!editorUi.isOffline())
+	{
+		btns.appendChild(editorUi.createHelpIcon(
+			'https://www.drawio.com/blog/external-fonts'));
+	}
+
+	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
+	{
+		editorUi.hideDialog();
+		fn();
+	});
+	cancelBtn.className = 'geBtn';
+
 	var okBtn = mxUtils.button(mxResources.get('apply'), function()
 	{
 		var fontName, fontUrl, type;
-		
+
 		if (sysFontRadio.checked)
 		{
 			fontName = sysFontInput.value;
@@ -13336,7 +13232,7 @@ var FontDialog = function(editorUi, curFontname, curUrl, curType, fn)
 			fontUrl = webFontUrlInput.value;
 			type = 'w';
 		}
-		
+
 		if (validateFn(fontName, fontUrl, type))
 		{
 			fn(fontName, fontUrl, type);
@@ -13348,24 +13244,24 @@ var FontDialog = function(editorUi, curFontname, curUrl, curType, fn)
 	function enterSubmit(e)
 	{
 		this.style.border = '';
-		
+
 		if (e.keyCode == 13)
 		{
 			okBtn.click();
 		}
 	};
-	
+
 	mxEvent.addListener(sysFontInput, 'keypress', enterSubmit);
 	mxEvent.addListener(googleFontInput, 'keypress', enterSubmit);
 	mxEvent.addListener(webFontInput, 'keypress', enterSubmit);
 	mxEvent.addListener(webFontUrlInput, 'keypress', enterSubmit);
-	
+
 	mxEvent.addListener(sysFontInput, 'focus', function()
 	{
 		sysFontRadio.setAttribute('checked', 'checked');
 		sysFontRadio.checked = true;
 	});
-	
+
 	mxEvent.addListener(googleFontInput, 'focus', function()
 	{
 		googleFontRadio.setAttribute('checked', 'checked');
@@ -13384,18 +13280,20 @@ var FontDialog = function(editorUi, curFontname, curUrl, curType, fn)
 		webFontRadio.checked = true;
 	});
 
-	td.appendChild(okBtn);
-	
-	if (!editorUi.editor.cancelFirst)
+	if (editorUi.editor.cancelFirst)
 	{
-		td.appendChild(cancelBtn);
+		btns.appendChild(cancelBtn);
+		btns.appendChild(okBtn);
+	}
+	else
+	{
+		btns.appendChild(okBtn);
+		btns.appendChild(cancelBtn);
 	}
 
-	row.appendChild(td);
-	tbody.appendChild(row);
-	table.appendChild(tbody);
-	
-	this.container = table;
+	div.appendChild(btns);
+
+	this.container = div;
 };
 
 /* Aspect Dialog
@@ -13623,14 +13521,14 @@ AspectDialog.prototype.createLayerItem = function(layer, pageId, graph, pageNode
  * Constructs a new page setup dialog.
  */
 var FilePropertiesDialog = function(editorUi, publicLink)
-{	
-	var row, td;
-	var table = document.createElement('table');
-	var tbody = document.createElement('tbody');
-	table.style.width = '100%';
-	table.style.height = '100%';
-	table.style.tableLayout = 'fixed';
-	
+{
+	var div = document.createElement('div');
+
+	var hd = document.createElement('h3');
+	mxUtils.write(hd, mxResources.get('properties'));
+	hd.style.cssText = 'width:100%;text-align:center;margin-top:0px;margin-bottom:10px';
+	div.appendChild(hd);
+
 	var file = editorUi.getCurrentFile();
 	var filename = (file != null && file.getTitle() != null) ?
 		file.getTitle() : editorUi.defaultFilename;
@@ -13660,33 +13558,31 @@ var FilePropertiesDialog = function(editorUi, publicLink)
 			}
 		};
 	};
-	
+
+	function addFormRow(section, labelText, input)
+	{
+		var row = document.createElement('div');
+		row.className = 'geDialogFormRow';
+
+		var lbl = document.createElement('span');
+		lbl.className = 'geDialogFormLabel';
+		mxUtils.write(lbl, labelText + ':');
+		row.appendChild(lbl);
+
+		row.appendChild(input);
+		section.appendChild(row);
+
+		return row;
+	};
+
 	var initialLocked = (file != null) ? file.isLocked() : false;
 
-	row = document.createElement('tr');
-	td = document.createElement('td');
-	td.style.whiteSpace = 'nowrap';
-	td.style.overflow = 'hidden';
-	td.style.textOverflow = 'ellipsis';
-	td.style.fontSize = '10pt';
+	// Settings section: editable toggles and inputs
+	var settingsSection = document.createElement('div');
+	settingsSection.className = 'geDialogSection';
 
-	mxUtils.write(td, mxResources.get('locked') + ':');
-	row.appendChild(td);
-
-	var lockedInput = document.createElement('input');
-	lockedInput.setAttribute('type', 'checkbox');
-	
-	if (initialLocked)
-	{
-		lockedInput.setAttribute('checked', 'checked');
-		lockedInput.defaultChecked = true;
-	}
-	
-	td = document.createElement('td');
-	td.style.whiteSpace = 'nowrap';
-	td.appendChild(lockedInput);
-	row.appendChild(td);
-	tbody.appendChild(row);
+	var lockedInput = editorUi.addCheckbox(settingsSection, mxResources.get('locked'),
+		initialLocked, null, null, null, null, null, true);
 
 	this.init = function()
 	{
@@ -13718,62 +13614,34 @@ var FilePropertiesDialog = function(editorUi, publicLink)
 		var scale = 1;
 		var border = 0;
 		var node = editorUi.fileNode;
-	
+
 		if (node != null)
 		{
 			if (node.hasAttribute('scale'))
 			{
 				scale = parseFloat(node.getAttribute('scale'));
 			}
-			
+
 			if (node.hasAttribute('border'))
 			{
 				border = parseInt(node.getAttribute('border'));
 			}
 		}
-		
-		row = document.createElement('tr');
-		td = document.createElement('td');
-		td.style.whiteSpace = 'nowrap';
-		td.style.fontSize = '10pt';
-		mxUtils.write(td, mxResources.get('zoom') + ':');
-		
-		row.appendChild(td);
-	
+
 		var zoomInput = document.createElement('input');
+		zoomInput.setAttribute('type', 'text');
 		zoomInput.setAttribute('value', (scale * 100) + '%');
-		zoomInput.style.boxSizing = 'border-box';
-		zoomInput.style.width = '100%';
-		
-		td = document.createElement('td');
-		td.style.whiteSpace = 'nowrap';
-		td.appendChild(zoomInput);
-		row.appendChild(td);
-		tbody.appendChild(row);
-		
-		row = document.createElement('tr');
-		td = document.createElement('td');
-		td.style.whiteSpace = 'nowrap';
-		td.style.fontSize = '10pt';
-		mxUtils.write(td, mxResources.get('borderWidth') + ':');
-		
-		row.appendChild(td);
-	
+		addFormRow(settingsSection, mxResources.get('zoom'), zoomInput);
+
 		var borderInput = document.createElement('input');
+		borderInput.setAttribute('type', 'text');
 		borderInput.setAttribute('value', border);
-		borderInput.style.boxSizing = 'border-box';
-		borderInput.style.width = '100%';
-		
-		td = document.createElement('td');
-		td.style.whiteSpace = 'nowrap';
-		td.appendChild(borderInput);
-		row.appendChild(td);
-		tbody.appendChild(row);
-		
+		addFormRow(settingsSection, mxResources.get('borderWidth'), borderInput);
+
 		this.init = this.init || function()
 		{
 			zoomInput.focus();
-			
+
 			if (mxClient.IS_GC || mxClient.IS_FF || document.documentMode >= 5)
 			{
 				zoomInput.select();
@@ -13790,7 +13658,7 @@ var FilePropertiesDialog = function(editorUi, publicLink)
 			{
 				editorUi.fileNode.setAttribute('scale', Math.max(0, parseInt(zoomInput.value) / 100));
 				editorUi.fileNode.setAttribute('border', Math.max(0, parseInt(borderInput.value)));
-				
+
 				if (file != null)
 				{
 					file.fileChanged();
@@ -13805,31 +13673,9 @@ var FilePropertiesDialog = function(editorUi, publicLink)
 	{
 		var initialCompressed = (file != null) ? file.isCompressed() : Editor.defaultCompressed;
 
-		row = document.createElement('tr');
-		td = document.createElement('td');
-		td.style.whiteSpace = 'nowrap';
-		td.style.overflow = 'hidden';
-		td.style.textOverflow = 'ellipsis';
-		td.style.fontSize = '10pt';
-		mxUtils.write(td, mxResources.get('compressed') + ':');
-		
-		row.appendChild(td);
-	
-		var compressedInput = document.createElement('input');
-		compressedInput.setAttribute('type', 'checkbox');
-		
-		if (initialCompressed)
-		{
-			compressedInput.setAttribute('checked', 'checked');
-			compressedInput.defaultChecked = true;
-		}
+		var compressedInput = editorUi.addCheckbox(settingsSection, mxResources.get('compressed'),
+			initialCompressed, null, null, null, null, null, true);
 
-		td = document.createElement('td');
-		td.style.whiteSpace = 'nowrap';
-		td.appendChild(compressedInput);
-		row.appendChild(td);
-		tbody.appendChild(row);
-		
 		this.init = this.init || function()
 		{
 			compressedInput.focus();
@@ -13843,7 +13689,7 @@ var FilePropertiesDialog = function(editorUi, publicLink)
 				{
 					editorUi.fileNode.setAttribute('compressed',
 						(compressedInput.checked) ? 'true' : 'false');
-					
+
 					if (file != null)
 					{
 						file.compressionChanged(compressedInput.checked);
@@ -13859,30 +13705,16 @@ var FilePropertiesDialog = function(editorUi, publicLink)
 			}
 		});
 	}
-	
+
 	if (file != null && file.isRealtimeOptional())
 	{
-		row = document.createElement('tr');
-		td = document.createElement('td');
-		td.style.whiteSpace = 'nowrap';
-		td.style.overflow = 'hidden';
-		td.style.textOverflow = 'ellipsis';
-		td.style.fontSize = '10pt';
-		mxUtils.write(td, mxResources.get('realtimeCollaboration') + ':');
-		row.appendChild(td);
-	
-		var collabInput = document.createElement('input');
-		collabInput.setAttribute('type', 'checkbox');
-		var initialCollab = file.isRealtimeEnabled();
-
 		var collab = editorUi.drive.getCustomProperty(file.desc, 'collaboration');
 		var initialCollab = collab != 'disabled';
-	
-		if (initialCollab)
-		{
-			collabInput.setAttribute('checked', 'checked');
-			collabInput.defaultChecked = true;
-		}
+
+		var collabInput = editorUi.addCheckbox(settingsSection, mxResources.get('realtimeCollaboration'),
+			initialCollab, null, null, null, null, null, true);
+		collabInput.checkRow.appendChild(editorUi.menus.createHelpLink(
+			'https://github.com/jgraph/drawio/discussions/2672'));
 
 		addApply(function(success, error)
 		{
@@ -13900,69 +13732,51 @@ var FilePropertiesDialog = function(editorUi, publicLink)
 		{
 			collabInput.focus();
 		};
-
-		td = document.createElement('td');
-		td.style.whiteSpace = 'nowrap';
-		
-		var div = document.createElement('div');
-		div.style.display = 'flex';
-		div.style.alignItems = 'center';
-		div.style.justifyContent = 'start';
-		div.appendChild(collabInput);
-		div.appendChild(editorUi.menus.createHelpLink('https://github.com/jgraph/drawio/discussions/2672'));
-		td.appendChild(div);
-		row.appendChild(td);
-		tbody.appendChild(row);
 	}
+
+	div.appendChild(settingsSection);
+
+	// Info section: read-only fields
+	var infoSection = document.createElement('div');
+	infoSection.className = 'geDialogSection';
+	var infoSectionUsed = false;
 
 	if (file != null && editorUi.getServiceName() == 'draw.io' &&
 		file.getSize() > 0 && urlParams['embed'] != '1')
 	{
-		row = document.createElement('tr');
-		td = document.createElement('td');
-		td.style.whiteSpace = 'nowrap';
-		td.style.overflow = 'hidden';
-		td.style.textOverflow = 'ellipsis';
-		td.style.fontSize = '10pt';
-		mxUtils.write(td, mxResources.get('size') + ':');
-		row.appendChild(td);
-
 		var temp = editorUi.formatFileSize(file.getSize());
 
 		var sizeInput = document.createElement('input');
+		sizeInput.setAttribute('type', 'text');
 		sizeInput.setAttribute('title', temp);
 		sizeInput.setAttribute('value', temp);
 		sizeInput.setAttribute('disabled', 'disabled');
-		sizeInput.style.boxSizing = 'border-box';
-		sizeInput.style.width = '100%';
+		addFormRow(infoSection, mxResources.get('size'), sizeInput);
+		infoSectionUsed = true;
+	}
 
-		td = document.createElement('td');
-		td.style.whiteSpace = 'nowrap';
-		td.appendChild(sizeInput);
-		row.appendChild(td);
-		tbody.appendChild(row);
+	if (file != null && file.fileObject != null &&
+		file.fileObject.path != null)
+	{
+		var pathInput = document.createElement('input');
+		pathInput.setAttribute('type', 'text');
+		pathInput.setAttribute('title', file.fileObject.path);
+		pathInput.setAttribute('value', file.fileObject.path);
+		pathInput.setAttribute('disabled', 'disabled');
+		addFormRow(infoSection, mxResources.get('pathFilename'), pathInput);
+		infoSectionUsed = true;
 	}
 
 	if (publicLink != null)
 	{
-		row = document.createElement('tr');
-		td = document.createElement('td');
-		td.style.whiteSpace = 'nowrap';
-		td.style.overflow = 'hidden';
-		td.style.textOverflow = 'ellipsis';
-		td.style.fontSize = '10pt';
-		mxUtils.write(td, mxResources.get('publicDiagramUrl') + ':');
-		row.appendChild(td);
-
 		var a = document.createElement('a');
 		a.setAttribute('href', publicLink);
 		a.setAttribute('title', publicLink);
+		a.style.flex = '1';
+		a.style.minWidth = '0';
 		a.style.whiteSpace = 'nowrap';
 		a.style.overflow = 'hidden';
 		a.style.textOverflow = 'ellipsis';
-		a.style.display = 'block';
-		a.style.margin = '2px';
-		a.style.fontSize = '10pt';
 		mxUtils.write(a, publicLink);
 
 		mxEvent.addListener(a, 'click', function(evt)
@@ -13971,38 +13785,30 @@ var FilePropertiesDialog = function(editorUi, publicLink)
 			mxEvent.consume(evt);
 		});
 
-		td = document.createElement('td');
-		td.appendChild(a);
-		row.appendChild(td);
-		tbody.appendChild(row);
+		addFormRow(infoSection, mxResources.get('publicDiagramUrl'), a);
+		infoSectionUsed = true;
 	}
 
-	if (file != null && file.fileObject != null &&
-		file.fileObject.path != null)
+	if (infoSectionUsed)
 	{
-		row = document.createElement('tr');
-		td = document.createElement('td');
-		td.style.whiteSpace = 'nowrap';
-		td.style.overflow = 'hidden';
-		td.style.textOverflow = 'ellipsis';
-		td.style.fontSize = '10pt';
-		mxUtils.write(td, mxResources.get('pathFilename') + ':');
-		row.appendChild(td);
-
-		var pathInput = document.createElement('input');
-		pathInput.setAttribute('title', file.fileObject.path);
-		pathInput.setAttribute('value', file.fileObject.path);
-		pathInput.setAttribute('disabled', 'disabled');
-		pathInput.style.boxSizing = 'border-box';
-		pathInput.style.width = '100%';
-
-		td = document.createElement('td');
-		td.appendChild(pathInput);
-		row.appendChild(td);
-		tbody.appendChild(row);
+		div.appendChild(infoSection);
 	}
 
 	this.init = (this.init != null) ? this.init : function() { };
+
+	// Manual button row matches CustomDialog spacing (34px top, 10px padding-bottom)
+	div.style.paddingBottom = '10px';
+
+	var btns = document.createElement('div');
+	btns.style.marginTop = '34px';
+	btns.style.textAlign = 'right';
+	btns.style.whiteSpace = 'nowrap';
+
+	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
+	{
+		editorUi.hideDialog();
+	});
+	cancelBtn.className = 'geBtn';
 
 	var genericBtn = mxUtils.button(mxResources.get('apply'), function()
 	{
@@ -14020,29 +13826,12 @@ var FilePropertiesDialog = function(editorUi, publicLink)
 		}
 	});
 	genericBtn.className = 'geBtn gePrimaryBtn';
-	
-	row = document.createElement('tr');
-	td = document.createElement('td');
-	td.colSpan = 2;
-	td.style.paddingTop = '20px';
-	td.style.whiteSpace = 'nowrap';
-	td.setAttribute('align', 'right');
-	
-	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
-	{
-		editorUi.hideDialog();
-	});
-	cancelBtn.className = 'geBtn';
-	
-	if (editorUi.editor.cancelFirst)
-	{
-		td.appendChild(cancelBtn);
-	}
 
+	var varsBtn = null;
 
 	if (editorUi.fileNode != null)
 	{
-		var varsBtn = mxUtils.button(mxResources.get('editData') + '...', function()
+		varsBtn = mxUtils.button(mxResources.get('editData') + '...', function()
 		{
 			editorUi.hideDialog();
 
@@ -14131,21 +13920,33 @@ var FilePropertiesDialog = function(editorUi, publicLink)
 		});
 
 		varsBtn.className = 'geBtn';
-		td.appendChild(varsBtn);
 	}
 
-	td.appendChild(genericBtn);
-	
-	if (!editorUi.editor.cancelFirst)
+	if (editorUi.editor.cancelFirst)
 	{
-		td.appendChild(cancelBtn);
+		btns.appendChild(cancelBtn);
+
+		if (varsBtn != null)
+		{
+			btns.appendChild(varsBtn);
+		}
+
+		btns.appendChild(genericBtn);
+	}
+	else
+	{
+		if (varsBtn != null)
+		{
+			btns.appendChild(varsBtn);
+		}
+
+		btns.appendChild(genericBtn);
+		btns.appendChild(cancelBtn);
 	}
 
-	row.appendChild(td);
-	tbody.appendChild(row);
-	table.appendChild(tbody);
-	
-	this.container = table;
+	div.appendChild(btns);
+
+	this.container = div;
 };
 
 var ConnectionPointsDialog = function(editorUi, cell)

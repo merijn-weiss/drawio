@@ -1668,11 +1668,37 @@ ArrangePanel.prototype.init = function()
 			this.container.appendChild(geoSec.wrapper);
 		}
 
-		if (ss.edges.length > 0)
+		if (ss.edges.length > 0 && (ss.style.shape == 'link' || ss.style.shape == 'flexArrow'))
 		{
-			var edgeGeoSec = this.createCollapsibleSection(mxResources.get('waypoints', null, 'Waypoints'), false);
-			this.addEdgeGeometry(edgeGeoSec.contentDiv);
-			this.container.appendChild(edgeGeoSec.wrapper);
+			var arrowSec = this.createCollapsibleSection(mxResources.get('arrow'), false);
+			this.addArrowGeometry(arrowSec.contentDiv);
+			this.container.appendChild(arrowSec.wrapper);
+		}
+
+		if (ss.edges.length == 1)
+		{
+			var edge = ss.edges[0];
+			var graph = this.editorUi.editor.graph;
+			var title = '';
+
+			if (graph.model.getTerminal(edge, true) == null)
+			{
+				title = mxResources.get('linestart');
+			}
+
+			if (graph.model.getTerminal(edge, false) == null)
+			{
+				title += ((title.length > 0) ? ' / ' : '') +
+					mxResources.get('lineend');
+			}
+
+			if (title.length > 0)
+			{
+				var edgeGeoSec = this.createCollapsibleSection(title, false);
+				edgeGeoSec.contentDiv.style.paddingBottom = '10px';
+				this.addEdgeGeometry(edgeGeoSec.contentDiv);
+				this.container.appendChild(edgeGeoSec.wrapper);
+			}
 		}
 
 		if (!ss.containsLabel || ss.edges.length == 0)
@@ -1741,6 +1767,21 @@ ArrangePanel.prototype.addTable = function(div)
 	var isTable = ss.table || ss.row || ss.cell;
 	var isStack = graph.isStack(cell) ||
 		graph.isStackChild(cell);
+
+	var tableForCheck = cell;
+
+	if (tableForCheck != null && graph.isTableCell(tableForCheck))
+	{
+		tableForCheck = graph.model.getParent(tableForCheck);
+	}
+
+	if (tableForCheck != null && graph.isTableRow(tableForCheck))
+	{
+		tableForCheck = graph.model.getParent(tableForCheck);
+	}
+
+	var emptyTable = !isStack && tableForCheck != null &&
+		graph.model.getChildCount(tableForCheck) === 0;
 
 	var showCols = isTable;
 	var showRows = isTable;
@@ -1816,6 +1857,12 @@ ArrangePanel.prototype.addTable = function(div)
 					ui.handleError(e);
 				}
 			}), panel)]);
+
+		if (emptyTable)
+		{
+			btns[btns.length - 3].setAttribute('disabled', 'disabled');
+			btns[btns.length - 2].setAttribute('disabled', 'disabled');
+		}
 	}
 
 	if (showRows)
@@ -2050,12 +2097,6 @@ ArrangePanel.prototype.addFlip = function(div)
 	var graph = editor.graph;
 	var ss = this.editorUi.getSelectionState();
 
-	var span = document.createElement('div');
-	span.className = 'geFormatSectionTitle';
-	mxUtils.write(span, mxResources.get('flip'));
-	span.setAttribute('title', mxResources.get('flip'));
-	div.appendChild(span);
-	
 	var btn = mxUtils.button(mxResources.get('horizontal'), function(evt)
 	{
 		graph.flipCells(ss.cells, true);
@@ -2888,26 +2929,28 @@ ArrangePanel.prototype.addEdgeGeometryHandler = function(input, fn)
 };
 
 /**
- * 
+ *
  */
-ArrangePanel.prototype.addEdgeGeometry = function(container)
+ArrangePanel.prototype.addArrowGeometry = function(container)
 {
-	var panel = this;
 	var ui = this.editorUi;
 	var graph = ui.editor.graph;
 	var rect = ui.getSelectionState();
 	var div = this.createPanel();
-	
+	div.style.display = 'flex';
+	div.style.alignItems = 'center';
+
 	var span = document.createElement('div');
 	span.style.position = 'absolute';
 	span.style.width = '70px';
 	span.style.marginTop = '0px';
 	span.style.fontWeight = 'bold';
+
 	mxUtils.write(span, mxResources.get('width'));
 	span.setAttribute('title', mxResources.get('width'));
 	div.appendChild(span);
 
-	var widthUpdate, xtUpdate, ytUpdate, xsUpdate, ysUpdate;
+	var widthUpdate;
 	var width = this.addUnitInput(div, 'pt', 12, 44, function()
 	{
 		widthUpdate.apply(this, arguments);
@@ -2915,14 +2958,14 @@ ArrangePanel.prototype.addEdgeGeometry = function(container)
 	width.setAttribute('title', mxResources.get('width'));
 
 	mxUtils.br(div);
-	this.addKeyHandler(width, listener);
-	
-	var widthUpdate = mxUtils.bind(this, function(evt)
+	container.appendChild(div);
+
+	widthUpdate = mxUtils.bind(this, function(evt)
 	{
 		// Maximum stroke width is 999
 		var value = parseInt(width.value);
 		value = Math.min(999, Math.max(1, (isNaN(value)) ? 1 : value));
-		
+
 		if (value != mxUtils.getValue(rect.style, 'width', mxCellRenderer.defaultShapes['flexArrow'].prototype.defaultWidth))
 		{
 			var cells = ui.getSelectionState().cells;
@@ -2938,10 +2981,38 @@ ArrangePanel.prototype.addEdgeGeometry = function(container)
 	mxEvent.addListener(width, 'blur', widthUpdate);
 	mxEvent.addListener(width, 'change', widthUpdate);
 
-	container.appendChild(div);
+	var listener = mxUtils.bind(this, function(sender, evt, force)
+	{
+		rect = ui.getSelectionState();
 
+		if (force || document.activeElement != width)
+		{
+			var value = mxUtils.getValue(rect.style, 'width',
+				mxCellRenderer.defaultShapes['flexArrow'].prototype.defaultWidth);
+			width.value = value + ' pt';
+		}
+	});
+
+	this.addKeyHandler(width, listener);
+	graph.getModel().addListener(mxEvent.CHANGE, listener);
+	this.listeners.push({destroy: function() { graph.getModel().removeListener(listener); }});
+	listener();
+};
+
+/**
+ *
+ */
+ArrangePanel.prototype.addEdgeGeometry = function(container)
+{
+	var panel = this;
+	var ui = this.editorUi;
+	var graph = ui.editor.graph;
+	var rect = ui.getSelectionState();
+	var xtUpdate, ytUpdate, xsUpdate, ysUpdate;
+
+	container.style.paddingBottom = '22px';
 	var divs = this.createPanel();
-	divs.style.paddingBottom = '30px';
+	divs.style.paddingBottom = '16px';
 
 	var span = document.createElement('div');
 	span.style.position = 'absolute';
@@ -2962,15 +3033,12 @@ ArrangePanel.prototype.addEdgeGeometry = function(container)
 	}, this.getUnitStep(), null, null, this.isFloatUnit());
 	ys.setAttribute('title', mxResources.get('top'));
 
-	mxUtils.br(divs);
-	this.addLabel(divs, mxResources.get('left'), 87, 64);
-	this.addLabel(divs, mxResources.get('top'), 16, 64);
 	container.appendChild(divs);
-	this.addKeyHandler(xs, listener);
-	this.addKeyHandler(ys, listener);
 
 	var divt = this.createPanel();
-	divt.style.paddingBottom = '30px';
+	divt.style.borderTop = 'none';
+	divt.style.paddingTop = '8px';
+	divt.style.paddingBottom = '16px';
 
 	var span = document.createElement('div');
 	span.style.position = 'absolute';
@@ -2991,38 +3059,20 @@ ArrangePanel.prototype.addEdgeGeometry = function(container)
 	}, this.getUnitStep(), null, null, this.isFloatUnit());
 	yt.setAttribute('title', mxResources.get('top'));
 
-	mxUtils.br(divt);
-	this.addLabel(divt, mxResources.get('left'), 87, 64);
-	this.addLabel(divt, mxResources.get('top'), 16, 64);
 	container.appendChild(divt);
-	this.addKeyHandler(xt, listener);
-	this.addKeyHandler(yt, listener);
+
+	this.addLabel(container, mxResources.get('left'), 87, 62).style.fontSize = '10px';
+	this.addLabel(container, mxResources.get('top'), 16, 62).style.fontSize = '10px';
 
 	var listener = mxUtils.bind(this, function(sender, evt, force)
 	{
 		rect = ui.getSelectionState();
 		var cell = rect.cells[0];
-		
-		if (rect.style.shape == 'link' || rect.style.shape == 'flexArrow')
-		{
-			div.style.display = '';
-			
-			if (force || document.activeElement != width)
-			{
-				var value = mxUtils.getValue(rect.style, 'width',
-					mxCellRenderer.defaultShapes['flexArrow'].prototype.defaultWidth);
-				width.value = value + ' pt';
-			}
-		}
-		else
-		{
-			div.style.display = 'none';
-		}
 
 		if (rect.cells.length == 1 && graph.model.isEdge(cell))
 		{
 			var geo = graph.model.getGeometry(cell);
-			
+
 			if (geo != null && geo.sourcePoint != null &&
 				graph.model.getTerminal(cell, true) == null)
 			{
@@ -3033,7 +3083,7 @@ ArrangePanel.prototype.addEdgeGeometry = function(container)
 			{
 				divs.style.display = 'none';
 			}
-			
+
 			if (geo != null && geo.targetPoint != null &&
 				graph.model.getTerminal(cell, false) == null)
 			{
@@ -3051,6 +3101,11 @@ ArrangePanel.prototype.addEdgeGeometry = function(container)
 			divt.style.display = 'none';
 		}
 	});
+
+	this.addKeyHandler(xs, listener);
+	this.addKeyHandler(ys, listener);
+	this.addKeyHandler(xt, listener);
+	this.addKeyHandler(yt, listener);
 
 	xsUpdate = this.addEdgeGeometryHandler(xs, function(geo, value)
 	{
@@ -3791,8 +3846,9 @@ TextFormatPanel.prototype.addFont = function(container)
 
 		for (var i = 0; i < cells.length && !hasUnsupported; i++)
 		{
-			var label = graph.getLabel(cells[i]);
-
+			var state = graph.view.getState(cells[i]);
+			var label = (state != null) ? graph.cellRenderer.getLabelValue(state) : null;
+			
 			if (label != null && label.length > 0)
 			{
 				var tmp = document.createElement('div');
@@ -3896,7 +3952,12 @@ TextFormatPanel.prototype.addFont = function(container)
 	if (!graph.cellEditor.isContentEditing())
 	{
 		container.appendChild(extraPanel);
-		container.appendChild(this.createRelativeOption(mxResources.get('opacity'), mxConstants.STYLE_TEXT_OPACITY));
+		var opacityPanel = this.createRelativeOption(mxResources.get('opacity'), mxConstants.STYLE_TEXT_OPACITY);
+		opacityPanel.style.borderTopStyle = 'solid';
+		opacityPanel.style.borderTopWidth = '1px';
+		opacityPanel.style.padding = '6px 0';
+		container.appendChild(opacityPanel);
+
 		var spacingSec = this.createCollapsibleSection(mxResources.get('spacing'), true);
 		spacingSec.contentDiv.appendChild(spacingPanel);
 		container.appendChild(spacingSec.wrapper);
@@ -4757,6 +4818,9 @@ StyleFormatPanel.prototype.init = function()
 		this.syncCollapsibleVisibility(jumpsSec.wrapper, lineJumpsPanel);
 
 		var opacityPanel = this.createRelativeOption(mxResources.get('opacity'), mxConstants.STYLE_OPACITY);
+		opacityPanel.style.borderTopStyle = 'solid';
+		opacityPanel.style.borderTopWidth = '1px';
+		opacityPanel.style.padding = '6px 0';
 		this.container.appendChild(opacityPanel);
 
 		var effectsSec = this.createCollapsibleSection(mxResources.get('effects'), true);
@@ -5131,11 +5195,14 @@ StyleFormatPanel.prototype.addFill = function(container)
 
 	var fillKey = (ss.style.shape == 'image') ? mxConstants.STYLE_IMAGE_BACKGROUND : mxConstants.STYLE_FILLCOLOR;
 
+	// createCellColorOption already calls setCellStyles internally with the
+	// current selection. Passing setStyleFn that called setCellStyles again
+	// with the closure-captured ss.cells caused color changes to leak onto
+	// the cells the format panel was originally built for, when the user's
+	// selection had moved on between panel build and color change.
 	var fillPanel = this.createCellColorOption(mxResources.get('fill'),
-		fillKey, 'default', null, mxUtils.bind(this, function(color)
-	{
-		graph.setCellStyles(fillKey, color, ss.cells);
-	}), graph.getDefaultColor(ss.style, fillKey, graph.shapeBackgroundColor,
+		fillKey, 'default', null, null,
+		graph.getDefaultColor(ss.style, fillKey, graph.shapeBackgroundColor,
 		graph.shapeForegroundColor), null, null, mxResources.get('fillColor'));
 
 	fillPanel.style.fontWeight = 'bold';
@@ -5483,19 +5550,22 @@ StyleFormatPanel.prototype.addStroke = function(container)
 
 	var lineColor = this.createCellColorOption(label, strokeKey, 'default', null, mxUtils.bind(this, function(color)
 	{
-		graph.setCellStyles(strokeKey, color, ss.cells);
-
-		// Sets strokeColor to inherit for rows and cells in tables
+		// createCellColorOption already applied the color to the current
+		// selection via setCellStyles. Avoid a second setCellStyles call
+		// against the stale ss.cells closure (which leaked color changes
+		// onto cells the user no longer had selected). The table-cell
+		// inherit-fix below intentionally uses the fresh selection.
 		if (color == null || color == mxConstants.NONE)
 		{
+			var freshCells = ui.getSelectionState().cells;
 			var tableCells = [];
 
-			for (var i = 0; i < ss.cells.length; i++)
+			for (var i = 0; i < freshCells.length; i++)
 			{
-				if (graph.isTableCell(ss.cells[i]) ||
-					graph.isTableRow(ss.cells[i]))
+				if (graph.isTableCell(freshCells[i]) ||
+					graph.isTableRow(freshCells[i]))
 				{
-					tableCells.push(ss.cells[i]);
+					tableCells.push(freshCells[i]);
 				}
 			}
 
@@ -5994,6 +6064,7 @@ StyleFormatPanel.prototype.addStroke = function(container)
 	arrowPanel.style.display = 'block';
 	arrowPanel.style.height = '60px';
 	arrowPanel.style.paddingTop = '2px';
+	arrowPanel.style.paddingBottom = '10px';
 	arrowPanel.style.overflow = 'visible';
 	
 	var span = document.createElement('div');
@@ -6025,7 +6096,7 @@ StyleFormatPanel.prototype.addStroke = function(container)
 	mxUtils.br(arrowPanel);
 	
 	var spacer = document.createElement('div');
-	spacer.style.height = '8px';
+	spacer.style.height = '12px';
 	arrowPanel.appendChild(spacer);
 	
 	var spacingLabel = span.cloneNode(false);
@@ -6046,7 +6117,9 @@ StyleFormatPanel.prototype.addStroke = function(container)
 	}, this.getUnitStep(), null, null, this.isFloatUnit());
 	endSpacing.setAttribute('title', mxResources.get('lineend'));
 
-	mxUtils.br(arrowPanel);
+	var spacer = document.createElement('div');
+	spacer.style.height = '20px';
+	arrowPanel.appendChild(spacer);
 	this.addLabel(arrowPanel, mxResources.get('linestart'), 82, 62).style.fontSize = '10px';
 	this.addLabel(arrowPanel, mxResources.get('lineend'), 16, 62).style.fontSize = '10px';
 	mxUtils.br(arrowPanel);
@@ -6540,29 +6613,43 @@ DiagramStylePanel.prototype.getGlobalStyleButtons = function()
 		}
 	});
 
-	var buttons = [sketchDiv, mxUtils.button(mxResources.get('rounded'),
-		mxUtils.bind(this, function(evt)
+	var isAllRounded = function()
+	{
+		var cells = graph.getVerticesAndEdges();
+		var rounded = cells.length > 0;
+
+		for (var i = 0; i < cells.length; i++)
 		{
-			// Checks if all cells are rounded
-			var cells = graph.getVerticesAndEdges();
-			var rounded = true;
+			var style = graph.getCellStyle(cells[i]);
 
-			if (cells.length > 0)
+			if (mxUtils.getValue(style, mxConstants.STYLE_ROUNDED, 0) == 0)
 			{
-				for (var i = 0; i < cells.length; i++)
-				{
-					var style = graph.getCellStyle(cells[i]);
-
-					if (mxUtils.getValue(style, mxConstants.STYLE_ROUNDED, 0) == 0)
-					{
-						rounded = false;
-						break;
-					}
-				}
+				rounded = false;
+				break;
 			}
-			
-			rounded = !rounded;
-			graph.updateCellStyles({'rounded': (rounded) ? '1' : '0'}, cells);
+		}
+
+		return rounded;
+	};
+
+	var roundedDiv = document.createElement('div');
+	roundedDiv.className = 'geFormatEntry';
+
+	var roundedInput = document.createElement('input');
+	roundedInput.setAttribute('type', 'checkbox');
+	roundedInput.setAttribute('title', mxResources.get('rounded'));
+	roundedInput.checked = isAllRounded();
+	roundedDiv.appendChild(roundedInput);
+	mxUtils.write(roundedDiv, mxResources.get('rounded'));
+	roundedDiv.setAttribute('title', mxResources.get('rounded'));
+
+	mxEvent.addListener(roundedDiv, 'click', function(evt)
+	{
+		if (graph.isEnabled())
+		{
+			var rounded = !isAllRounded();
+			graph.updateCellStyles({'rounded': (rounded) ? '1' : '0'},
+				graph.getVerticesAndEdges());
 
 			if (rounded)
 			{
@@ -6577,7 +6664,9 @@ DiagramStylePanel.prototype.getGlobalStyleButtons = function()
 
 			mxEvent.consume(evt);
 		}
-	))];
+	});
+
+	var buttons = [roundedDiv, sketchDiv];
 
 	if (!graph.isEnabled())
 	{
@@ -6613,33 +6702,46 @@ DiagramStylePanel.prototype.addView = function(div)
 	
 	var opts = document.createElement('div');
 	opts.className = 'geFormatEntry';
-	
-	// Adaptive Colors
+
 	if (graph.isEnabled())
 	{
-		var table = document.createElement('table');
-		table.style.tableLayout = 'fixed';
-		table.style.width = '204px';
-		
-		var tbody = document.createElement('tbody');
-		var row = document.createElement('tr');
-		var left = document.createElement('td');
-		var right = left.cloneNode(true);
+		var row = document.createElement('div');
+		row.style.display = 'flex';
+		row.style.alignItems = 'center';
+		row.style.justifyContent = 'center';
+		row.style.gap = '8px';
+		row.style.width = '204px';
 
-		var label = document.createElement('div');
-		label.style.display = 'inline-block';
-		label.style.boxSizing = 'border-box';
-		label.style.overflow = 'hidden';
-		label.style.textOverflow = 'ellipsis';
+		var buttons = this.getGlobalStyleButtons();
 
-		var title = mxResources.get('adaptiveColors');
-		left.setAttribute('title', title);
-		mxUtils.write(label, title);
-		left.appendChild(label);
+		// Natural-width slots clustered in the center; shrink with ellipsis
+		// only when labels are too long to fit.
+		for (var i = 0; i < buttons.length; i++)
+		{
+			var btn = buttons[i];
+			btn.style.flex = '0 1 auto';
+			btn.style.minWidth = '0';
+
+			// geFormatEntry is display:flex, so wrap the trailing text node
+			// in a span so text-overflow ellipsis can apply to the label.
+			var textNode = btn.lastChild;
+
+			if (textNode != null && textNode.nodeType == 3)
+			{
+				var span = document.createElement('span');
+				span.style.overflow = 'hidden';
+				span.style.textOverflow = 'ellipsis';
+				span.style.whiteSpace = 'nowrap';
+				span.style.minWidth = '0';
+				span.appendChild(textNode);
+				btn.appendChild(span);
+			}
+
+			row.appendChild(btn);
+		}
 
 		if (mxUtils.lightDarkColorSupported)
 		{
-			label.style.width = '75%';
 			var img = document.createElement('img');
 			img.setAttribute('title', mxResources.get('light') +
 				'/' + mxResources.get('dark'));
@@ -6647,10 +6749,8 @@ DiagramStylePanel.prototype.addView = function(div)
 			img.className = 'geButton';
 			img.style.width = '18px';
 			img.style.height = '18px';
-			img.style.verticalAlign = 'bottom';
-			left.appendChild(img);
+			img.style.flex = '0 0 auto';
 
-			// Pressing label toggles dark/light mode
 			mxEvent.addListener(img, 'click', function()
 			{
 				if (graph.isEnabled())
@@ -6658,96 +6758,14 @@ DiagramStylePanel.prototype.addView = function(div)
 					ui.setDarkMode(!Editor.isDarkMode());
 				}
 			});
-		}
-		else
-		{
-			label.style.width = '100%';
+
+			row.appendChild(img);
 		}
 
-		var dropdown = document.createElement('select');
-		dropdown.style.width = '82px';
-
-		var opt = document.createElement('option');
-		opt.setAttribute('title', mxResources.get('default') + ' (' +
-			mxResources.get(Graph.getDefaultAdaptiveColorsKey()) + ')');
-		mxUtils.write(opt, mxUtils.htmlEntities(opt.getAttribute('title')));
-		opt.setAttribute('value', 'default');
-		dropdown.appendChild(opt);
-
-		var opt = document.createElement('option');
-		opt.setAttribute('title', mxResources.get('automatic'));
-		mxUtils.write(opt, mxUtils.htmlEntities(opt.getAttribute('title')));
-		opt.setAttribute('value', 'auto');
-		dropdown.appendChild(opt);
-
-		var opt = document.createElement('option');
-		opt.setAttribute('title', mxResources.get('simple'));
-		mxUtils.write(opt, mxUtils.htmlEntities(opt.getAttribute('title')));
-		opt.setAttribute('value', 'simple');
-		dropdown.appendChild(opt);
-
-		var opt = document.createElement('option');
-		opt.setAttribute('title', mxResources.get('none'));
-		mxUtils.write(opt, mxUtils.htmlEntities(opt.getAttribute('title')));
-		opt.setAttribute('value', 'none');
-		dropdown.appendChild(opt);
-
-		dropdown.value = (graph.adaptiveColors == null) ?
-			'default' : graph.adaptiveColors;
-
-		mxEvent.addListener(dropdown, 'change', function()
-		{
-			var change = new ChangePageSetup(ui);
-			change.ignoreColor = true;
-			change.ignoreImage = true;
-			change.adaptiveColors = dropdown.value;
-			
-			graph.model.execute(change);
-		});
-		
-		right.appendChild(dropdown);
-
-		if (!ui.isOffline() || mxClient.IS_CHROMEAPP || EditorUi.isElectronApp)
-		{
-			right.appendChild(ui.menus.createHelpLink(
-				'https://github.com/jgraph/drawio/discussions/4713'));
-		}
-
-		row.appendChild(left);
-		row.appendChild(right);
-		tbody.appendChild(row);
-
-		var buttons = this.getGlobalStyleButtons();
-	
-		for (var i = 0; i < buttons.length; i += 2)
-		{
-			left = left.cloneNode(false);
-			right = right.cloneNode(false);
-			row = row.cloneNode(false);
-	
-			var btn = buttons[i];
-			btn.style.width = '100%';
-	
-			left.appendChild(btn);
-			row.appendChild(left);
-	
-			btn = buttons[i + 1];
-	
-			if (btn != null)
-			{
-				btn.style.width = '100%';
-				right.appendChild(btn);
-			}
-	
-			row.appendChild(right);
-			tbody.appendChild(row);
-		}
-	
-		table.appendChild(tbody);
-		opts.appendChild(table);
+		opts.appendChild(row);
 		div.appendChild(opts);
-	
-		if (graph.isEnabled() && Editor.styles != null)
+
+		if (Editor.styles != null)
 		{
 			this.addGraphStyles(div);
 		}

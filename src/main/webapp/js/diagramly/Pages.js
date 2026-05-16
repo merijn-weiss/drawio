@@ -1807,10 +1807,6 @@ EditorUi.prototype.updateTabContainer = function()
 		}
 
 		this.tabScroller = wrapper;
-		this.tabScroller.scrollLeft = sl;
-		this.scrollToPage();
-		this.btKnownTabScroll = this.tabScroller.scrollLeft;
-		this.checkTabScrollerOverflow();
 
 		mxEvent.addListener(this.tabScroller, 'scroll', mxUtils.bind(this, function(evt)
 		{
@@ -1922,8 +1918,21 @@ EditorUi.prototype.updateTabContainer = function()
 
 		if (activeTab != null)
 		{
-			 activeTab.classList.add('geActivePage');
-			 activeTab.scrollIntoView({behavior: 'smooth',
+			activeTab.classList.add('geActivePage');
+		}
+
+		// Restore scroll position after all DOM mutations (ghLink append,
+		// active class) so the wrapper has its final clientWidth/scrollWidth.
+		// Otherwise sl gets clamped to a temporarily smaller maxScrollLeft
+		// when the previous active page was at the right end.
+		this.tabScroller.scrollLeft = sl;
+		this.scrollToPage();
+		this.btKnownTabScroll = this.tabScroller.scrollLeft;
+		this.checkTabScrollerOverflow();
+
+		if (activeTab != null)
+		{
+			activeTab.scrollIntoView({behavior: 'smooth',
 				block: 'nearest', inline: 'nearest'});
 		}
 	}

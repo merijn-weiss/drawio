@@ -1931,6 +1931,17 @@ DrawioFile.prototype.saveDraft = function(data)
 {
 	try
 	{
+		data = (data != null) ? data : this.ui.getFileData();
+
+		// Empty diagrams are useless as drafts — drop any existing one
+		// instead of writing an empty record, so the post-restart prompt
+		// doesn't surface drafts that contain nothing to recover.
+		if (this.ui.isDiagramDataEmpty(data))
+		{
+			this.removeDraft();
+			return;
+		}
+
 		if (this.draftId == null)
 		{
 			if (this.usedDraftId != null)
@@ -1942,17 +1953,17 @@ DrawioFile.prototype.saveDraft = function(data)
 				this.draftId = Editor.guid();
 			}
 		}
-		
+
 		var draft = {type: 'draft',
 			created: this.created,
 			modified: new Date().getTime(),
-			data: (data != null) ? data : this.ui.getFileData(),
+			data: data,
 			title: this.getTitle(),
 			fileObject: this.fileObject,
 			aliveCheck: this.ui.draftAliveCheck};
 		this.ui.setDatabaseItem('.draft_' + this.draftId,
 			JSON.stringify(draft));
-		
+
 		EditorUi.debug('DrawioFile.saveDraft', [this],
 			'draftId', this.draftId, [draft]);
 	}

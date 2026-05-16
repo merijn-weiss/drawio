@@ -1710,7 +1710,7 @@ a.geStatus>div {
 }
 
 .geFormatSection {
-	padding: 8px 0 10px 0;
+	padding: 6px 0;
 	position: relative;
 	white-space: nowrap;
 	border-top: 1px solid light-dark(#e0e0e0, #3a3a3a);
@@ -2116,7 +2116,6 @@ a.geStatus>div {
 }
 
 .geDialogFormLabel {
-	font-size: 13px;
 	color: light-dark(#1d1d1f, #e0e0e0);
 	min-width: 100px;
 	flex-shrink: 0;
@@ -2151,7 +2150,6 @@ a.geStatus>div {
 }
 
 .geDialogCheckRow label {
-	font-size: 13px;
 	color: light-dark(#1d1d1f, #e0e0e0);
 	cursor: pointer;
 }

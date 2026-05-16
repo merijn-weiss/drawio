@@ -499,8 +499,8 @@ App.getStoredMode = function()
 						navigator.userAgent.indexOf('MSIE') < 0 || document.documentMode >= 10))
 					{
 						// Immediately loads client
-						if (App.mode == App.MODE_ONEDRIVE || (window.location.hash != null &&
-							window.location.hash.substring(0, 2) == '#W'))
+						if (App.mode == App.MODE_ONEDRIVE || App.mode == App.MODE_M365 || (window.location.hash != null &&
+							(window.location.hash.substring(0, 2) == '#W' || window.location.hash.substring(0, 2) == '#M')))
 						{
 							//Editor.oneDriveInlinePicker can be set with configuration which is done later, so load it all time
 							mxscript(App.ONEDRIVE_URL);
@@ -3955,13 +3955,24 @@ App.prototype.filterDrafts = function(filePath, guid, callback)
 					if (key != null && key.substring(0, 7) == '.draft_')
 					{
 						var obj = JSON.parse(items[i].data);
-						
-						if (obj != null && obj.type == 'draft' && obj.aliveCheck != guid && 
+
+						if (obj != null && obj.type == 'draft' && obj.aliveCheck != guid &&
 							((filePath == null && obj.fileObject == null) ||
-								(obj.fileObject != null && obj.fileObject.path == filePath)))	
+								(obj.fileObject != null && obj.fileObject.path == filePath)))
 						{
-							obj.key = key;
-							drafts.push(obj);
+							// Drop drafts whose payload has no user-added cells.
+							// These get created when a recovery draft is saved
+							// for a file the user then emptied; surfacing them
+							// in the draft picker only confuses the user.
+							if (this.isDiagramDataEmpty(obj.data))
+							{
+								this.removeDatabaseItem(key);
+							}
+							else
+							{
+								obj.key = key;
+								drafts.push(obj);
+							}
 						}
 					}
 				}
