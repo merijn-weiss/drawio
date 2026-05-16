@@ -1,0 +1,4 @@
+src/main/webapp/js/app.min.js merge=ours
+src/main/webapp/js/integrate.min.js merge=ours
+src/main/webapp/js/viewer-static.min.js merge=ours
+src/main/webapp/js/viewer.min.js merge=ours

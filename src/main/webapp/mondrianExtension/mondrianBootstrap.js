@@ -5,7 +5,7 @@
 
     window.__MONDRIAN_BOOTSTRAP_INITIALIZED__ = true;
 
-    console.log("Mondrian bootstrap loaded");
+    console.log("Mondrian Diagrams bootstrap loaded");
 
     const BASE = 'mondrianExtension';
 
@@ -172,8 +172,6 @@
         await initMondrianRuntime();
 
         overrideLogo();
-
-        console.log("Mondrian ready before App.main");
     }
 
     function hookCheckAllLoaded(retries = 100) {
