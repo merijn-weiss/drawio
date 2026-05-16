@@ -730,6 +730,7 @@ Graph.prototype.createViewState = function(node)
 			return fold != null && (Editor.config == null || Editor.config.defaultFoldingEnabled == null) ?
 			fold != '0' : Graph.prototype.defaultFoldingEnabled; })(),
 		shadowVisible: node.getAttribute('shadow') == '1',
+		mondrianHighlightPredefinedEnabled: node.getAttribute('mondrianHighlightPredefined') == '1',
 		pageVisible: (this.isLightboxView()) ? false : ((pv != null) ? (pv != '0') : this.defaultPageVisible),
 		background: (bg != null && bg.length > 0) ? bg : null,
 		backgroundImage: bgImg,
@@ -805,6 +806,7 @@ Graph.prototype.saveViewState = function(vs, node, ignoreTransient, resolveRefer
 
 	node.setAttribute('math', ((vs == null) ? this.defaultMathEnabled : vs.mathEnabled) ? '1' : '0');
 	node.setAttribute('shadow', (vs != null && vs.shadowVisible) ? '1' : '0');
+	node.setAttribute('mondrianHighlightPredefined', (vs != null && vs.mondrianHighlightPredefinedEnabled) ? '1' : '0');
 
 	if (vs == null || vs.adaptiveColors == null)
 	{
@@ -837,6 +839,7 @@ Graph.prototype.getViewState = function()
 		guidesEnabled: this.graphHandler.guidesEnabled,
 		foldingEnabled: this.foldingEnabled,
 		shadowVisible: this.shadowVisible,
+		mondrianHighlightPredefinedEnabled: this.mondrianHighlightPredefinedEnabled,
 		scrollbars: this.scrollbars,
 		pageVisible: this.pageVisible,
 		background: this.background,
@@ -875,6 +878,7 @@ Graph.prototype.setViewState = function(state, removeOldExtFonts)
 		this.graphHandler.guidesEnabled = state.guidesEnabled;
 		this.foldingEnabled = state.foldingEnabled;
 		this.setShadowVisible(state.shadowVisible, false);
+		this.setMondrianHighlightPredefinedEnabled(state.mondrianHighlightPredefinedEnabled, false);
 		this.scrollbars = state.scrollbars;
 		this.pageVisible = !this.isViewer() && (urlParams['pv'] != null ? urlParams['pv'] != '0' : state.pageVisible);
 		this.background = state.background;
@@ -955,6 +959,7 @@ Graph.prototype.setViewState = function(state, removeOldExtFonts)
 		this.graphHandler.guidesEnabled = true;
 		this.foldingEnabled = this.defaultFoldingEnabled;
 		this.setShadowVisible(false, false);
+		this.setMondrianHighlightPredefinedEnabled(false, false);
 		this.defaultParent = null;
 		this.setTooltips(true);
 		this.setConnectable(this.defaultConnectable);

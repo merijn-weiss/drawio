@@ -76,7 +76,7 @@ Menus.prototype.init = function()
 			Format.processMenuIcon(this.edgeStyleChange(menu, '', [mxConstants.STYLE_EDGE, mxConstants.STYLE_ELBOW, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE],
 				['isometricEdgeStyle', 'vertical', null, null], null, parent, true, Format.verticalIsometricImage.src)).setAttribute('title', mxResources.get('isometric'));
 	
-			if (shape == null || shape == 'connector')
+			if (shape == null || shape == 'connector' || shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR)
 			{
 				Format.processMenuIcon(this.edgeStyleChange(menu, '', [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE],
 					['orthogonalEdgeStyle', '1', null], null, parent, true, Format.curvedImage.src)).setAttribute('title', mxResources.get('curved'));
@@ -105,6 +105,8 @@ Menus.prototype.init = function()
 			null, parent, true, Format.pipeEdgeImage.src)).setAttribute('title', 'Pipe');
 		Format.processMenuIcon(this.edgeStyleChange(menu, '', keys, ['wire', null, null, '1', null],
 			null, parent, true, Format.wireEdgeImage.src)).setAttribute('title', 'Wire');
+		Format.processMenuIcon(this.edgeStyleChange(menu, '', keys, [mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR, null, null, null, null],
+			null, parent, true, Format.mondrianEdgeImage.src)).setAttribute('title', 'Mondrian Connector');
 	})));
 
 	this.put('line', new Menu(mxUtils.bind(this, function(menu, parent)

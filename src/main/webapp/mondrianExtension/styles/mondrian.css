@@ -1,0 +1,332 @@
+@import "../js/selectize/selectize.mondrian.css";
+
+/* ==========================================================================
+   Mondrian Icons
+   ========================================================================== */
+
+.geAppIcon {
+    background-color: transparent !important;
+    border-radius: 0 !important;
+    background-size: contain !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    opacity: 1 !important;
+}
+
+.geSprite-mondrian {
+    background:
+        url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAHJJREFUWEft1jEKgDAMheHGobmJjhWPJx5T9CrNVOcOVgotdfhzgPD4CLxIWkNyDUevO9tmZsXtQgAEEEAAgeEC3vumXVBbK0KA4QLprPsHdCv3vapmZzDv0cn0fhnSO8ByxI+HpLMAARBAAAEEEPi9wANAkuL1D9ClCQAAAABJRU5ErkJggg==')
+        no-repeat;
+
+    background-size: 21px 21px;
+}
+
+/* ==========================================================================
+   Sections
+   ========================================================================== */
+
+.geDialogSection {
+    margin: 0 0 8px 0;
+}
+
+.geDialogSection + .geDialogSection {
+    margin-top: 14px;
+}
+
+.geDialogSectionHeader {
+    display: block;
+
+    width: calc(100% + 12px);
+
+    margin: 14px 0 6px -6px;
+
+    padding: 6px 12px;
+
+    box-sizing: border-box;
+
+    border-radius: 10px;
+
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.15px;
+
+    color:
+        light-dark(
+            var(--accent-text-color),
+            var(--dark-accent-text-color)
+        );
+
+    background:
+        light-dark(
+            rgba(11, 87, 208, 0.12),
+            rgba(82, 165, 246, 0.16)
+        );
+
+    border:
+        1px solid
+        light-dark(
+            rgba(0, 0, 0, 0.06),
+            rgba(255, 255, 255, 0.08)
+        );
+}
+
+.geDialogSectionHeader:first-of-type {
+    margin-top: 0 !important;
+}
+
+/* ==========================================================================
+   Rows
+   ========================================================================== */
+
+.geDialogFormRow {
+    display: flex;
+
+    align-items: center;
+
+    min-height: 38px;
+}
+
+.geDialogFormRow + .geDialogFormRow {
+    margin-top: 6px;
+}
+
+/* ==========================================================================
+   Labels
+   ========================================================================== */
+
+.geDialogFormLabel {
+    display: flex;
+
+    align-items: center;
+
+    width: 180px;
+    min-width: 180px;
+
+    height: 38px;
+
+    padding: 0 10px;
+
+    box-sizing: border-box;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    text-align: left;
+}
+
+/* ==========================================================================
+   Base Controls
+   ========================================================================== */
+
+.geDialogFormRow input[type="text"],
+.geDialogFormRow textarea,
+.selectize-control.single .selectize-input {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    border: 1px solid #c8c8c8;
+    border-radius: 8px;
+
+    background: #ffffff;
+
+    font-size: 14px;
+    font-family: inherit;
+
+    box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.05),
+        0 1px 1px rgba(0, 0, 0, 0.03);
+
+    transition:
+        border-color 120ms ease,
+        box-shadow 120ms ease,
+        background 120ms ease;
+}
+
+/* ==========================================================================
+   Single-line Controls
+   ========================================================================== */
+
+.geDialogFormRow input[type="text"],
+.geDialogFormRow textarea:not([rows="3"]),
+.selectize-control.single .selectize-input {
+    height: 38px;
+    min-height: 38px;
+
+    padding: 0 14px;
+
+    line-height: 38px;
+}
+
+/* ==========================================================================
+   Inputs
+   ========================================================================== */
+
+.geDialogFormRow input[type="text"] {
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+/* ==========================================================================
+   Textareas
+   ========================================================================== */
+
+.geDialogFormRow textarea {
+    appearance: none;
+    -webkit-appearance: none;
+
+    resize: none;
+
+    overflow: hidden;
+
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   Multiline Textareas
+   ========================================================================== */
+
+.geDialogFormRow textarea[rows="3"] {
+    min-height: 76px !important;
+
+    padding: 8px 14px;
+
+    line-height: 22px;
+
+    resize: vertical;
+
+    overflow-y: auto;
+
+    white-space: pre-wrap;
+}
+
+/* ==========================================================================
+   Focus
+   ========================================================================== */
+
+.geDialogFormRow input[type="text"]:focus,
+.geDialogFormRow textarea:focus,
+.selectize-control.single .selectize-input.focus,
+.selectize-control.single .selectize-input.input-active {
+    border-color: #6aa9ff;
+
+    box-shadow:
+        0 0 0 3px rgba(50, 120, 255, 0.12);
+
+    outline: none;
+}
+
+/* ==========================================================================
+   Readonly
+   ========================================================================== */
+
+.geDialogFormRow input[readonly],
+.geDialogFormRow textarea[readonly],
+.selectize-control.readonly .selectize-input {
+    background:
+        linear-gradient(
+            to bottom,
+            #f6f6f6,
+            #ececec
+        ) !important;
+
+    border: 1px solid #d8d8d8 !important;
+
+    color: #6d6d6d !important;
+
+    box-shadow: none !important;
+
+    opacity: 0.95;
+}
+
+/* readonly input alignment */
+.geDialogFormRow input[type="text"][readonly] {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+}
+
+/* ==========================================================================
+   Selectize
+   ========================================================================== */
+
+.selectize-control {
+    width: 100%;
+
+    margin: 0;
+}
+
+.selectize-control.single {
+    width: 100%;
+}
+
+.selectize-control.single .selectize-input {
+    display: flex;
+
+    align-items: center;
+
+    padding-right: 42px;
+}
+
+/* normalize internal selectize text */
+
+.selectize-control.single .selectize-input > div,
+.selectize-control.single .selectize-input input {
+    margin: 0 !important;
+    padding: 0 !important;
+
+    line-height: 38px !important;
+}
+
+/* ==========================================================================
+   Selectize Arrow
+   ========================================================================== */
+
+.selectize-control.single .selectize-input:after {
+    top: 50%;
+
+    right: 14px;
+
+    margin-top: -3px;
+
+    border-color:
+        #888 transparent transparent transparent;
+}
+
+/* ==========================================================================
+   Clear Button
+   ========================================================================== */
+.selectize-control.plugin-clear_button .clear {
+    top: 50%;
+    transform: translateY(-50%);
+
+    margin-top: 0;
+    margin-right: 10px;
+
+    font-size: 14px;
+    font-weight: 700;
+
+    color: #888;
+    opacity: 0.65;
+}
+
+.selectize-control.plugin-clear_button .clear:hover {
+    opacity: 1;
+}
+
+.selectize-control.readonly .clear {
+    display: none !important;
+}
+
+/* ==========================================================================
+   Remove Buttons
+   ========================================================================== */
+
+.geBtnDelete {
+    opacity: 0.65;
+
+    transition: opacity 120ms ease;
+}
+
+.geBtnDelete:hover {
+    opacity: 1;
+}

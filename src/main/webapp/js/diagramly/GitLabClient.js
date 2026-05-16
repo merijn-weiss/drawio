@@ -786,11 +786,15 @@ GitLabClient.prototype.pickFile = function(fn)
 	this.showGitLabDialog(true, fn);
 };
 
+
 /**
  * LATER: Refactor to use common code with GitHubClient
  */
 GitLabClient.prototype.showGitLabDialog = function(showFiles, fn, hideNoFilesError)
 {
+	//** Mondrian Extension */
+	var gitDialogConfig = window.MondrianDialogConfig ? MondrianDialogConfig.git : null;
+
 	var org = null;
 	var repo = null;
 	var ref = null;
@@ -799,7 +803,7 @@ GitLabClient.prototype.showGitLabDialog = function(showFiles, fn, hideNoFilesErr
 	var content = document.createElement('div');
 	content.style.whiteSpace = 'nowrap';
 	content.style.overflow = 'hidden';
-	content.style.height = '304px';
+	content.style.height = gitDialogConfig ? MondrianDialogConfig.resolve(gitDialogConfig.contentHeight) : '304px';
 
 	var hd = document.createElement('h3');
 	mxUtils.write(hd, mxResources.get((showFiles) ? 'selectFile' : 'selectFolder'));
@@ -813,7 +817,7 @@ GitLabClient.prototype.showGitLabDialog = function(showFiles, fn, hideNoFilesErr
 	div.style.padding = '4px';
 	div.style.overflow = 'auto';
 	div.style.lineHeight = '1.2em';
-	div.style.height = '274px';
+	div.style.height = gitDialogConfig ? MondrianDialogConfig.resolve(gitDialogConfig.folderHeight) : '274px';
 	content.appendChild(div);
 
 	var listItem = document.createElement('div');
@@ -827,7 +831,7 @@ GitLabClient.prototype.showGitLabDialog = function(showFiles, fn, hideNoFilesErr
 	{
 		fn(org + '/' + repo + '/' + encodeURIComponent(ref) + '/' + path);
 	}));
-	this.ui.showDialog(dlg.container, 420, 370, true, true);
+	this.ui.showDialog(dlg.container, gitDialogConfig ? MondrianDialogConfig.resolve(gitDialogConfig.width) : 420, gitDialogConfig ? MondrianDialogConfig.resolve(gitDialogConfig.height) : 370, true, true);
 	
 	if (showFiles)
 	{

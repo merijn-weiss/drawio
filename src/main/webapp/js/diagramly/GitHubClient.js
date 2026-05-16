@@ -894,6 +894,9 @@ GitHubClient.prototype.pickFile = function(fn)
  */
 GitHubClient.prototype.showGitHubDialog = function(showFiles, fn, hideNoFilesError)
 {
+	//** Mondrian Extension */
+	var gitDialogConfig = window.MondrianDialogConfig ? MondrianDialogConfig.git : null;
+
 	var org = null;
 	var repo = null;
 	var ref = null;
@@ -902,7 +905,7 @@ GitHubClient.prototype.showGitHubDialog = function(showFiles, fn, hideNoFilesErr
 	var content = document.createElement('div');
 	content.style.whiteSpace = 'nowrap';
 	content.style.overflow = 'hidden';
-	content.style.height = '320px';
+	content.style.height = gitDialogConfig ? MondrianDialogConfig.resolve(gitDialogConfig.contentHeight) : '320px';
 
 	var hd = document.createElement('h3');
 	mxUtils.write(hd, mxResources.get((showFiles) ? 'selectFile' : 'selectFolder'));
@@ -927,7 +930,7 @@ GitHubClient.prototype.showGitHubDialog = function(showFiles, fn, hideNoFilesErr
 	div.style.padding = '4px';
 	div.style.overflow = 'auto';
 	div.style.lineHeight = '1.2em';
-	div.style.height = '290px';
+	div.style.height = gitDialogConfig ? MondrianDialogConfig.resolve(gitDialogConfig.folderHeight) : '290px';
 	content.appendChild(div);
 	
 	var listItem = document.createElement('div');
@@ -947,7 +950,7 @@ GitHubClient.prototype.showGitHubDialog = function(showFiles, fn, hideNoFilesErr
 				'https://github.com/apps/diagrams-net-app-test' :
 				'https://github.com/apps/draw-io-app');
 		})]], '16px');
-	this.ui.showDialog(dlg.container, 420, 370, true, true);
+	this.ui.showDialog(dlg.container, gitDialogConfig ? MondrianDialogConfig.resolve(gitDialogConfig.width) : 420, gitDialogConfig ? MondrianDialogConfig.resolve(gitDialogConfig.height) : 370, true, true);
 
 	if (showFiles)
 	{

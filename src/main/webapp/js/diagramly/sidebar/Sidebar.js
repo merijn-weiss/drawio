@@ -30,7 +30,7 @@
 	/**
 	 * 
 	 */
-	Sidebar.prototype.defaultEntries = 'general;uml;er;bpmn;flowchart;basic;arrows2';
+	Sidebar.prototype.defaultEntries = 'MondrianShapes;MondrianIcons (All)';
 	
 	/**
 	 * Library definitions 
@@ -1524,7 +1524,8 @@
 		this.addWebIconsPalette();
 		this.addWebLogosPalette();
 		this.addSignsPalette(signs, dir);
-		
+		this.addMondrianPalette();
+
 		if (this.appendCustomLibraries)
 		{
 			this.addCustomEntries();

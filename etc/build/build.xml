@@ -50,9 +50,36 @@ OUTPUT FILES (in src/main/webapp/js/):
 	============================================================================
 	-->
 	<target name="merge">
+		<!-- MONDRIAN: Shared files for app.min.js and viewer-static.min.js -->
+		<!--<java fork="false" classname="Xml2Js" classpath=".">
+			<arg value="../../src/main/webapp/mondrian/stencils"/>
+			<arg value="../../src/main/webapp/mondrianExtension/mondrian-stencils.min.js"/>
+		</java>-->
+		
+		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/mondrian-base.min.js">
+			<sources dir="${war.dir}/mondrianExtension">
+				<file name="mondrianCore.js"/>
+				<file name="mondrian-stencils.min.js"/>
+				<file name="mondrianRepo.js"/>
+			</sources>
+		</jscomp>
+
+		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/mondrian-editor.min.js">
+		</jscomp>
+
+		<concat destfile="${basedir}/mondrian-js-libs.min.js" fixlastline="yes" append="no">
+			<filelist dir="${war.dir}/mondrianExtension/js/jquery" files="jquery-3.6.4.min.js"/>
+			<filelist dir="${war.dir}/mondrianExtension/js/selectize" files="selectize.min.js"/>
+		</concat>
+		
     	<concat destfile="${basedir}/../../build/shapes.js" fixlastline="yes" append="no">
     		<fileset dir="${war.dir}/shapes" includes="**/*.js"/>
     		<fileset dir="${war.dir}/stencils" includes="**/*.js"/>
+			<fileset dir="${war.dir}/mondrianExtension/shapes" includes="mondrianBasicShape.js"/>
+			<fileset dir="${war.dir}/mondrianExtension/shapes" includes="mondrianConnector.js"/>
+			<fileset dir="${war.dir}/mondrianExtension/shapes" includes="mondrianDeploymentUnit.js"/>
+			<fileset dir="${war.dir}/mondrianExtension/shapes" includes="mondrianLegend.js"/>
+			<fileset dir="${war.dir}/mondrianExtension/shapes" includes="mondrianShape.js"/>
     	</concat>
     	
 		<java fork="false" classname="Xml2Js" classpath=".">
@@ -234,6 +261,9 @@ OUTPUT FILES (in src/main/webapp/js/):
 				<file name="Sidebar-VVD.js" />
 				<file name="Sidebar-WebIcons.js" />
 			</sources>
+			<sources dir="${war.dir}/mondrianExtension">
+				<file name="mondrianSidebar.js" />
+			</sources>
 		</jscomp>
 		
 		<!-- Step 6: Compile client.min.js (mxGraph core + initialization) -->
@@ -311,16 +341,26 @@ OUTPUT FILES (in src/main/webapp/js/):
 		<echo file="${basedir}/.tmp2.js">
 			(function()
 			{
-				Editor.initMath();
-				
+			Editor.initMath();
+			GraphViewer.initCss();
+
+			window.IS_VIEWER = true;
+			window.MONDRIAN_CORE = window.createMondrianCore();
+
+			window.createMondrianRepo(function(repo) {
+				window.MONDRIAN_REPO = repo;
+
 				if (window.onDrawioViewerLoad != null)
 				{
-					window.onDrawioViewerLoad();
+				window.onDrawioViewerLoad();
 				}
 				else
 				{
-					GraphViewer.processElements();
+				GraphViewer.processElements();
 				}
+			}, function(err) {
+				console.error('Failed to initialize MondrianRepo:', err);
+			});
 			})();
 		</echo>
 		
@@ -561,6 +601,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 			<filelist dir="${war.dir}/js/rough" files="rough.min.js"/>
 			<filelist dir="${war.dir}/js/freehand" files="perfect-freehand.js"/>
 			<filelist dir="${basedir}" files="client.min.js,grapheditor.min.js,sidebar.min.js,.tmp1.js"/>
+			<filelist dir="${basedir}" files="mondrian-base.min.js,mondrian-editor.min.js,mondrian-js-libs.min.js"/>
     	</concat>
 
 		<replace file="${war.dir}/js/app.min.js" token="@DRAWIO-VERSION@" value="${version}"/>
@@ -572,6 +613,9 @@ OUTPUT FILES (in src/main/webapp/js/):
 		<delete file="${basedir}/sidebar.min.js"/>
 		<delete file="${basedir}/client.min.js"/>
 		<delete file="${basedir}/.tmp1.js"/>
+		<delete file="${basedir}/mondrian-base.min.js"/>
+		<delete file="${basedir}/mondrian-editor.min.js"/>
+		<delete file="${basedir}/mondrian-js-libs.min.js"/>
 	</target>
 
 	<!--

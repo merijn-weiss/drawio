@@ -3153,6 +3153,10 @@ EditorUi.prototype.getImageForEdgeShape = function(style)
 	{
 		result = Format.wireEdgeImage.src;
 	}
+	else if (style.shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR)
+	{
+		result = Format.mondrianEdgeImage.src;
+	}
 
 	return result;
 };
@@ -6724,8 +6728,13 @@ EditorUi.prototype.showDataDialog = function(cell)
 {
 	if (cell != null && typeof window.EditDataDialog !== 'undefined')
 	{
+		var editDataDialogConfig = window.MondrianDialogConfig ? MondrianDialogConfig.editData : null;
+		var width = editDataDialogConfig ? MondrianDialogConfig.resolve(editDataDialogConfig.width) : 480;
+		var height = editDataDialogConfig ? MondrianDialogConfig.resolve(editDataDialogConfig.height) : 420;
+		
 		var dlg = new EditDataDialog(this, cell);
-		this.showDialog(dlg.container, 480, 420, true, false, null,
+
+		this.showDialog(dlg.container, width, height, true, false, null,
 			false, null, new mxRectangle(0, 0, 440, 340), null, 'editData');
 		dlg.init();
 	}

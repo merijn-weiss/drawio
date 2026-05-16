@@ -886,6 +886,15 @@
 		action.setToggleAction(true);
 		action.setSelectedCallback(function() { return graph.shadowVisible; });
 
+		// >>> Mondrian Diagrams (Addition)
+		action = editorUi.actions.put('mondrianHighlightPredefined', new Action(mxResources.get('Mondrian Highligh Predefined'), function()
+		{
+			graph.setMondrianHighlightPredefinedEnabled(!graph.mondrianHighlightPredefinedEnabled);
+		}));
+		action.setToggleAction(true);
+		action.setSelectedCallback(function() { return graph.mondrianHighlightPredefinedEnabled; });
+		// >>> Mondrian Diagrams (Addition)
+
 		editorUi.actions.put('about', new Action('v' + EditorUi.VERSION, function(arg1, evt)
 		{
 			if (mxEvent.isShiftDown(evt) && (EditorUi.isElectronApp ||

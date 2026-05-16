@@ -3746,6 +3746,7 @@
 				this.graph.updateCssTransform();
 
 				this.graph.setShadowVisible(node.getAttribute('shadow') == '1', false);
+				this.graph.setMondrianHighlightPredefinedEnabled(node.getAttribute('mondrianHighlightPredefined') == '1', false);
 				
 				var extFonts = node.getAttribute('extFonts');
 				
@@ -3814,6 +3815,7 @@
 		
 		node.setAttribute('math', (this.graph.mathEnabled) ? '1' : '0');
 		node.setAttribute('shadow', (this.graph.shadowVisible) ? '1' : '0');
+		node.setAttribute('mondrianHighlightPredefined', (this.graph.mondrianHighlightPredefinedEnabled) ? '1' : '0');
 
 		if (this.graph.adaptiveColors != null)
 		{
@@ -4168,7 +4170,10 @@
 		return (this.corsRegExp != null && this.corsRegExp.test(url)) ||
 			url.substring(0, 34) === 'https://raw.githubusercontent.com/' ||
 			url.substring(0, 29) === 'https://fonts.googleapis.com/' ||
-			url.substring(0, 26) === 'https://fonts.gstatic.com/';
+			url.substring(0, 26) === 'https://fonts.gstatic.com/' ||
+			// MONDRIAN ADDITIONS
+			window.MONDRIAN_REPO.hasCorsEnabled(url) ;
+
 	};
 
 	/**
@@ -6047,9 +6052,11 @@
 		{
 			var sstate = this.editorUi.getSelectionState();
 
+			/* MONDRIAN: Hide Style Color Palette Panel */
 			if (this.defaultColorSchemes != null && this.defaultColorSchemes.length > 0 &&
 				sstate.style.shape != 'image' && !sstate.containsLabel &&
-				sstate.cells.length > 0)
+				sstate.cells.length > 0 &&
+				sstate.style.shape != mxMondrianShape.prototype.cst.MONDRIAN_BASE_SHAPE && sstate.style.shape != mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR)
 			{
 				this.container.appendChild(this.addStyles(this.createPanel()));
 			}
@@ -6341,7 +6348,7 @@
 				return btn;
 			};
 			
-			function createStaticArrList(pName, pValue, subType, defVal, size, myRow, flipBkg)
+			function createStaticArrList(pName, pValue, subType, defVal, size, myRow, flipBkg, enumList, onChange)
 			{
 				if (size > 0)
 				{
@@ -6353,8 +6360,9 @@
 					{
 						vals[i] = curVals[i] != null? curVals[i] : (defVal != null? defVal : '');
 					}
-					
-					secondLevel.push({name: pName, values: vals, type: subType, defVal: defVal, parentRow: myRow, flipBkg: flipBkg, size: size});
+
+					/* MONDRIAN: Extend staticArr type */
+					secondLevel.push({name: pName, values: vals, type: subType, defVal: defVal, parentRow: myRow, flipBkg: flipBkg, size: size, enumList: enumList, onChange: onChange});
 				}
 				
 				return document.createElement('div'); //empty cell
@@ -6427,7 +6435,7 @@
 				{
 					td.appendChild(createCheckbox(pName, pValue, prop));
 				}
-				else if (pType == 'enum')
+                else if (pType == 'enum' || pType == 'dynamicEnum')
 				{
 					var pEnumList = prop.enumList;
 
@@ -6435,7 +6443,62 @@
 					let valueDiv = document.createElement('div');
 					valueDiv.className = 'gePropValue';
 					td.appendChild(valueDiv);
-					
+
+					/* MONDRIAN: Added dynamicEnum property */
+                    if(pType == 'dynamicEnum')
+                    {
+                        let enumSource = prop.enumSource;
+                        let dynamicAttributes = [];
+                        pEnumList = pEnumList.filter(function (value, index, arr) { return !value.isDynamic;});
+                        
+                        if(enumSource == undefined)
+                        {
+                            let selectedCells = graph.getSelectionCells();
+                            let excludedAttributes = [undefined, 'undefined', 'label', 'placeholders', 'repoAttributes', 'mondrianVersion', 'templateAttributes', 'templateAttributesMandatory'];
+    
+                            for (let selectedCellIdx in selectedCells)
+                            {
+                                let selectedCell = selectedCells[selectedCellIdx];
+    
+                                for (let attribute in selectedCell.value.attributes)
+                                {
+                                    let attributeName = selectedCell.value.attributes[attribute].nodeName;
+                                    
+                                    if(!excludedAttributes.includes(attributeName) && !dynamicAttributes.includes(attributeName))
+                                        dynamicAttributes.push(attributeName);
+                                }
+                            }
+    
+                            dynamicAttributes.sort();	
+                        }
+						else if(enumSource == 'interfaceTemplate' || enumSource == 'shapeTemplate' )
+						{
+							pEnumList.push({val: 'noTemplate', dispName: 'None', isDynamic: true});
+
+							let templateType = (enumSource == 'interfaceTemplate') ? 'INTERFACE-TEMPLATE' : 'SHAPE-TEMPLATE';
+
+							let templates = window.MONDRIAN_REPO.getElementRepo('default',templateType);
+							for(let template of templates)
+							{
+								pEnumList.push({val: template.id, dispName: template.name, isDynamic: true});
+							}
+						}
+                        else
+                        {
+                            Object.entries(window.MONDRIAN_REPO.getElement('default',enumSource).formats).forEach((entry) => {
+                                const [key, value] = entry;
+                                dynamicAttributes.push(key);
+                              });
+                        }
+
+                        for (let i = 0; i < dynamicAttributes.length; i++)
+                        {
+                            let enumItem = {val: dynamicAttributes[i], dispName: dynamicAttributes[i], isDynamic: true};
+                    
+                            pEnumList.push(enumItem);
+                        }
+                    }
+	
 					for (var i = 0; i < pEnumList.length; i++)
 					{
 						var op = pEnumList[i];
@@ -6467,10 +6530,25 @@
 						for (var i = 0; i < pEnumList.length; i++)
 						{
 							var op = pEnumList[i];
-							var opElem = document.createElement('option');
-							opElem.value = mxUtils.htmlEntities(op.val);
-							mxUtils.write(opElem, mxResources.get(op.dispName, null, op.dispName));
-							select.appendChild(opElem);
+							
+							// MONDRIAN EXTENSION TO FILTER
+							let showOption = true;
+							if(op.filter !== undefined)
+							{
+								let filterDefinition = op.filter.split(':');
+								let filterAttribute = filterDefinition[0];
+								let filterValues = filterDefinition[1].split(',');
+								//showOption = !(mxUtils.getValue(state.style, filterAttribute, undefined) === filter[1]);
+								showOption = !(filterValues.includes(mxUtils.getValue(state.style, filterAttribute, undefined)));
+							}
+
+							if(showOption)
+							{
+								var opElem = document.createElement('option');
+								opElem.value = mxUtils.htmlEntities(op.val);
+								mxUtils.write(opElem, mxResources.get(op.dispName, null, op.dispName));
+								select.appendChild(opElem);	
+							}
 
 							if (op.val == null)
 							{
@@ -6523,7 +6601,8 @@
 				}
 				else if (pType == 'staticArr')
 				{
-					td.appendChild(createStaticArrList(pName, pValue, prop.subType, prop.subDefVal, prop.size, row, flipBkg));
+					/**MONDRIAN */
+					td.appendChild(createStaticArrList(pName, pValue, prop.subType, prop.subDefVal, prop.size, row, flipBkg, prop.enumList, prop.onChange));
 				}
 				else if (pType == 'readOnly')
 				{
@@ -6800,7 +6879,8 @@
 					}
 					else if (prop.type == 'staticArr') //if dynamic values are needed, a more elegant technique is needed to replace such values
 					{
-						prop.size = parseInt(state.style[prop.sizeProperty] || properties[prop.sizeProperty].defVal) || 0;
+						/* MONDRIAN: Extend staticArr type */
+                    	prop.size = parseInt(prop.size || state.style[prop.sizeProperty] || properties[prop.sizeProperty].defVal) || 0;
 					}
 					else if (prop.dependentProps != null)
 					{
@@ -6836,8 +6916,8 @@
 				for (var j = 0; j < prop.values.length; j++)
 				{
 					//mxUtils.clone failed because of the HTM element, so manual cloning is used
-					var iProp = {type: prop.type, parentRow: prop.parentRow, isDeletable: prop.isDeletable, index: j,
-							defVal: prop.defVal, countProperty: prop.countProperty, size: prop.size};
+					var iProp = {type: prop.type, parentRow: prop.parentRow, isDeletable: prop.isDeletable, index: j, 
+						defVal: prop.defVal, countProperty: prop.countProperty, size: prop.size,enumList: prop.enumList, onChange: prop.onChange};
 					var arrItem = createPropertyRow(prop.name, prop.values[j], iProp, j % 2 == 0, prop.flipBkg);
 					insertAfter(arrItem, insertElem);
 					insertElem = arrItem;
@@ -10283,6 +10363,11 @@
             	{
             		this.page.viewState.shadowVisible = this.shadowVisible;
             	}
+
+				if (this.mondrianHighlightPredefinedEnabled != null)
+            	{
+            		this.page.viewState.mondrianHighlightPredefined = this.mondrianHighlightPredefined;
+            	}
             }   
         }
         else
@@ -10306,6 +10391,12 @@
             {
             	this.ui.editor.graph.setShadowVisible(this.shadowVisible);
                 this.shadowVisible = !this.shadowVisible;
+            }
+
+			if (this.mondrianHighlightPredefinedEnabled != null && this.mondrianHighlightPredefinedEnabled != this.ui.editor.graph.mondrianHighlightPredefinedEnabled)
+            {
+            	this.ui.editor.graph.setMondrianHighlightPredefinedEnabled(this.mondrianHighlightPredefinedEnabled);
+                this.mondrianHighlightPredefinedEnabled = !this.mondrianHighlightPredefinedEnabled;
             }
         }
     };

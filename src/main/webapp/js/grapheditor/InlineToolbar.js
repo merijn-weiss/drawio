@@ -1406,6 +1406,11 @@ InlineToolbar.prototype.showLineEndMenu = function(evt)
 			items.push({marker: 'doubleBlock', fill: 0, img: Format.doubleBlockMarkerImage.src});
 			items.push({marker: 'doubleBlock', fill: 1, img: Format.doubleBlockFilledMarkerImage.src});
 		}
+		else if (shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR)
+		{
+			items.push({marker: mxConstants.ARROW_CLASSIC, fill: 1, img: Format.classicFilledMarkerImage.src});
+			items.push({marker: mxConstants.ARROW_OVAL, fill: 1, img: Format.ovalFilledMarkerImage.src});
+		}
 		else if (shape == 'flexArrow')
 		{
 			items.push({marker: mxConstants.ARROW_BLOCK, fill: 0, img: Format.blockMarkerImage.src,
@@ -1876,6 +1881,8 @@ InlineToolbar.prototype.showConnStyleMenu = function(evt)
 		keys: shapeKeys, values: ['pipe', null, null, null, null]});
 	shapeItems.push({img: Format.wireEdgeImage.src, title: 'Wire',
 		keys: shapeKeys, values: ['wire', null, null, '1', null]});
+	shapeItems.push({img: Format.mondrianEdgeImage.src, title: 'Mondrian Connector',
+		keys: shapeKeys, values: [mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR, null, null, null, null]});
 
 	if (routingItems.length > 0)
 	{

@@ -21393,6 +21393,20 @@
 											var edgeCell = graph.insertEdge(null, null, label || '', (edge.invert) ?
 												ref : realCell, (edge.invert) ? realCell : ref, edgeStyle);
 											
+											// *Mondrian Extension
+											if(edge.attributes != null)
+											{
+												for (var attribute in edge.attributes) {
+													let attributeValue = edge.attributes[attribute];
+													let fromLabelAttribute = attributeValue.split(':');
+
+													if (fromLabelAttribute[0] === 'fromlabel')
+														attributeValue = dataCell.getAttribute(fromLabelAttribute[1]);
+
+													graph.setAttributeForCell(edgeCell, attribute, attributeValue);
+												}
+											}
+
 											// Adds additional edge labels
 											if (edge.labels != null)
 											{
@@ -21924,6 +21938,7 @@
 		this.actions.get('crop').setEnabled(active && ss.image && ss.cells.length > 0);
 		this.actions.get('pageSetup').setEnabled(active);
 		this.actions.get('shadowVisible').setEnabled(active);
+		this.actions.get('mondrianHighlightPredefined').setEnabled(active);
 		this.actions.get('connectionArrows').setEnabled(active);
 		this.actions.get('connectionPoints').setEnabled(active);
 		this.actions.get('copyStyle').setEnabled(active && !graph.isSelectionEmpty());
@@ -22993,7 +23008,7 @@
 	//===========Adding methods to find the service running draw.io and allowing calling draw.io remote services
 	EditorUi.prototype.getServiceName = function()
 	{
-		return 'draw.io';
+		return 'Mondrian Diagrams';//'draw.io';
 	};
 	
 	EditorUi.prototype.vsdxExportEnabled = function()

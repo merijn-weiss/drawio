@@ -4289,7 +4289,7 @@ Graph.prototype.destroy = function()
 		var shape = mxUtils.getValue(state.style, mxConstants.STYLE_SHAPE, null);
 		var curved = mxUtils.getValue(state.style, mxConstants.STYLE_CURVED, false);
 		
-		return !curved && (shape == 'connector' || shape == 'filledEdge' || shape == 'wire');
+		return !curved && (shape == 'connector' || shape == 'filledEdge' || shape == 'wire' || shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR);
 	};
 	
 	/**
@@ -13471,7 +13471,7 @@ if (typeof mxVertexHandler !== 'undefined')
 		 * an optional edge state to be used as the parent for the label. Vertices
 		 * are not allowed currently as states.
 		 */
-		Graph.prototype.addText = function(x, y, state)
+		Graph.prototype.addText = function(x, y, state, mondrianEdgeLabelSettings)
 		{
 			// Creates a new edge label with a predefined text
 			var label = new mxCell();
@@ -13480,7 +13480,7 @@ if (typeof mxVertexHandler !== 'undefined')
 			label.vertex = true;
 			var style = 'html=1;align=center;verticalAlign=middle;resizable=0;points=[];';
 
-			if (state != null && this.model.isEdge(state.cell))
+			if (state != null && this.model.isEdge(state.cell) && mondrianEdgeLabelSettings === undefined)
 			{
 				label.style = 'edgeLabel;' + this.appendFontSize(style, this.edgeFontSize);
 				label.geometry.relative = true;
@@ -13497,6 +13497,20 @@ if (typeof mxVertexHandler !== 'undefined')
 		  
 				var scale = this.view.scale;
 				label.geometry.offset = new mxPoint(Math.round((x - pt2.x) / scale), Math.round((y - pt2.y) / scale));
+			}
+			else if (state != null && this.model.isEdge(state.cell) && mondrianEdgeLabelSettings != undefined)
+			{
+				label.style = 'edgeLabel;' + style;
+				label.geometry.relative = true;
+				label.connectable = false;
+		    
+				label.geometry.x = mondrianEdgeLabelSettings.x;
+				label.geometry.y = 0;
+
+				label.geometry.offset = new mxPoint(0, 0);
+
+				label.value = mxUtils.createXmlDocument().createElement('UserObject');
+				label.setAttribute('placeholders', '1', [label]);
 			}
 			else
 			{

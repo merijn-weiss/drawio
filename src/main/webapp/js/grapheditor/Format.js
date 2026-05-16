@@ -5508,7 +5508,7 @@ StyleFormatPanel.prototype.addStroke = function(container)
 	
 	lineColor.style.fontWeight = 'bold';
 	lineColor.appendChild(styleSelect);
-	
+
 	// Used if only edges selected
 	var stylePanel = colorPanel.cloneNode(false);
 	stylePanel.style.position = 'relative';
@@ -5584,6 +5584,8 @@ StyleFormatPanel.prototype.addStroke = function(container)
 			null, null, null, true, Format.pipeEdgeImage.src)).setAttribute('title', 'Pipe');
 		Format.processMenuIcon(this.editorUi.menus.styleChange(menu, '', keys, ['wire', null, null, '1', null], '',
 			null, null, null, true, Format.wireEdgeImage.src)).setAttribute('title', 'Wire');
+		Format.processMenuIcon(this.editorUi.menus.styleChange(menu, '', keys, [mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR, null, null, null, null], '',
+			null, null, null, true, Format.mondrianEdgeImage.src)).setAttribute('title', 'Mondrian Connector');
 	})), '', null, altStylePanel);
 
 	edgeShape.setAttribute('title', mxResources.get('connection'));
@@ -5690,7 +5692,7 @@ StyleFormatPanel.prototype.addStroke = function(container)
 			Format.processMenuIcon(this.editorUi.menus.edgeStyleChange(menu, '', [mxConstants.STYLE_EDGE, mxConstants.STYLE_ELBOW, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE],
 				['isometricEdgeStyle', 'vertical', null, null], null, null, true, Format.verticalIsometricImage.src)).setAttribute('title', mxResources.get('isometric'));
 			
-			if (ss.style.shape == 'connector')
+			if (ss.style.shape == 'connector' || ss.style.shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR)
 			{
 				Format.processMenuIcon(this.editorUi.menus.edgeStyleChange(menu, '', [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE],
 					['orthogonalEdgeStyle', '1', null], null, null, true, Format.curvedImage.src)).setAttribute('title', mxResources.get('curved'));
@@ -5706,7 +5708,7 @@ StyleFormatPanel.prototype.addStroke = function(container)
 	var lineStart = ui.toolbar.addMenu(new Menu(mxUtils.bind(this, function(menu)
 	{
 		if (ss.style.shape == 'connector' || ss.style.shape == 'flexArrow' || ss.style.shape == 'filledEdge' ||
-			ss.style.shape == 'wire' || ss.style.shape == 'pipe' || ss.style.shape == 'mxgraph.basic.arc')
+			ss.style.shape == 'wire' || ss.style.shape == 'pipe' || ss.style.shape == 'mxgraph.basic.arc' || ss.style.shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR)
 		{
 			// Copies other marker
 			var otherMarker = mxUtils.getValue(ss.style, mxConstants.STYLE_ENDARROW, mxConstants.NONE);
@@ -5800,6 +5802,13 @@ StyleFormatPanel.prototype.addStroke = function(container)
 				Format.processMenuIcon(this.editorUi.menus.edgeStyleChange(menu, '', [mxConstants.STYLE_STARTARROW, 'startFill'],
 					['doubleBlock', 1], null, null, false, Format.doubleBlockFilledMarkerImage.src));
 			}
+			else if(ss.style.shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR)
+			{
+				Format.processMenuIcon(this.editorUi.menus.edgeStyleChange(menu, '', [mxConstants.STYLE_STARTARROW, 'startFill'],
+					[mxConstants.ARROW_CLASSIC, 1], null, null, false, Format.classicFilledMarkerImage.src));
+				Format.processMenuIcon(this.editorUi.menus.edgeStyleChange(menu, '', [mxConstants.STYLE_STARTARROW, 'startFill'],
+					[mxConstants.ARROW_OVAL, 1], null, null, false, Format.ovalFilledMarkerImage.src));
+			}
 			else
 			{
 				Format.processMenuIcon(this.editorUi.menus.edgeStyleChange(menu, '', [mxConstants.STYLE_STARTARROW],
@@ -5822,7 +5831,7 @@ StyleFormatPanel.prototype.addStroke = function(container)
 	var lineEnd = ui.toolbar.addMenu(new Menu(mxUtils.bind(this, function(menu)
 	{
 		if (ss.style.shape == 'connector' || ss.style.shape == 'flexArrow' || ss.style.shape == 'filledEdge' ||
-			ss.style.shape == 'wire' || ss.style.shape == 'pipe' || ss.style.shape == 'mxgraph.basic.arc')
+			ss.style.shape == 'wire' || ss.style.shape == 'pipe' || ss.style.shape == 'mxgraph.basic.arc' || ss.style.shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR)
 		{
 			// Copies other marker
 			var otherMarker = mxUtils.getValue(ss.style, mxConstants.STYLE_STARTARROW, mxConstants.NONE);
@@ -5916,6 +5925,13 @@ StyleFormatPanel.prototype.addStroke = function(container)
 				Format.processMenuIcon(this.editorUi.menus.edgeStyleChange(menu, '', [mxConstants.STYLE_ENDARROW, 'endFill'],
 					['doubleBlock', 1], null, null, false, Format.doubleBlockFilledMarkerImage.src), 'scaleX(-1)');
 			}
+			else if(ss.style.shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR)
+			{
+				Format.processMenuIcon(this.editorUi.menus.edgeStyleChange(menu, '', [mxConstants.STYLE_ENDARROW, 'endFill'],
+					[mxConstants.ARROW_CLASSIC, 1], null, null, false, Format.classicFilledMarkerImage.src), 'scaleX(-1)');
+				Format.processMenuIcon(this.editorUi.menus.edgeStyleChange(menu, '', [mxConstants.STYLE_ENDARROW, 'endFill'],
+					[mxConstants.ARROW_OVAL, 1], null, null, false, Format.ovalFilledMarkerImage.src), 'scaleX(-1)');
+			}
 			else
 			{
 				Format.processMenuIcon(this.editorUi.menus.edgeStyleChange(menu, '', [mxConstants.STYLE_ENDARROW],
@@ -5967,7 +5983,10 @@ StyleFormatPanel.prototype.addStroke = function(container)
 	altSolid.style.borderBottomStyle = 'solid';
 	altSymbol.appendChild(altSolid);
 
+	if(ss.style.shape != mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR)
+	{
 	container.appendChild(lineColor);
+	}
 	container.appendChild(altStylePanel);
 	container.appendChild(stylePanel);
 
@@ -6088,7 +6107,7 @@ StyleFormatPanel.prototype.addStroke = function(container)
 		
 		styleSelect.style.visibility = (ss.style.shape == 'connector' ||
 			ss.style.shape == 'filledEdge' || ss.style.shape == 'wire' ||
-			ss.style.shape == 'pipe') ? '' : 'hidden';
+			ss.style.shape == 'pipe' || ss.style.shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR) ? '' : 'hidden';
 		
 		if (mxUtils.getValue(ss.style, mxConstants.STYLE_CURVED, null) == '1')
 		{
@@ -6177,7 +6196,7 @@ StyleFormatPanel.prototype.addStroke = function(container)
 		
 		if (ss.style.shape != 'connector' && ss.style.shape != 'flexArrow' &&
 			ss.style.shape != 'filledEdge' && ss.style.shape != 'wire' &&
-			ss.style.shape != 'pipe' && ss.style.shape != 'mxgraph.basic.arc')
+			ss.style.shape != 'pipe' && ss.style.shape != 'mxgraph.basic.arc' && ss.style.shape != mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR)
 		{
 			mxUtils.setOpacity(lineStart, 30);
 			mxUtils.setOpacity(lineEnd, 30);
@@ -7209,6 +7228,8 @@ DiagramFormatPanel.prototype.init = function()
 		var optSec = this.createCollapsibleSection(mxResources.get('options'), false);
 		optSec.contentDiv.appendChild(this.addOptions(this.createPanel()));
 		this.container.appendChild(optSec.wrapper);
+
+		this.container.appendChild(this.addMondrianOptions(this.createPanel()));
 
 		var paperSec = this.createCollapsibleSection(mxResources.get('paperSize'), true);
 		paperSec.contentDiv.appendChild(this.addPaperSize(this.createPanel()));

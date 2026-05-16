@@ -3000,6 +3000,12 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 		{
 			meta = JSON.parse(temp);
 		}
+
+		//Mondrian addition: Control Repo Attributes
+		if (window.MondrianDialogs != null)
+		{
+			meta = MondrianDialogs.processMetaData(graph, cell, value, meta);
+		}
 	}
 	catch (e)
 	{
@@ -3126,7 +3132,7 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 	});
 
 	// --- ID section ---
-	if (id != null)
+	if (false && id != null) // Mondrian: Hide ID as it is not relevant for users and can cause confusion, also editing it can cause issues with links between elements
 	{
 		var idSection = document.createElement('div');
 		idSection.className = 'geDialogSection';
@@ -3205,11 +3211,30 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 		container.appendChild(idSection);
 	}
 
+	// Start Mondrian Data Dialogs: hook for filtering and layout of attributes, and processing of metadata for attributes
+	temp = MondrianDialogs.filterAttributes(graph, cell, temp);
+	temp = MondrianDialogs.processAttributes(graph, cell, value,temp );
 	for (var i = 0; i < temp.length; i++)
 	{
-		addTextArea(count, temp[i].name, temp[i].value);
-		count++;
+		count += MondrianDialogs.renderDataRow(
+		{
+			ui: ui,
+			graph: graph,
+			cell: cell,
+			value: value,
+			item: temp[i],
+			index: i,
+			count: count,
+			meta: meta,
+			propertiesContainer: propertiesContainer,
+			addTextArea: addTextArea,
+			addRemoveButton: addRemoveButton,
+			names: names,
+			texts: texts,
+			rows: rows
+		});
 	}
+	// End Mondrian Data Dialogs
 
 	// --- Properties section ---
 	var propsSection = document.createElement('div');
@@ -3317,7 +3342,7 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 	mxEvent.addListener(nameInput, 'change', updateAddBtn);
 
 	// --- Options section ---
-	if (ui.editor.graph.getModel().isVertex(cell) || ui.editor.graph.getModel().isEdge(cell))
+	if (false && (ui.editor.graph.getModel().isVertex(cell) || ui.editor.graph.getModel().isEdge(cell))) // Mondrian: disable placeholder option as it is not relevant for users and can cause confusion
 	{
 		var optSection = document.createElement('div');
 		optSection.className = 'geDialogSection';
@@ -3399,7 +3424,7 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 
 			for (var i = 0; i < names.length; i++)
 			{
-				if (texts[i] == null)
+				if (texts[i] == null || names[i] == null) //MONDRIAN ADDITION
 				{
 					value.removeAttribute(names[i]);
 				}
@@ -3431,7 +3456,7 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 
 	var btnRow = document.createElement('div');
 	btnRow.style.textAlign = 'right';
-	btnRow.style.paddingTop = '16px';
+	btnRow.style.paddingTop = '8px';
 
 	if (ui.editor.cancelFirst)
 	{
