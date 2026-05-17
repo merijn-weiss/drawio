@@ -5577,6 +5577,17 @@ StyleFormatPanel.prototype.addStroke = function(container)
 	}), graph.shapeForegroundColor, null, null, strokeTitle);
 	
 	lineColor.style.fontWeight = 'bold';
+
+	if (ss.style.shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR)
+	{
+		var colorBtn = lineColor.querySelector('.geColorBtn');
+
+		if (colorBtn != null)
+		{
+			colorBtn.style.display = 'none';
+		}
+	}
+
 	lineColor.appendChild(styleSelect);
 
 	// Used if only edges selected
@@ -6053,10 +6064,7 @@ StyleFormatPanel.prototype.addStroke = function(container)
 	altSolid.style.borderBottomStyle = 'solid';
 	altSymbol.appendChild(altSolid);
 
-	if(ss.style.shape != mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR)
-	{
 	container.appendChild(lineColor);
-	}
 	container.appendChild(altStylePanel);
 	container.appendChild(stylePanel);
 

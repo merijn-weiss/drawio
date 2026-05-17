@@ -367,7 +367,7 @@ InlineToolbar.prototype.supportsCurvedBend = function(style)
 	var shape = mxUtils.getValue(style, mxConstants.STYLE_SHAPE, null);
 
 	return shape == null || shape == 'connector' ||
-		shape == 'filledEdge' || shape == 'wire' || shape == 'pipe';
+		shape == 'filledEdge' || shape == 'wire' || shape == 'pipe' || shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR;
 };
 
 /**
