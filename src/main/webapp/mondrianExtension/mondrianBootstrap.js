@@ -1,4 +1,5 @@
 (function () {
+
     if (window.__MONDRIAN_BOOTSTRAP_INITIALIZED__) {
         return;
     }
@@ -9,8 +10,14 @@
 
     const BASE = 'mondrianExtension';
 
+    // ------------------------------------------------------------
+    // Utilities
+    // ------------------------------------------------------------
+
     function loadScript(src) {
+
         return new Promise((resolve, reject) => {
+
             if (document.querySelector(`script[src="${src}"]`)) {
                 resolve();
                 return;
@@ -23,34 +30,34 @@
             s.async = false;
 
             s.onload = resolve;
-            s.onerror = () => reject(new Error("Failed to load " + src));
+
+            s.onerror = () => reject(
+                new Error('Failed to load ' + src)
+            );
 
             document.head.appendChild(s);
         });
     }
 
-    async function loadMondrianModules() {
-        await loadScript(`${BASE}/mondrianCore.js`);
-        await loadScript(`${BASE}/mondrianRepo.js`);
-
-        await loadScript(`${BASE}/mondrianDialogConfig.js`);
-
-        await loadScript(`${BASE}/js/diagramly/Editor.js`);
-        
-        await loadScript(`${BASE}/js/grapheditor/Dialogs.js`);
-        await loadScript(`${BASE}/js/grapheditor/Format.js`);
-        await loadScript(`${BASE}/js/grapheditor/Graph.js`);
-    }
-
     function getBaseUrl() {
+
         const url = new URL(window.location.href);
+
         url.hash = '';
         url.search = '';
-        url.pathname = url.pathname.replace(/\/[^/]*$/, '');
+
+        url.pathname =
+            url.pathname.replace(/\/[^/]*$/, '');
+
         return url.toString().replace(/\/$/, '');
     }
 
+    // ------------------------------------------------------------
+    // Runtime configuration
+    // ------------------------------------------------------------
+
     function applyBaseUrls() {
+
         const base = getBaseUrl();
 
         window.DRAWIO_SERVER_URL =
@@ -60,42 +67,63 @@
             window.DRAWIO_BASE_URL || base;
 
         window.DRAWIO_VIEWER_URL =
-            window.DRAWIO_VIEWER_URL || (base + '/js/viewer.min.js');
+            window.DRAWIO_VIEWER_URL ||
+            (base + '/js/viewer.min.js');
 
         window.DRAWIO_LIGHTBOX_URL =
             window.DRAWIO_LIGHTBOX_URL || base;
     }
 
     function applyUrlParams() {
-        window.urlParams = window.urlParams || {};
+
+        window.urlParams =
+            window.urlParams || {};
 
         const defaults = {
+
             sync: 'manual',
             browser: '1',
+
             gh: '1',
+            gl: '1',
+
             db: '0',
             tr: '0',
             picker: '0',
             gapi: '0',
-            od: '0',
-            gl: '1'
+            od: '0'
         };
 
         Object.keys(defaults).forEach((key) => {
-            if (typeof window.urlParams[key] === 'undefined') {
-                window.urlParams[key] = defaults[key];
+
+            if (
+                typeof window.urlParams[key]
+                === 'undefined'
+            ) {
+                window.urlParams[key] =
+                    defaults[key];
             }
         });
     }
 
+    // ------------------------------------------------------------
+    // Config
+    // ------------------------------------------------------------
+
     async function loadMondrianConfig() {
+
         const baseUrl = getBaseUrl();
 
         try {
-            const res = await fetch(`${baseUrl}/mondrian/mondrianDiagrams.configuration`);
+
+            const res = await fetch(
+                `${baseUrl}/mondrian/mondrianDiagrams.configuration`
+            );
 
             if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
+                throw new Error(
+                    `HTTP ${res.status}`
+                );
             }
 
             const config = await res.json();
@@ -107,118 +135,338 @@
             );
 
             if (config.github) {
-                window.DRAWIO_GITHUB_ID = config.github.clientId;
-                window.DRAWIO_GITHUB_APP = config.github.appUrl;
+
+                window.DRAWIO_GITHUB_ID =
+                    config.github.clientId;
+
+                window.DRAWIO_GITHUB_APP =
+                    config.github.appUrl;
             }
+
         } catch (e) {
-            console.warn("Mondrian: config load failed", e);
-            window.DRAWIO_CONFIG = window.DRAWIO_CONFIG || {};
+
+            console.warn(
+                'Mondrian: config load failed',
+                e
+            );
+
+            window.DRAWIO_CONFIG =
+                window.DRAWIO_CONFIG || {};
         }
     }
 
-    function initMondrianRuntime() {
-        if (typeof window.createMondrianCore === 'function') {
-            window.MONDRIAN_CORE = window.createMondrianCore();
+    // ------------------------------------------------------------
+    // Module loading
+    // ------------------------------------------------------------
+
+    async function loadMondrianModules() {
+
+        // Core/runtime
+
+        await loadScript(
+            `${BASE}/mondrianCore.js`
+        );
+
+        await loadScript(
+            `${BASE}/mondrianRepo.js`
+        );
+
+        // Shared configuration
+
+        await loadScript(
+            `${BASE}/mondrianDialogConfig.js`
+        );
+
+        await loadScript(
+            `${BASE}/js/grapheditor/Graph.js`
+        );
+
+        // Editor-only modules
+
+        if (
+            typeof window.EditorUi !== 'undefined'
+        ) {
+
+            await loadScript(
+                `${BASE}/js/diagramly/Editor.js`
+            );
+
+            await loadScript(
+                `${BASE}/js/grapheditor/Dialogs.js`
+            );
+
+            await loadScript(
+                `${BASE}/js/grapheditor/Format.js`
+            );
+        }
+
+    }
+
+    // ------------------------------------------------------------
+    // Runtime init
+    // ------------------------------------------------------------
+
+    async function initMondrianRuntime() {
+
+        if (
+            typeof window.createMondrianCore
+            === 'function'
+        ) {
+
+            window.MONDRIAN_CORE =
+                window.createMondrianCore();
         }
 
         return new Promise((resolve) => {
-            if (typeof window.createMondrianRepo === 'function') {
+
+            if (
+                typeof window.createMondrianRepo
+                === 'function'
+            ) {
+
                 try {
-                    window.createMondrianRepo(function (repo) {
-                        window.MONDRIAN_REPO = repo;
-                        resolve(repo);
-                    });
+
+                    window.createMondrianRepo(
+                        function (repo) {
+
+                            window.MONDRIAN_REPO =
+                                repo;
+
+                            resolve(repo);
+                        }
+                    );
+
                 } catch (e) {
-                    console.error('Mondrian repo init failed', e);
+
+                    console.error(
+                        'Mondrian repo init failed',
+                        e
+                    );
+
                     resolve();
                 }
+
             } else {
-                console.warn("Mondrian: createMondrianRepo not found");
+
+                console.warn(
+                    'Mondrian: createMondrianRepo not found'
+                );
+
                 resolve();
             }
         });
     }
 
+    // ------------------------------------------------------------
+    // Branding
+    // ------------------------------------------------------------
+
     function overrideLogo() {
+
         if (window.Editor) {
-            Editor.logoImage = `${BASE}/images/mondrianIcon.png`;
+
+            Editor.logoImage =
+                `${BASE}/images/mondrianIcon.png`;
         }
     }
 
     function overrideFavicon() {
-        document.querySelectorAll("link[rel*='icon']").forEach(el => el.remove());
 
-        const link = document.createElement('link');
+        document
+            .querySelectorAll("link[rel*='icon']")
+            .forEach(el => el.remove());
+
+        const link =
+            document.createElement('link');
+
         link.rel = 'icon';
         link.type = 'image/png';
-        link.href = `${BASE}/images/favicon-mondrian-32x32.png`;
+
+        link.href =
+            `${BASE}/images/favicon-mondrian-32x32.png`;
 
         document.head.appendChild(link);
     }
 
     function removeExternalRefs() {
-        document.querySelectorAll('meta[itemprop="image"]').forEach(el => el.remove());
-        document.querySelectorAll('link[rel="canonical"]').forEach(el => el.remove());
+
+        document
+            .querySelectorAll(
+                'meta[itemprop="image"]'
+            )
+            .forEach(el => el.remove());
+
+        document
+            .querySelectorAll(
+                'link[rel="canonical"]'
+            )
+            .forEach(el => el.remove());
     }
 
-    async function initBeforeDrawioMain() {
+    // ------------------------------------------------------------
+    // Shared init
+    // ------------------------------------------------------------
+
+    async function initMondrian() {
+
         applyBaseUrls();
         applyUrlParams();
+
         removeExternalRefs();
         overrideFavicon();
 
         await loadMondrianConfig();
+
         await loadMondrianModules();
+
         await initMondrianRuntime();
 
         overrideLogo();
     }
 
-    function hookCheckAllLoaded(retries = 100) {
-        if (typeof window.checkAllLoaded === 'function') {
-            const originalCheckAllLoaded = window.checkAllLoaded;
+    // ------------------------------------------------------------
+    // Viewer runtime
+    // ------------------------------------------------------------
 
-            if (originalCheckAllLoaded.__mondrianHooked) {
+    if (
+
+        typeof window.GraphViewer !== 'undefined' ||
+
+        window.location.href.indexOf(
+            'lightbox=1'
+        ) >= 0 ||
+
+        document.querySelector('.mxgraph')
+        != null
+
+    ) {
+
+        window.onDrawioViewerLoad =
+            async function () {
+
+                try {
+
+
+                    await initMondrian();
+
+
+                    if (
+                        typeof GraphViewer !== 'undefined' &&
+                        typeof GraphViewer.processElements === 'function'
+                    ) {
+
+                        GraphViewer.processElements();
+                    }
+
+                } catch (e) {
+
+                    console.error(
+                        'Mondrian: viewer bootstrap failed',
+                        e
+                    );
+                }
+            };
+
+        return;
+    }
+
+    // ------------------------------------------------------------
+    // Editor runtime
+    // ------------------------------------------------------------
+
+    function hookCheckAllLoaded(
+        retries = 100
+    ) {
+
+        if (
+            typeof window.checkAllLoaded
+            === 'function'
+        ) {
+
+            const originalCheckAllLoaded =
+                window.checkAllLoaded;
+
+            if (
+                originalCheckAllLoaded
+                    .__mondrianHooked
+            ) {
                 return;
             }
 
             let mondrianBooting = false;
             let mondrianReady = false;
 
-            window.checkAllLoaded = function () {
-                if (!window.mxScriptsLoaded || !window.mxWinLoaded) {
-                    return originalCheckAllLoaded.apply(this, arguments);
-                }
+            window.checkAllLoaded =
+                function () {
 
-                if (mondrianReady) {
-                    return originalCheckAllLoaded.apply(this, arguments);
-                }
+                    if (
+                        !window.mxScriptsLoaded ||
+                        !window.mxWinLoaded
+                    ) {
 
-                if (mondrianBooting) {
-                    return;
-                }
+                        return originalCheckAllLoaded
+                            .apply(this, arguments);
+                    }
 
-                mondrianBooting = true;
+                    if (mondrianReady) {
 
-                initBeforeDrawioMain()
-                    .then(() => {
-                        mondrianReady = true;
-                        originalCheckAllLoaded.apply(window, arguments);
-                    })
-                    .catch((e) => {
-                        console.error("Mondrian: bootstrap failed", e);
+                        return originalCheckAllLoaded
+                            .apply(this, arguments);
+                    }
 
-                        // Fail open so draw.io still loads.
-                        mondrianReady = true;
-                        originalCheckAllLoaded.apply(window, arguments);
-                    });
-            };
+                    if (mondrianBooting) {
+                        return;
+                    }
 
-            window.checkAllLoaded.__mondrianHooked = true;
+                    mondrianBooting = true;
+
+                    initMondrian()
+
+                        .then(() => {
+
+                            mondrianReady = true;
+
+                            originalCheckAllLoaded
+                                .apply(
+                                    window,
+                                    arguments
+                                );
+                        })
+
+                        .catch((e) => {
+
+                            console.error(
+                                'Mondrian: bootstrap failed',
+                                e
+                            );
+
+                            mondrianReady = true;
+
+                            originalCheckAllLoaded
+                                .apply(
+                                    window,
+                                    arguments
+                                );
+                        });
+                };
+
+            window.checkAllLoaded
+                .__mondrianHooked = true;
+
         } else if (retries > 0) {
-            setTimeout(() => hookCheckAllLoaded(retries - 1), 25);
+
+            setTimeout(
+                () => hookCheckAllLoaded(
+                    retries - 1
+                ),
+                25
+            );
+
         } else {
-            console.error("Mondrian: checkAllLoaded not found");
+
+            console.error(
+                'Mondrian: checkAllLoaded not found'
+            );
         }
     }
 

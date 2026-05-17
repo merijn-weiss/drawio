@@ -51,16 +51,17 @@ OUTPUT FILES (in src/main/webapp/js/):
 	-->
 	<target name="merge">
 		<!-- MONDRIAN: Shared files for app.min.js and viewer-static.min.js -->
-		<!--<java fork="false" classname="Xml2Js" classpath=".">
+		<java fork="false" classname="Xml2JsMondrian" classpath=".">
 			<arg value="../../src/main/webapp/mondrian/stencils"/>
 			<arg value="../../src/main/webapp/mondrianExtension/mondrian-stencils.min.js"/>
-		</java>-->
+		</java>
 		
 		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/mondrian-base.min.js">
 			<sources dir="${war.dir}/mondrianExtension">
 				<file name="mondrianCore.js"/>
 				<file name="mondrian-stencils.min.js"/>
 				<file name="mondrianRepo.js"/>
+				<file name="mondrianBootstrap.js"/>
 			</sources>
 		</jscomp>
 
@@ -401,7 +402,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 		<concat destfile="${war.dir}/js/viewer-static.min.js" fixlastline="yes" append="no">
 			<filelist dir="${basedir}" files="base-viewer.min.js"/>
 			<filelist dir="${war.dir}/js" files="shapes-14-6-5.min.js"/>
-			<filelist dir="${basedir}" files=".tmp3.js,.tmp2.min.js"/>
+			<filelist dir="${basedir}" files="mondrian-base.min.js,.tmp3.js,.tmp2.min.js"/>
 		</concat>
 
 		<!-- Clean up viewer temp files -->

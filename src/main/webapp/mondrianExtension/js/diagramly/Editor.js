@@ -19,30 +19,4 @@
     // -------------------------
     Editor.prototype.appName = 'Mondrian Diagrams';
 
-    // -------------------------
-    // Graph extensions
-    // -------------------------
-    Graph.prototype.setMondrianHighlightPredefinedEnabled = function (value, fireEvent)
-    {
-        if (mxClient.IS_SVG && !mxClient.IS_SF)
-        {
-            this.mondrianHighlightPredefinedEnabled = value;
-
-            fireEvent = (fireEvent != null) ? fireEvent : true;
-
-            if (fireEvent)
-            {
-                this.fireEvent(new mxEventObject('mondrianHighlightPredefinedChanged'));
-            }
-        }
-    };
-
-    Graph.prototype.refreshMondrianDiagram = function ()
-    {
-        if (mxClient.IS_SVG && !mxClient.IS_SF)
-        {
-            this.fireEvent(new mxEventObject('mondrianHighlightPredefinedChanged'));
-        }
-    };
-
 })();
