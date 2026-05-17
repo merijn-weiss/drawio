@@ -63,9 +63,22 @@ OUTPUT FILES (in src/main/webapp/js/):
 				<file name="mondrianRepo.js"/>
 				<file name="mondrianBootstrap.js"/>
 			</sources>
+			<sources dir="${war.dir}/mondrianExtension/js/grapheditor">
+				<file name="Graph.js"/>
+			</sources>
 		</jscomp>
 
 		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/mondrian-editor.min.js">
+			<sources dir="${war.dir}/mondrianExtension">
+				<file name="mondrianDialogConfig.js"/>
+			</sources>
+			<sources dir="${war.dir}/mondrianExtension/js/diagramly">
+				<file name="Editor.js"/>
+			</sources>
+			<sources dir="${war.dir}/mondrianExtension/js/grapheditor">
+				<file name="Dialogs.js"/>
+				<file name="Format.js"/>
+			</sources>
 		</jscomp>
 
 		<concat destfile="${basedir}/mondrian-js-libs.min.js" fixlastline="yes" append="no">

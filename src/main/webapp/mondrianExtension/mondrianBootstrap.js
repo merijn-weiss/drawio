@@ -156,53 +156,6 @@
     }
 
     // ------------------------------------------------------------
-    // Module loading
-    // ------------------------------------------------------------
-
-    async function loadMondrianModules() {
-
-        // Core/runtime
-
-        await loadScript(
-            `${BASE}/mondrianCore.js`
-        );
-
-        await loadScript(
-            `${BASE}/mondrianRepo.js`
-        );
-
-        // Shared configuration
-
-        await loadScript(
-            `${BASE}/mondrianDialogConfig.js`
-        );
-
-        await loadScript(
-            `${BASE}/js/grapheditor/Graph.js`
-        );
-
-        // Editor-only modules
-
-        if (
-            typeof window.EditorUi !== 'undefined'
-        ) {
-
-            await loadScript(
-                `${BASE}/js/diagramly/Editor.js`
-            );
-
-            await loadScript(
-                `${BASE}/js/grapheditor/Dialogs.js`
-            );
-
-            await loadScript(
-                `${BASE}/js/grapheditor/Format.js`
-            );
-        }
-
-    }
-
-    // ------------------------------------------------------------
     // Runtime init
     // ------------------------------------------------------------
 
@@ -315,9 +268,12 @@
         removeExternalRefs();
         overrideFavicon();
 
-        await loadMondrianConfig();
+        const isStaticViewer =
+            typeof window.GraphViewer !== 'undefined';
 
-        await loadMondrianModules();
+        if (!isStaticViewer) {
+            await loadMondrianConfig();
+        }
 
         await initMondrianRuntime();
 
