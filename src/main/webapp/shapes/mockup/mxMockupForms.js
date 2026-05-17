@@ -347,13 +347,17 @@ mxUtils.extend(mxShapeMockupComboBox, mxShape);
 mxShapeMockupComboBox.prototype.cst = {
 		MAIN_TEXT : 'mainText',
 		FILL_COLOR2 : 'fillColor2',
+		FILL_COLOR3 : 'fillColor3',
+		FILL_COLOR4 : 'fillColor4',
 		TEXT_COLOR : 'textColor',
 		TEXT_SIZE : 'textSize',
 		SHAPE_COMBO_BOX : 'mxgraph.mockup.forms.comboBox'
 };
 
 mxShapeMockupComboBox.prototype.customProperties = [
-	{name: 'fillColor2', dispName: 'Fill2 Color', type: 'color', primary:true}
+	{name: 'fillColor2', dispName: 'Fill2 Color', type: 'color', primary:true},
+	{name: 'fillColor3', dispName: 'Fill3 Color', type: 'color', primary:true, defVal:'#ffffff'},
+	{name: 'fillColor4', dispName: 'Fill4 Color', type: 'color', primary:true, defVal:'#ffffff'}
 ];
 
 /**
@@ -372,7 +376,8 @@ mxShapeMockupComboBox.prototype.paintVertexShape = function(c, x, y, w, h)
 
 mxShapeMockupComboBox.prototype.background = function(c, x, y, w, h)
 {
-	c.setFillColor('#ffffff');
+	var fillColor3 = mxUtils.getValue(this.style, mxShapeMockupComboBox.prototype.cst.FILL_COLOR3, '#ffffff').toString();
+	c.setFillColor(fillColor3);
 	c.roundrect(0, 0, w, h, 5, 5);
 	c.fillAndStroke();
 };
@@ -381,6 +386,7 @@ mxShapeMockupComboBox.prototype.foreground = function(c, x, y, w, h)
 {
 	var fillColor = mxUtils.getValue(this.style, mxConstants.STYLE_FILLCOLOR, '').toString();
 	var fillColor2 = mxUtils.getValue(this.style, mxShapeMockupComboBox.prototype.cst.FILL_COLOR2, '').toString();
+	var fillColor4 = mxUtils.getValue(this.style, mxShapeMockupComboBox.prototype.cst.FILL_COLOR4, '#ffffff').toString();
 	c.setGradient(fillColor, fillColor2, w - 30, 0, 30, h, mxConstants.DIRECTION_SOUTH, 1, 1);
 	c.begin();
 	c.moveTo(w - 30, 0);
@@ -392,7 +398,7 @@ mxShapeMockupComboBox.prototype.foreground = function(c, x, y, w, h)
 	c.close();
 	c.fillAndStroke();
 
-	c.setFillColor('#ffffff');
+	c.setFillColor(fillColor4);
 	c.begin();
 	c.moveTo(w - 22, h * 0.5 - 5);
 	c.lineTo(w - 15, h * 0.5 + 5);
@@ -450,6 +456,7 @@ mxShapeMockupSpinner.prototype.cst = {
 		ADJ_PLUSMINUS : 'plusMinus',
 		ADJ_ARROW : 'arrow',
 
+		FILL_COLOR2 : 'fillColor2',
 		MAIN_TEXT : 'mainText',
 		TEXT_COLOR : 'textColor',
 		TEXT_SIZE : 'textSize',
@@ -465,7 +472,8 @@ mxShapeMockupSpinner.prototype.customProperties = [
 	},
 	{name: 'adjStyle', dispName: 'Button Style', type: 'enum', 
 		enumList: [{val: 'triangle', dispName: 'Triangle'}, {val: 'plusMinus', dispName: '+/-'}, {val: 'arrow', dispName: 'Arrow'}]
-	}
+	},
+	{name: 'fillColor2', dispName: 'Fill2 Color', type: 'color', primary:true, defVal:'#ffffff'}
 ];
 
 /**
@@ -485,7 +493,8 @@ mxShapeMockupSpinner.prototype.paintVertexShape = function(c, x, y, w, h)
 
 mxShapeMockupSpinner.prototype.background = function(c, w, h)
 {
-	c.setFillColor('#ffffff');
+	var fillColor2 = mxUtils.getValue(this.style, mxShapeMockupSpinner.prototype.cst.FILL_COLOR2, '#ffffff');
+	c.setFillColor(fillColor2);
 	c.roundrect(0, 0, w, h, 10, 10);
 	c.fillAndStroke();
 };

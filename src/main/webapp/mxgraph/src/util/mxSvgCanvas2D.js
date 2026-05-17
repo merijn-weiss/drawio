@@ -3461,7 +3461,10 @@ mxSvgCanvas2D.prototype.text = function(x, y, w, h, str, align, valign, wrap, fo
 				var text = this.createElement('text');
 				var offset = new mxPoint(0, 0);
 
+				// Vertical writing-mode is not supported by the SVG <text> path
+				// (see mxText.js:980), so fall back to foreignObject which does.
 				if (this.allowConvertHtmlToSvg &&
+					(dir == null || dir.substring(0, 9) != 'vertical-') &&
 					this.convertHtmlToSvg(div.firstChild.firstChild, text, offset))
 				{
 					if (offset.textHeight != null)

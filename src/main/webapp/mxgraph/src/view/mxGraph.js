@@ -9466,7 +9466,11 @@ mxGraph.prototype.isWrapping = function(cell)
 {
 	var style = this.getCurrentCellStyle(cell);
 	var state = this.view.getState(cell);
+	var dir = style[mxConstants.STYLE_TEXT_DIRECTION];
+	// Vertical text forces the foreignObject path (see mxSvgCanvas2D.text),
+	// so use the HTML whiteSpace key, not svgWhiteSpace, in that case.
 	var usesSvg = mxUtils.getValue(style, 'convertToSvg', '0') == '1' &&
+		(dir == null || dir.substring(0, 9) != 'vertical-') &&
 		(state == null || state.text == null || state.text.node == null ||
 		state.text.node.getElementsByTagName('foreignObject').length == 0);
 

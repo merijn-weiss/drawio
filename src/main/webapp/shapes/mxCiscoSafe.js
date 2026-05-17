@@ -26,6 +26,11 @@ mxShapeCiscoSafeCompositeIcon.prototype.cst = {
 		SHAPE_COMPOSITE_ICON : 'mxgraph.cisco_safe.compositeIcon'
 };
 
+mxShapeCiscoSafeCompositeIcon.prototype.customProperties = [
+	{name: 'bgColor', dispName: 'Background Color', type: 'color', primary: true, defVal: '#C2E0AE'},
+	{name: 'bgDotColor', dispName: 'Background Dot Color', type: 'color', primary: true, defVal: '#ffffff'}
+];
+
 /**
 * Function: paintVertexShape
 * 
@@ -35,6 +40,7 @@ mxShapeCiscoSafeCompositeIcon.prototype.paintVertexShape = function(c, x, y, w, 
 {
 	var strokeColor = mxUtils.getValue(this.state.style, 'strokeColor', 'none');
 	var bgColor = mxUtils.getValue(this.state.style, 'bgColor', '#C2E0AE');
+	var bgDotColor = mxUtils.getValue(this.state.style, 'bgDotColor', '#ffffff');
 	var fillColor = mxUtils.getValue(this.state.style, 'fillColor', 'none');
 	var shadow = mxUtils.getValue(this.state.style, 'shadow', false);
 	var opacity = parseFloat(mxUtils.getValue(this.state.style, 'opacity', false));
@@ -122,7 +128,7 @@ mxShapeCiscoSafeCompositeIcon.prototype.paintVertexShape = function(c, x, y, w, 
 		}
 		
 		c.setAlpha(0.5);
-		c.setFillColor('#ffffff');
+		c.setFillColor(bgDotColor);
 		
 		c.ellipse(w * 0.105, h * 0.48, w * 0.04, h * 0.04);
 		c.fill();

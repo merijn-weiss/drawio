@@ -596,7 +596,6 @@
             <close/>
         </path>
         <fillstroke/>
-        <strokecolor color="none"/>
         <fillcolor color="fillColor2" default="#2171ba"/>
         <path>
             <move x="40.8" y="95.5"/>
@@ -712,7 +711,6 @@
             <close/>
         </path>
         <fillstroke/>
-        <strokecolor color="none"/>
         <fillcolor color="fillColor2" default="#2171ba"/>
         <path>
             <move x="40.75" y="94.72"/>

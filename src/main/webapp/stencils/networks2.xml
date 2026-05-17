@@ -6847,7 +6847,7 @@
             <close/>
         </path>
         <fill/>
-        <fillcolor color="neutralFill"/>
+        <fillcolor color="neutralFill" default="#9DA6A8"/>
         <rect h="7" w="64" x="18" y="75.5"/>
         <fill/>
         <fillcolor color="stroke"/>

@@ -508,7 +508,7 @@ mxMermaidToDrawio = function(graph, diagramtype, extra)
                 }
             break;
             case 'erdEntity':
-                var attributes = node.entityData.attributes;
+                var attributes = node.entityData.attributes || [];
                 var rowCount = attributes.length;
                 var rowHeight = (node.height - 25) / rowCount; // 25 is header height                
                 var y = rowHeight;

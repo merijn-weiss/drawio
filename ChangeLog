@@ -1,3 +1,70 @@
+15-MAY-2026: 30.0.2
+
+- Makes some Mockup shapes multi-color flexible
+- Makes some MSCAE shapes multi-color flexible
+- Makes some Salesforce shapes multi-color flexible
+- Small fix for a Network 2025 shape
+- Small bugfix for some Mockup shapes
+- Additional color flexibility for some Cisco Safe shapes
+- Adds multi color fill for some Citrix stencils
+- Adds multi-color support for some GCP2 shapes and stencils
+- Adds multi-color support for GCP2 shapes and stencils
+- Adds multi-color support for a GCP2 icon stencil
+- Adds multi-color support for MS Office stencils
+- Fixes size for some stencils in the Rack library
+- Adds multi-color support for some Rack stencils
+- Makes HPE Aruba Gateways and Controllers subgroup in Rack shapes color flexible
+- Makes HPE Aruba Security subgroup in Rack shapes color flexible
+- Makes part of HPE Aruba Switches subgroup in Rack shapes color flexible
+- Makes some Rack stencils color flexible
+- Makes some Rack stencils color flexible
+- Makes the rest of Rack/Aruba stencils color flexible
+- Small fix for an Aruba switch stencil
+- Makes Rack/IBM stencils color flexible
+- Stencil size fix for a Rack stencil
+- Makes Rack/Oracle stencils color flexible
+- Adds multicolor support to Veeam stencils
+- Adds multicolor support to EIP stencils
+- Adds multicolor support to some GMDL stencils
+- Adds multicolor support to some Floorplan stencils
+- Fixed NPE in mermaid to draw.io [#drawio-5553]
+- Fallback to FO when vertical writing-mode set in HTML [DID-18880]
+- Updated github actions, replaced 3rd party actions, and specified needed permissions
+- Build of version 30.0.2
+
+15-MAY-2026: 30.0.2
+
+- Makes some Mockup shapes multi-color flexible
+- Makes some MSCAE shapes multi-color flexible
+- Makes some Salesforce shapes multi-color flexible
+- Small fix for a Network 2025 shape
+- Small bugfix for some Mockup shapes
+- Additional color flexibility for some Cisco Safe shapes
+- Adds multi color fill for some Citrix stencils
+- Adds multi-color support for some GCP2 shapes and stencils
+- Adds multi-color support for GCP2 shapes and stencils
+- Adds multi-color support for a GCP2 icon stencil
+- Adds multi-color support for MS Office stencils
+- Fixes size for some stencils in the Rack library
+- Adds multi-color support for some Rack stencils
+- Makes HPE Aruba Gateways and Controllers subgroup in Rack shapes color flexible
+- Makes HPE Aruba Security subgroup in Rack shapes color flexible
+- Makes part of HPE Aruba Switches subgroup in Rack shapes color flexible
+- Makes some Rack stencils color flexible
+- Makes some Rack stencils color flexible
+- Makes the rest of Rack/Aruba stencils color flexible
+- Small fix for an Aruba switch stencil
+- Makes Rack/IBM stencils color flexible
+- Stencil size fix for a Rack stencil
+- Makes Rack/Oracle stencils color flexible
+- Adds multicolor support to Veeam stencils
+- Adds multicolor support to EIP stencils
+- Adds multicolor support to some GMDL stencils
+- Adds multicolor support to some Floorplan stencils
+- Fixed NPE in mermaid to draw.io [#drawio-5553]
+- Fallback to FO when vertical writing-mode set in HTML [DID-18880]
+- Updated github actions, replaced 3rd party actions, and specified needed permissions
+
 11-MAY-2026: 30.0.1
 
 - Corrects rounded of Archimate Techonology Functions shape [jgraph/drawio#5571]

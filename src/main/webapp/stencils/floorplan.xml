@@ -1891,6 +1891,24 @@
         <fill/>
     </foreground>
 </shape>
+<shape aspect="variable" h="67" name="Toilet 2" strokewidth="inherit" w="50">
+    <connections/>
+    <background>
+        <roundrect arcsize="13.33" h="15" w="50" x="0" y="0"/>
+    </background>
+    <foreground>
+        <fillstroke/>
+        <rect h="17" w="32" x="9" y="15"/>
+        <fillstroke/>
+        <ellipse h="50" w="40" x="5" y="17"/>
+        <fillstroke/>
+        <ellipse h="30" w="24" x="13" y="29"/>
+        <stroke/>
+        <fillcolor color="strokeColor" default="#000000"/>
+        <ellipse h="14" w="10" x="20" y="29"/>
+        <fill/>
+    </foreground>
+</shape>
 <shape aspect="variable" h="40" name="Water Cooler" strokewidth="inherit" w="40">
     <connections/>
     <background>
@@ -1899,6 +1917,20 @@
     <foreground>
         <fillstroke/>
         <fillcolor color="#eeeeee"/>
+        <ellipse h="36" w="36" x="2" y="2"/>
+        <fillstroke/>
+        <ellipse h="6" w="6" x="17" y="17"/>
+        <stroke/>
+    </foreground>
+</shape>
+<shape aspect="variable" h="40" name="Water Cooler 2" strokewidth="inherit" w="40">
+    <connections/>
+    <background>
+        <roundrect arcsize="7.5" h="40" w="40" x="0" y="0"/>
+    </background>
+    <foreground>
+        <fillstroke/>
+        <fillcolor color="fillColor1" default="#eeeeee"/>
         <ellipse h="36" w="36" x="2" y="2"/>
         <fillstroke/>
         <ellipse h="6" w="6" x="17" y="17"/>

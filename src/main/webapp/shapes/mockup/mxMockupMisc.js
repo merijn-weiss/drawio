@@ -1563,12 +1563,16 @@ mxUtils.extend(mxShapeMockupPin, mxShape);
 mxShapeMockupPin.prototype.cst = {
 		SHAPE_PIN : 'mxgraph.mockup.misc.pin',
 		FILL_COLOR2 : 'fillColor2',
-		FILL_COLOR3 : 'fillColor3'
+		FILL_COLOR3 : 'fillColor3',
+		FILL_COLOR4 : 'fillColor4',
+		STROKE_COLOR2 : 'strokeColor2',
 };
 
 mxShapeMockupPin.prototype.customProperties = [
-	{name: 'fillColor2', dispName: 'Fill2 Color', type: 'color'},
-	{name: 'fillColor3', dispName: 'Fill3 Color', type: 'color'}
+	{name: 'fillColor2', dispName: 'Fill2 Color', type: 'color', primary: 'true'},
+	{name: 'fillColor3', dispName: 'Fill3 Color', type: 'color', primary: 'true'},
+	{name: 'fillColor4', dispName: 'Fill4 Color', type: 'color', primary: 'true', defVal: '#ffffff'},
+	{name: 'strokeColor2', dispName: 'Stroke2 Color', type: 'color', primary: 'true', defVal: '#666666'}
 ];
 
 /**
@@ -1580,12 +1584,14 @@ mxShapeMockupPin.prototype.paintVertexShape = function(c, x, y, w, h)
 {
 	var fillColor2 = mxUtils.getValue(this.style, mxShapeMockupPin.prototype.cst.FILL_COLOR2, '#000000');
 	var fillColor3 = mxUtils.getValue(this.style, mxShapeMockupPin.prototype.cst.FILL_COLOR3, '#000000');
+	var fillColor4 = mxUtils.getValue(this.style, mxShapeMockupPin.prototype.cst.FILL_COLOR4, '#ffffff');
 	var strokeColor = mxUtils.getValue(this.style, mxConstants.STYLE_STROKECOLOR, '#000000');
+	var strokeColor2 = mxUtils.getValue(this.style, mxShapeMockupPin.prototype.cst.STROKE_COLOR2, '#666666');
 	c.setShadow(false);
 	c.translate(x, y);
 
 	c.setStrokeWidth(3);
-	c.setStrokeColor('#666666');
+	c.setStrokeColor(strokeColor2);
 	c.begin();
 	c.moveTo(w * 0.5, h * 0.4);
 	c.lineTo(w * 0.5, h);
@@ -1598,7 +1604,7 @@ mxShapeMockupPin.prototype.paintVertexShape = function(c, x, y, w, h)
 	c.ellipse(0, 0, w, h * 0.4);
 	c.fillAndStroke();
 
-	c.setFillColor('#ffffff');
+	c.setFillColor(fillColor4);
 	c.setAlpha(0.5);
 	c.ellipse(w * 0.2, h * 0.08, w * 0.3, h * 0.12);
 	c.fill();
