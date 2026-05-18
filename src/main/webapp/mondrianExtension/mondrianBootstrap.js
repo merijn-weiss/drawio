@@ -266,18 +266,18 @@
         applyUrlParams();
 
         removeExternalRefs();
-        overrideFavicon();
 
         const isStaticViewer =
             typeof window.GraphViewer !== 'undefined';
 
         if (!isStaticViewer) {
+            overrideFavicon();
             await loadMondrianConfig();
+            overrideLogo();
         }
 
         await initMondrianRuntime();
 
-        overrideLogo();
     }
 
     // ------------------------------------------------------------
