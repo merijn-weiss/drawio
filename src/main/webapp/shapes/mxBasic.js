@@ -95,7 +95,8 @@ mxUtils.extend(mxShapeBasicRectCallout, mxActor);
 
 mxShapeBasicRectCallout.prototype.customProperties = [
 	{name: 'dx', dispName: 'Callout Position', type: 'float', min:0, defVal:30},
-	{name: 'dy', dispName: 'Callout Size', type: 'float', min:0, defVal:15}
+	{name: 'dy', dispName: 'Callout Size', type: 'float', min:0, defVal:15},
+	{name: 'boundedLbl', dispName: 'Bounded Label', type: 'bool', defVal: false}
 ];
 
 mxShapeBasicRectCallout.prototype.cst = {RECT_CALLOUT : 'mxgraph.basic.rectCallout'};
@@ -204,7 +205,8 @@ mxShapeBasicRoundRectCallout.prototype.getLabelMargins = mxShapeBasicRectCallout
 mxShapeBasicRoundRectCallout.prototype.customProperties = [
 	{name: 'size', dispName: 'Arc Size', type: 'float', min:0, defVal:5},
 	{name: 'dx', dispName: 'Callout Position', type: 'float', min:0, defVal:30},
-	{name: 'dy', dispName: 'Callout Size', type: 'float', min:0, defVal:15}
+	{name: 'dy', dispName: 'Callout Size', type: 'float', min:0, defVal:15},
+	{name: 'boundedLbl', dispName: 'Bounded Label', type: 'bool', defVal: false}
 ];
 
 /**
@@ -2076,10 +2078,33 @@ function mxShapeBasicLayeredRect(bounds, fill, stroke, strokewidth)
 mxUtils.extend(mxShapeBasicLayeredRect, mxActor);
 
 mxShapeBasicLayeredRect.prototype.customProperties = [
-	{name: 'dx', dispName: 'Layer Distance', type: 'float', mix:0, defVal:10}
+	{name: 'dx', dispName: 'Layer Distance', type: 'float', mix:0, defVal:10},
+	{name: 'boundedLbl', dispName: 'Bounded Label', type: 'bool', defVal: false}
 ];
 
 mxShapeBasicLayeredRect.prototype.cst = {LAYERED_RECT : 'mxgraph.basic.layered_rect'};
+
+/**
+* Function: getLabelMargins
+*
+* Confines the label to the front rectangle if boundedLbl=1. Flips are
+* handled in mxShape.getLabelBounds via mxUtils.getDirectedBounds.
+*/
+mxShapeBasicLayeredRect.prototype.getLabelMargins = function(rect)
+{
+	if (mxUtils.getValue(this.style, 'boundedLbl', false))
+	{
+		var w = rect.width / this.scale;
+		var h = rect.height / this.scale;
+		var dx = Math.max(0, Math.min(w, parseFloat(mxUtils.getValue(this.style, 'dx', this.dx))));
+
+		dx = Math.min(w * 0.5, h * 0.5, dx) * this.scale;
+
+		return new mxRectangle(0, 0, dx, dx);
+	}
+
+	return null;
+};
 
 /**
 * Function: paintVertexShape
@@ -3361,8 +3386,8 @@ mxShapeBasicPolygon.prototype.constraints = null;
                             bounds.y + coords[index][1] * bounds.height);
                     }, function(bounds, pt)
                     {
-                        var x = Math.round(100 * Math.max(0, Math.min(1, (pt.x - bounds.x) / bounds.width))) / 100;
-                        var y = Math.round(100 * Math.max(0, Math.min(1, (pt.y - bounds.y) / bounds.height))) / 100;
+                        var x = Math.round(100000 * Math.max(0, Math.min(1, (pt.x - bounds.x) / bounds.width))) / 100000;
+                        var y = Math.round(100000 * Math.max(0, Math.min(1, (pt.y - bounds.y) / bounds.height))) / 100000;
 
                         coords[index] = [x, y];
                         state.style['polyCoords'] = JSON.stringify(coords);
@@ -3425,8 +3450,8 @@ mxShapeBasicPolygon.prototype.constraints = null;
                                 bounds.y + curves[segIndex][2] * bounds.height);
                         }, function(bounds, pt)
                         {
-                            var x = Math.round(100 * Math.max(0, Math.min(1, (pt.x - bounds.x) / bounds.width))) / 100;
-                            var y = Math.round(100 * Math.max(0, Math.min(1, (pt.y - bounds.y) / bounds.height))) / 100;
+                            var x = Math.round(100000 * Math.max(0, Math.min(1, (pt.x - bounds.x) / bounds.width))) / 100000;
+                            var y = Math.round(100000 * Math.max(0, Math.min(1, (pt.y - bounds.y) / bounds.height))) / 100000;
 
                             curves[segIndex] = ['Q', x, y];
                             state.style['polyCurves'] = JSON.stringify(curves);

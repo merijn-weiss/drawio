@@ -3132,33 +3132,6 @@
         <save/>
         <save/>
         <save/>
-        <save/>
-        <save/>
-        <strokecolor color="#0f0"/>
-        <fillcolor color="#f00"/>
-        <strokewidth width="0.77"/>
-        <fillalpha alpha="0.87"/>
-        <rect h="19.687" w="24.241" x="536.838" y="32.29"/>
-        <fillstroke/>
-        <restore/>
-        <rect/>
-        <stroke/>
-        <fillcolor color="#0f0"/>
-        <fillalpha alpha="0.87"/>
-        <path>
-            <move x="544.561" y="33.744"/>
-            <line x="544.561" y="37.702"/>
-            <line x="540.672" y="37.702"/>
-            <line x="540.672" y="47.6"/>
-            <line x="557.121" y="47.6"/>
-            <line x="557.121" y="37.702"/>
-            <line x="553.232" y="37.702"/>
-            <line x="553.232" y="33.744"/>
-            <line x="544.561" y="33.744"/>
-            <close/>
-        </path>
-        <fill/>
-        <restore/>
         <rect/>
         <stroke/>
         <strokecolor color="#343434"/>
@@ -3382,22 +3355,9 @@
         <save/>
         <save/>
         <save/>
-        <strokecolor color="#333"/>
-        <fillcolor color="#5f5f5f"/>
-        <strokewidth width="0.77"/>
-        <path>
-            <move x="543.636" y="35.898"/>
-            <curve x1="543.636" x2="541.176" x3="538.146" y1="32.868" y2="30.408" y3="30.408"/>
-            <line x="397.99" y="30.408"/>
-            <curve x1="394.96" x2="392.5" x3="392.5" y1="30.408" y2="32.868" y3="35.898"/>
-            <curve x1="392.5" x2="394.96" x3="397.99" y1="38.929" y2="41.389" y3="41.389"/>
-            <line x="538.146" y="41.389"/>
-            <curve x1="541.176" x2="543.636" x3="543.636" y1="41.389" y2="38.929" y3="35.898"/>
-            <close/>
-        </path>
-        <fillstroke/>
         <strokecolor color="#404040"/>
         <fillcolor color="panelColor" default="#666"/>
+        <strokewidth width="0.77"/>
         <linejoin join="miter"/>
         <rect h="62.973" w="629.48" x="0" y="0"/>
         <fillstroke/>
@@ -3835,22 +3795,9 @@
         <save/>
         <save/>
         <save/>
-        <strokecolor color="#333"/>
-        <fillcolor color="#5c5c5c"/>
-        <strokewidth width="0.77"/>
-        <path>
-            <move x="543.636" y="35.898"/>
-            <curve x1="543.636" x2="541.176" x3="538.146" y1="32.868" y2="30.408" y3="30.408"/>
-            <line x="397.99" y="30.408"/>
-            <curve x1="394.96" x2="392.5" x3="392.5" y1="30.408" y2="32.868" y3="35.898"/>
-            <curve x1="392.5" x2="394.96" x3="397.99" y1="38.929" y2="41.389" y3="41.389"/>
-            <line x="538.146" y="41.389"/>
-            <curve x1="541.176" x2="543.636" x3="543.636" y1="41.389" y2="38.929" y3="35.898"/>
-            <close/>
-        </path>
-        <fillstroke/>
         <strokecolor color="#4b4b4b"/>
         <fillcolor color="panelColor" default="#666"/>
+        <strokewidth width="0.77"/>
         <linejoin join="miter"/>
         <rect h="62.973" w="629.48" x="0" y="0"/>
         <fillstroke/>
@@ -4254,69 +4201,11 @@
         <save/>
         <save/>
         <save/>
-        <save/>
         <strokecolor color="#282828"/>
         <fillcolor color="panelColor" default="#666"/>
         <strokewidth width="0.57"/>
         <rect h="62.973" w="630.016" x="0" y="0"/>
         <fillstroke/>
-        <strokecolor color="#0f0"/>
-        <fillcolor color="#f00"/>
-        <strokewidth width="0.79"/>
-        <linejoin join="round"/>
-        <fillalpha alpha="0.87"/>
-        <path>
-            <move x="570.086" y="5.766"/>
-            <curve x1="568.519" x2="567.246" x3="567.246" y1="5.766" y2="7.038" y3="8.606"/>
-            <line x="567.246" y="47.002"/>
-            <curve x1="567.246" x2="568.519" x3="570.086" y1="48.569" y2="49.842" y3="49.842"/>
-            <line x="598.167" y="49.842"/>
-            <curve x1="599.734" x2="601.007" x3="601.007" y1="49.842" y2="48.569" y3="47.002"/>
-            <line x="601.007" y="8.606"/>
-            <curve x1="601.007" x2="599.734" x3="598.167" y1="7.038" y2="5.766" y3="5.766"/>
-            <line x="570.086" y="5.766"/>
-            <close/>
-        </path>
-        <fillstroke/>
-        <restore/>
-        <rect/>
-        <stroke/>
-        <fillcolor color="#0f0"/>
-        <path>
-            <move x="579.973" y="47.023"/>
-            <line x="571.49" y="38.491"/>
-            <line x="571.49" y="18.064"/>
-            <line x="579.681" y="9.776"/>
-            <line x="592.113" y="9.776"/>
-            <curve x1="595.583" x2="597.183" x3="597.183" y1="9.776" y2="11.56" y3="15.09"/>
-            <line x="597.183" y="41.173"/>
-            <curve x1="597.183" x2="595.55" x3="592.015" y1="44.48" y2="47.023" y3="47.023"/>
-            <line x="579.973" y="47.023"/>
-            <close/>
-        </path>
-        <fill/>
-        <fillalpha alpha="0.87"/>
-        <path>
-            <move x="584.652" y="19.039"/>
-            <line x="584.652" y="16.212"/>
-            <line x="592.237" y="16.212"/>
-            <line x="592.237" y="19.039"/>
-            <line x="584.652" y="19.039"/>
-            <close/>
-            <move x="576.724" y="29.743"/>
-            <line x="576.724" y="26.916"/>
-            <line x="584.308" y="26.916"/>
-            <line x="584.308" y="29.743"/>
-            <line x="576.724" y="29.743"/>
-            <close/>
-            <move x="584.652" y="40.447"/>
-            <line x="584.652" y="37.621"/>
-            <line x="592.237" y="37.621"/>
-            <line x="592.237" y="40.447"/>
-            <line x="584.652" y="40.447"/>
-            <close/>
-        </path>
-        <fill/>
         <restore/>
         <rect/>
         <stroke/>

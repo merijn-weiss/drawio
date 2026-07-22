@@ -79,13 +79,12 @@ DrawioConfigEditor.install = function(container, options)
 	// ============================================
 	var toggleGroups = {
 		'general-toggles': [
-			{ key: 'override', name: 'Override', help: 'Ignore client-side settings' },
+			{ key: 'override', name: 'Override', help: 'Ignore user settings stored in the browser so the defaults in this configuration always apply' },
 			{ key: 'compact', name: 'Compact UI', help: 'Enable compact user interface mode' },
 			{ key: 'noAutoFocus', name: 'No Auto Focus', help: 'Disable auto-focus on startup' },
+			{ key: 'showSplashOnStart', name: 'Show Splash on Start', help: 'Show the splash screen with storage options on startup' },
 			{ key: 'updateDefaultStyle', name: 'Update Default Style', help: 'Update defaults when styles change' },
-			{ key: 'mathematicalTypesetting', name: 'Math Typesetting', help: 'Enable MathJax for mathematical typesetting' },
 			{ key: 'mathOutputSize', name: 'Math Output Size', help: 'Size labels, view bounds and initial fit to the rendered math output instead of the formula source' },
-			{ key: 'internationalization', name: 'Internationalization', help: 'Enable UI language translation' },
 			{ key: 'browserTranslate', name: 'Browser Translate', help: 'Mirror diagram text for browser translation engines (e.g. Chrome Translate)' }
 		],
 		'canvas-toggles': [
@@ -93,10 +92,12 @@ DrawioConfigEditor.install = function(container, options)
 			{ key: 'defaultGridEnabled', name: 'Grid Enabled', help: 'Show grid on canvas' },
 			{ key: 'defaultConnectable', name: 'Default Connectable', help: 'Shapes are connectable by default' },
 			{ key: 'defaultConnectionArrowsEnabled', name: 'Connection Arrows', help: 'Show arrows when hovering connections' },
+			{ key: 'copyOnConnect', name: 'Copy on Connect', help: 'Create a copy of the source shape for connections that end on the canvas' },
 			{ key: 'defaultFoldingEnabled', name: 'Folding Enabled', help: 'Enable shape folding (collapse/expand)' },
 			{ key: 'zoomWheel', name: 'Zoom with Mouse Wheel', help: 'Use mouse wheel for zoom without modifiers' },
 			{ key: 'simpleLabels', name: 'Simple Labels', help: 'Disable word wrap and HTML for labels' },
 			{ key: 'optimizeHtmlLabels', name: 'Optimize HTML Labels', help: 'Remove unnecessary spans from HTML labels when editing stops' },
+			{ key: 'stopEditingOnEnter', name: 'Stop Editing on Enter', help: 'Enter key stops label editing, Shift+Enter inserts a line break' },
 			{ key: 'pasteAtMousePointer', name: 'Paste at Mouse', help: 'Paste elements at mouse pointer location' },
 			{ key: 'fitDiagramOnLoad', name: 'Fit Diagram on Load', help: 'Fit diagram to window on load' },
 			{ key: 'fitDiagramOnPage', name: 'Fit Diagram on Page', help: 'Fit diagram to page size' },
@@ -106,7 +107,8 @@ DrawioConfigEditor.install = function(container, options)
 			{ key: 'showLinkIcons', name: 'Show Link Icons', help: 'Show link icons on shapes' },
 			{ key: 'showTooltipIcons', name: 'Show Tooltip Icons', help: 'Show tooltip icons on shapes' },
 			{ key: 'showConnectHandle', name: 'Show Connect Handle', help: 'Show connection handle on hover' },
-			{ key: 'intersectionSelect', name: 'Intersection Select', help: 'Select cells by intersection rather than containment' }
+			{ key: 'intersectionSelect', name: 'Intersection Select', help: 'Select cells by intersection rather than containment' },
+			{ key: 'swimlaneSelectionEnabled', name: 'Swimlane Body Selection', help: 'Click an empty swimlane body to select the swimlane (default on)' }
 		],
 		'appearance-toggles': [
 			{ key: 'enableCssDarkMode', name: 'CSS Dark Mode', help: 'Use CSS for dark mode rendering' },
@@ -120,10 +122,12 @@ DrawioConfigEditor.install = function(container, options)
 		],
 		'library-toggles': [
 			{ key: 'enableCustomLibraries', name: 'Enable Custom Libraries', help: 'Allow open and new library functions' },
+			{ key: 'inlineExtIcons', name: 'Inline Icon Search Results', help: 'Insert icon search results as embedded images instead of remote references' },
 			{ key: 'appendCustomLibraries', name: 'Append Custom Libraries', help: 'Custom libraries appear after built-in ones' }
 		],
 		'export-toggles': [
 			{ key: 'compressXml', name: 'Compress XML', help: 'Compress XML output in saved files' },
+			{ key: 'compressStyles', name: 'Compress Styles', help: 'Deduplicate repeated inline images and stencils into a shared lookup table. Only readable by draw.io 29.3.1 and later.', experimental: true, helpLink: 'https://www.drawio.com/docs/reference/style-compression/' },
 			{ key: 'includeDiagram', name: 'Include Diagram in Export', help: 'Include diagram data in export dialogs' },
 			{ key: 'enableExportUrl', name: 'Enable Export URL', help: 'Enable the export URL feature' },
 			{ key: 'lockdown', name: 'Lockdown', help: 'Disable data transmission apart from storage' },
@@ -131,6 +135,7 @@ DrawioConfigEditor.install = function(container, options)
 			{ key: 'enableNativeClipboard', name: 'Native Clipboard', help: 'Use native system clipboard' },
 			{ key: 'replaceSvgDataUris', name: 'Replace SVG Data URIs', help: 'Replace data URIs with SVG sub-trees in export' },
 			{ key: 'foreignObjectImages', name: 'Foreign Object Images', help: 'Replace foreignObject with images' },
+			{ key: 'embedSvgFonts', name: 'Embed SVG Fonts', help: 'Default for embedding fonts as data URIs in exported and saved SVG files, can be overridden per file in the file properties' },
 			{ key: 'removeImageMetadata', name: 'Remove Image Metadata', help: 'Strip metadata from images' },
 			{ key: 'expandPatternsForPrint', name: 'Expand Patterns for Print', help: 'Expand patterns to visible graphics during print/PDF export' }
 		],
@@ -188,13 +193,19 @@ DrawioConfigEditor.install = function(container, options)
 			var el = q('#' + containerId);
 			if (!el) return;
 
+			el.classList.add('toggle-list');
 			var html = '';
 			toggleGroups[containerId].forEach(function(toggle)
 			{
+				var badge = toggle.experimental ?
+					' <span class="toggle-field__experimental" title="Experimental feature">experimental</span>' : '';
+				var helpIcon = toggle.helpLink ?
+					' <a class="toggle-field__helplink" href="' + toggle.helpLink + '" target="_blank" rel="noopener" title="Learn more">?</a>' : '';
+
 				html += '<div class="toggle-field">' +
 					'<div class="toggle-field__label">' +
-						'<span class="toggle-field__name">' + toggle.name + '</span>' +
-						'<span class="toggle-field__help">' + toggle.help + ' <code>' + toggle.key + '</code></span>' +
+						'<span class="toggle-field__name">' + toggle.name + badge + '</span>' +
+						'<span class="toggle-field__help">' + toggle.help + ' <code>' + toggle.key + '</code>' + helpIcon + '</span>' +
 					'</div>' +
 					'<div class="tri-toggle" data-key="' + toggle.key + '">' +
 						'<button type="button" data-value="unset" class="active--unset" title="Not set (use default)">&#8212;</button>' +
@@ -1223,9 +1234,21 @@ DrawioConfigEditor.css = [
 	'  padding: 4px 0; border-bottom: 1px solid light-dark(var(--color-border), var(--color-border-dark));',
 	'}',
 	'.geConfigEditor .toggle-field:last-child { border-bottom: none; }',
+	'.geConfigEditor .card__body > * + .toggle-list { border-top: 1px solid light-dark(var(--color-border), var(--color-border-dark)); }',
 	'.geConfigEditor .toggle-field__label { display: flex; flex-direction: column; gap: 1px; flex: 1; margin-bottom: 0; }',
 	'.geConfigEditor .toggle-field__name { font-weight: 500; font-size: var(--font-size-sm); }',
 	'.geConfigEditor .toggle-field__help { font-size: var(--font-size-xs); color: light-dark(var(--color-text-secondary), var(--color-text-secondary-dark)); }',
+	'.geConfigEditor .toggle-field__experimental {',
+	'  display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 8px; vertical-align: middle;',
+	'  font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;',
+	'  color: light-dark(#8a5a00, #f0b429); background: light-dark(#fff3d6, rgba(240, 180, 41, 0.15));',
+	'}',
+	'.geConfigEditor .toggle-field__helplink {',
+	'  display: inline-flex; align-items: center; justify-content: center; width: 13px; height: 13px;',
+	'  margin-left: 4px; border-radius: 50%; vertical-align: middle; text-decoration: none;',
+	'  font-size: 9px; font-weight: 700; line-height: 1;',
+	'  color: light-dark(#fff, #1a1a1a); background: light-dark(var(--color-text-secondary), var(--color-text-secondary-dark));',
+	'}',
 	'.geConfigEditor .tri-toggle {',
 	'  display: inline-flex; border: 1px solid light-dark(var(--color-border), var(--color-border-dark));',
 	'  border-radius: var(--radius-md); overflow: hidden; flex-shrink: 0;',
@@ -1342,6 +1365,7 @@ DrawioConfigEditor.css = [
 	'  .geConfigEditor .card { border: 2px solid light-dark(var(--color-border), var(--color-border-dark)); }',
 	'  .geConfigEditor .card__header { border-bottom: 2px solid light-dark(var(--color-border), var(--color-border-dark)); }',
 	'  .geConfigEditor .toggle-field { border-bottom: 2px solid light-dark(var(--color-border), var(--color-border-dark)); }',
+	'  .geConfigEditor .card__body > * + .toggle-list { border-top: 2px solid light-dark(var(--color-border), var(--color-border-dark)); }',
 	'}',
 	'.geConfigEditor.high-contrast {',
 	'  --color-bg: #ffffff;',
@@ -1374,6 +1398,7 @@ DrawioConfigEditor.css = [
 	'.geConfigEditor.high-contrast .card { border: 2px solid light-dark(var(--color-border), var(--color-border-dark)); }',
 	'.geConfigEditor.high-contrast .card__header { border-bottom: 2px solid light-dark(var(--color-border), var(--color-border-dark)); }',
 	'.geConfigEditor.high-contrast .toggle-field { border-bottom: 2px solid light-dark(var(--color-border), var(--color-border-dark)); }',
+	'.geConfigEditor.high-contrast .card__body > * + .toggle-list { border-top: 2px solid light-dark(var(--color-border), var(--color-border-dark)); }',
 	'@media (forced-colors: active) {',
 	'  .geConfigEditor input[type="text"], .geConfigEditor input[type="url"], .geConfigEditor input[type="number"], .geConfigEditor textarea, .geConfigEditor select {',
 	'    border: 2px solid ButtonText;',
@@ -1389,6 +1414,7 @@ DrawioConfigEditor.css = [
 	'  .geConfigEditor .tri-toggle button.active--unset { background: ButtonFace; color: ButtonText; outline: 2px solid Highlight; outline-offset: -2px; }',
 	'  .geConfigEditor .btn--secondary { border: 1px solid ButtonText; }',
 	'  .geConfigEditor .toggle-field { border-bottom: 1px solid ButtonText; }',
+	'  .geConfigEditor .card__body > * + .toggle-list { border-top: 1px solid ButtonText; }',
 	'  .geConfigEditor .search-box { background: Canvas; }',
 	'  .geConfigEditor { background: Canvas; color: CanvasText; }',
 	'}'
@@ -1417,6 +1443,16 @@ DrawioConfigEditor.html = [
 	'          <input type="text" id="cfg-settingsName" data-key="settingsName" placeholder=".drawio-config">',
 	'          <p class="field__help">Key for storing user settings in local storage</p>',
 	'        </div>',
+	'      </div>',
+	'      <div class="field">',
+	'        <label for="cfg-keyboardShortcuts">Keyboard Shortcuts (JSON)</label>',
+	'        <textarea id="cfg-keyboardShortcuts" data-key="keyboardShortcuts" data-type="json" placeholder=\'[{"keyCode": "T", "control": true, "shift": true, "action": "tags"}]\' style="min-height: 60px;"></textarea>',
+	'        <p class="field__help">Custom keyboard shortcuts. Entries are {keyCode, control, shift, alt, action} where keyCode is a key code or single character and action is an action name, or null to remove a binding.</p>',
+	'      </div>',
+	'      <div class="field">',
+	'        <label for="cfg-resources">Language Resources (JSON)</label>',
+	'        <textarea id="cfg-resources" data-key="resources" data-type="json" placeholder=\'{"saveAs": {"main": "Save a Copy", "de": "Kopie speichern"}, "myKey": "My Text"}\' style="min-height: 60px;"></textarea>',
+	'        <p class="field__help">Overrides existing or adds new language resources for user interface text. Maps resource keys to strings, or to objects with one entry per language code and main as the fallback.</p>',
 	'      </div>',
 	'      <div id="general-toggles"></div>',
 	'    </div>',

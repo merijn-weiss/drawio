@@ -68,7 +68,7 @@
 			this.createVertexTemplateEntry(s2 + 'diag_stripe;dx=10;', w, h * 0.6, '', 'Diagonal Stripe', null, null, this.getTagsForStencil(gn, 'diag_stripe', dt).join(' ')),
 			this.createVertexTemplateEntry(s + 'rectCallout;dx=30;dy=15;boundedLbl=1;', w, h * 0.6, '', 'Rectangular Callout', null, null, this.getTagsForStencil(gn, 'rectangular_callout', dt).join(' ')),
 			this.createVertexTemplateEntry(s + 'roundRectCallout;dx=30;dy=15;size=5;boundedLbl=1;', w, h * 0.6, '', 'Rounded Rectangular Callout', null, null, this.getTagsForStencil(gn, 'rectangular_callout', dt).join(' ')),
-			this.createVertexTemplateEntry(s2 + 'layered_rect;dx=10;outlineConnect=0;whiteSpace=wrap;', w, h * 0.6, '', 'Layered Rectangle', null, null, this.getTagsForStencil(gn, 'layered_rect', dt).join(' ')),
+			this.createVertexTemplateEntry(s + 'layered_rect;dx=10;outlineConnect=0;boundedLbl=1;', w, h * 0.6, '', 'Layered Rectangle', null, null, this.getTagsForStencil(gn, 'layered_rect', dt).join(' ')),
 			this.createVertexTemplateEntry(s2 + 'smiley', w, h, '', 'Smiley', null, null, this.getTagsForStencil(gn, 'smiley', dt).join(' ')),
 			this.createVertexTemplateEntry(s2 + 'star', w, h * 0.95, '', 'Star', null, null, this.getTagsForStencil(gn, 'star', dt).join(' ')),
 			this.createVertexTemplateEntry(s2 + 'sun', w, h, '', 'Sun', null, null, this.getTagsForStencil(gn, 'sun', dt).join(' ')),

@@ -328,7 +328,7 @@ ColorPicker.prototype.arrowImage = 'data:image/gif;base64,R0lGODlhBwALAKECAAAAAP
 /**
  * Constructs a new color dialog.
  */
-var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defaultColorValue, singleColorMode, liveApply)
+var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defaultColorValue, singleColorMode, liveApply, allowInherit)
 {
 	var cssDefaultColor = (defaultColorValue != null) ?
 		mxUtils.getLightDarkColor(defaultColorValue,
@@ -1013,7 +1013,15 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	});
 
 	var div = document.createElement('div');
-	div.style.padding = '12px 12px 18px 12px';
+
+	// The tool-window (liveApply) host is a borderless mxWindow with no
+	// padding of its own, so the content supplies it. The modal dialog host
+	// (.geDialog) already pads, so skip it there to avoid double padding and
+	// to keep the 230px picker from overflowing the padded content box.
+	if (liveApply)
+	{
+		div.style.padding = '12px 12px 18px 12px';
+	}
 
 	div.appendChild(picker.div);
 	picker.div.style.marginBottom = '10px';
@@ -1380,6 +1388,40 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 
 	div.appendChild(center);
 
+	// Offers an explicit "Inherit" choice so a color can be set to inherit from
+	// the parent (eg. a table/swimlane cell using its container's color). Shown
+	// only when the caller marks the value as inheritable (allowInherit). Applies
+	// the 'inherit' sentinel and closes the picker like choosing a color.
+	var inheritBtn = mxUtils.button(mxResources.get('inherit', null, 'Inherit'), function()
+	{
+		applyFunction('inherit');
+
+		if (liveApply)
+		{
+			if (self.closeFn != null)
+			{
+				self.closeFn();
+			}
+		}
+		else
+		{
+			editorUi.hideDialog();
+		}
+	});
+
+	inheritBtn.setAttribute('title', mxResources.get('inherit', null, 'Inherit'));
+	// allowInherit may be a live predicate (re-evaluated as the selection changes
+	// while the reused color window stays open) or a plain boolean
+	function inheritAllowed(v)
+	{
+		return (typeof v === 'function') ? v() : v;
+	};
+
+	inheritBtn.style.display = (inheritAllowed(allowInherit)) ? '' : 'none';
+	inheritBtn.style.width = '100%';
+	inheritBtn.style.margin = '6px 0 0 0';
+	div.appendChild(inheritBtn);
+
 	var buttons = null;
 
 	if (!liveApply)
@@ -1389,10 +1431,11 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		buttons.style.whiteSpace = 'nowrap';
 		buttons.style.alignItems = 'center';
 		buttons.style.justifyContent = 'end';
+		buttons.style.marginTop = '34px';
 
 		if (!editorUi.isOffline())
 		{
-			buttons.appendChild(editorUi.createHelpIcon('https://github.com/jgraph/drawio/discussions/4713'));
+			buttons.appendChild(editorUi.createHelpIcon('https://www.drawio.com/docs/manual/editor/appearance/adaptive-colours/'));
 		}
 
 		var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
@@ -1559,7 +1602,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		applyFunction = fn;
 	};
 
-	this.setColor = function(newColor, newDefaultColor, newDefaultColorValue, newSingleColorMode)
+	this.setColor = function(newColor, newDefaultColor, newDefaultColorValue, newSingleColorMode, newAllowInherit)
 	{
 		// Reset session tracking for recent colors
 		sessionRecentColor = null;
@@ -1568,6 +1611,9 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		defaultColor = newDefaultColor;
 		defaultColorValue = newDefaultColorValue;
 		singleColorMode = newSingleColorMode;
+
+		// Toggles the inherit affordance for the reused (non-modal) picker
+		inheritBtn.style.display = (inheritAllowed(newAllowInherit)) ? '' : 'none';
 		cssDefaultColor = (newDefaultColorValue != null) ?
 			mxUtils.getLightDarkColor(newDefaultColorValue,
 				null, null, newSingleColorMode) : null;
@@ -1864,6 +1910,15 @@ var ColorWindow = function(editorUi, x, y, w)
 
 	this.fitHeight = function()
 	{
+		// While minimized the content is hidden (scrollHeight 0), so measuring
+		// would shrink to the title bar and setSize would then clamp back up to
+		// minimumSize, leaving a wrong-sized empty window. The minimize/restore
+		// logic owns the size in that state, so leave it alone.
+		if (self.window.minimized)
+		{
+			return;
+		}
+
 		var titleH = self.window.title.offsetHeight || titleHeight;
 		var contentH = container.scrollHeight;
 		var newH = titleH + contentH + self.window.contentHeightCorrection;
@@ -1891,6 +1946,7 @@ var ColorWindow = function(editorUi, x, y, w)
 	this.currentDefaultColor = null;
 	this.currentDefaultColorValue = null;
 	this.currentSingleColorMode = null;
+	this.currentAllowInherit = null;
 	this.applying = false;
 
 	var refreshColor = mxUtils.bind(this, function()
@@ -1902,8 +1958,11 @@ var ColorWindow = function(editorUi, x, y, w)
 
 			if (color != null)
 			{
+				// Passes allowInherit so an external change (eg. collaborator
+				// edit) does not drop the Inherit button while the window is open
 				this.colorDialog.setColor(color, this.currentDefaultColor,
-					this.currentDefaultColorValue, this.currentSingleColorMode);
+					this.currentDefaultColorValue, this.currentSingleColorMode,
+					this.currentAllowInherit);
 			}
 		}
 	});
@@ -1919,16 +1978,17 @@ var ColorWindow = function(editorUi, x, y, w)
  * Updates the color window state for a new color property.
  */
 ColorWindow.prototype.update = function(color, applyFn, title,
-	defaultColor, defaultColorValue, singleColorMode, getColorFn)
+	defaultColor, defaultColorValue, singleColorMode, getColorFn, allowInherit)
 {
 	this.getColorFn = getColorFn || null;
 	this.currentDefaultColor = defaultColor;
 	this.currentDefaultColorValue = defaultColorValue;
 	this.currentSingleColorMode = singleColorMode;
+	this.currentAllowInherit = allowInherit;
 
 	this.window.setTitle(title);
 	this.colorDialog.setApplyFn(applyFn);
-	this.colorDialog.setColor(color, defaultColor, defaultColorValue, singleColorMode);
+	this.colorDialog.setColor(color, defaultColor, defaultColorValue, singleColorMode, allowInherit);
 	this.window.setVisible(true);
 	this.fitHeight();
 	this.colorDialog.init();
@@ -1973,13 +2033,20 @@ var AboutDialog = function(editorUi)
 /**
  * Constructs a simple textarea dialog.
  */
-var SimpleTextareaDialog = function(editorUi, value, fn, buttonLabel, helpLink)
+var SimpleTextareaDialog = function(editorUi, value, fn, buttonLabel, helpLink, headerControl, applyKeepsOpen)
 {
+	var initialValue = (value != null) ? value : '';
+	var applying = false;
+
 	var div = document.createElement('div');
 	div.style.display = 'flex';
 	div.style.flexDirection = 'column';
 	div.style.height = '100%';
 	div.style.boxSizing = 'border-box';
+	// the flex column never overflows (the textarea scrolls internally),
+	// so opt out of the .geDialog > :first-child scroll container — it
+	// clips the focus halo of the bottom-row controls
+	div.style.overflow = 'visible';
 
 	var textarea = document.createElement('textarea');
 	textarea.style.flex = '1';
@@ -2007,6 +2074,13 @@ var SimpleTextareaDialog = function(editorUi, value, fn, buttonLabel, helpLink)
 		buttons.appendChild(editorUi.createHelpIcon(helpLink));
 	}
 
+	// Optional caller-supplied control (e.g. a select) placed left of the
+	// action buttons, matching the type dropdown in ParseDialog.
+	if (headerControl != null)
+	{
+		buttons.appendChild(headerControl);
+	}
+
 	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
 	{
 		editorUi.hideDialog();
@@ -2023,7 +2097,30 @@ var SimpleTextareaDialog = function(editorUi, value, fn, buttonLabel, helpLink)
 	var okBtn = mxUtils.button((buttonLabel != null) ?
 		buttonLabel : mxResources.get('apply'), function()
 	{
-		editorUi.hideDialog();
+		// applyKeepsOpen leaves the dialog open for an async fn that may
+		// fail (e.g. mermaid parsing) so the input isn't lost; the caller
+		// hides it via this.hide() once the apply succeeds, like the
+		// mermaid branch in ParseDialog.
+		if (applyKeepsOpen)
+		{
+			fn(textarea.value);
+
+			return;
+		}
+
+		// suppresses the unsaved-changes confirmation a caller may have
+		// wired into the dialog's onClose (see shouldConfirmClose)
+		applying = true;
+
+		try
+		{
+			editorUi.hideDialog();
+		}
+		finally
+		{
+			applying = false;
+		}
+
 		fn(textarea.value);
 	});
 
@@ -2048,6 +2145,36 @@ var SimpleTextareaDialog = function(editorUi, value, fn, buttonLabel, helpLink)
 	{
 		textarea.focus();
 		textarea.scrollTop = 0;
+	};
+
+	/**
+	 * True when closing now would lose the user's edits: the text differs
+	 * from the initial value and the close wasn't triggered by Apply.
+	 * Callers use this from the dialog's onClose to show an
+	 * "all changes will be lost" confirmation.
+	 */
+	this.shouldConfirmClose = function()
+	{
+		return !applying && textarea.value != initialValue;
+	};
+
+	/**
+	 * Hides the dialog with the unsaved-changes confirmation suppressed.
+	 * Used with applyKeepsOpen: the caller closes the dialog once its
+	 * async apply has succeeded.
+	 */
+	this.hide = function()
+	{
+		applying = true;
+
+		try
+		{
+			editorUi.hideDialog();
+		}
+		finally
+		{
+			applying = false;
+		}
 	};
 
 	div.appendChild(buttons);
@@ -2227,7 +2354,6 @@ var EditDiagramDialog = function(editorUi)
 
 	var hd = document.createElement('h3');
 	mxUtils.write(hd, mxResources.get('editDiagram'));
-	hd.style.cssText = 'width:100%;text-align:center;margin-top:0px;margin-bottom:10px;flex-shrink:0';
 	div.appendChild(hd);
 
 	var textarea = document.createElement('textarea');
@@ -2297,6 +2423,13 @@ var EditDiagramDialog = function(editorUi)
 	buttons.style.marginTop = '14px';
 	buttons.style.flexShrink = '0';
 
+	if (!editorUi.isOffline())
+	{
+		var helpIcon = editorUi.createHelpIcon(EditDiagramDialog.helpLink);
+		helpIcon.style.marginRight = 'auto';
+		buttons.appendChild(helpIcon);
+	}
+
 	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
 	{
 		editorUi.hideDialog();
@@ -2311,25 +2444,21 @@ var EditDiagramDialog = function(editorUi)
 
 	var select = document.createElement('select');
 	select.style.textOverflow = 'ellipsis';
+	select.style.marginLeft = '8px';
+	select.style.height = '30px';
 	select.style.width = '196px';
-	select.className = 'geBtn';
 
-	if (editorUi.editor.graph.isEnabled())
-	{
-		var applyOption = document.createElement('option');
-		applyOption.setAttribute('value', 'apply');
-		mxUtils.write(applyOption, mxResources.get('apply',
-			null, 'Update Existing Drawing'));
-		select.appendChild(applyOption);
-	}
+	var placeholderOption = document.createElement('option');
+	placeholderOption.setAttribute('value', '');
+	placeholderOption.setAttribute('disabled', 'disabled');
+	placeholderOption.setAttribute('selected', 'selected');
+	mxUtils.write(placeholderOption, mxResources.get('select') + '...');
+	select.appendChild(placeholderOption);
 
-	if (editorUi.editor.graph.isEnabled())
-	{
-		var insertOption = document.createElement('option');
-		insertOption.setAttribute('value', 'insert');
-		mxUtils.write(insertOption, mxResources.get('insert'));
-		select.appendChild(insertOption);
-	}
+	var copyOption = document.createElement('option');
+	copyOption.setAttribute('value', 'copy');
+	mxUtils.write(copyOption, mxResources.get('copyDiagramToClipboard'));
+	select.appendChild(copyOption);
 
 	var newOption = document.createElement('option');
 	newOption.setAttribute('value', 'new');
@@ -2340,21 +2469,82 @@ var EditDiagramDialog = function(editorUi)
 		select.appendChild(newOption);
 	}
 
-	buttons.appendChild(select);
+	var extractTextAction = editorUi.actions.get('extractText');
+	var hasExtractText = extractTextAction != null;
+	var hasAnonymize = typeof editorUi.anonymizeXml == 'function';
 
-	var okBtn = mxUtils.button(mxResources.get('ok'), function()
+	if (hasExtractText)
 	{
+		var extractOption = document.createElement('option');
+		extractOption.setAttribute('value', 'extractText');
+		mxUtils.write(extractOption, mxResources.get('extractText'));
+		select.appendChild(extractOption);
+	}
+
+	if (hasAnonymize)
+	{
+		var anonymizeOption = document.createElement('option');
+		anonymizeOption.setAttribute('value', 'anonymize');
+		mxUtils.write(anonymizeOption, mxResources.get('anonymize'));
+		select.appendChild(anonymizeOption);
+	}
+
+	mxEvent.addListener(select, 'change', function()
+	{
+		var value = select.value;
 		// Removes all illegal control characters before parsing
 		var data = Graph.zapGremlins(mxUtils.trim(textarea.value));
 		var error = null;
 
-		if (select.value == 'new')
+		if (value == 'new')
 		{
 			editorUi.hideDialog();
 			editorUi.editor.editAsNew(data);
 		}
-		else if (select.value == 'apply')
+		else if (value == 'copy')
 		{
+			editorUi.writeTextToClipboard(data, function(e)
+			{
+				editorUi.handleError(e);
+			}, function()
+			{
+				editorUi.alert(mxResources.get('copiedToClipboard'));
+			});
+		}
+		else if (value == 'extractText')
+		{
+			extractTextAction.funct(true);
+		}
+		else if (value == 'anonymize')
+		{
+			try
+			{
+				textarea.value = editorUi.anonymizeXml(data);
+			}
+			catch (e)
+			{
+				error = e;
+			}
+		}
+
+		select.value = '';
+
+		if (error != null)
+		{
+			editorUi.handleError(error);
+		}
+	});
+
+	buttons.appendChild(select);
+
+	if (editorUi.editor.graph.isEnabled())
+	{
+		var applyBtn = mxUtils.button(mxResources.get('apply'), function()
+		{
+			// Removes all illegal control characters before parsing
+			var data = Graph.zapGremlins(mxUtils.trim(textarea.value));
+			var error = null;
+
 			try
 			{
 				var node = mxUtils.parseXml(data).documentElement;
@@ -2384,40 +2574,15 @@ var EditDiagramDialog = function(editorUi)
 			{
 				error = e;
 			}
-		}
-		else if (select.value == 'insert')
-		{
-			editorUi.editor.graph.model.beginUpdate();
-			try
-			{
-				var doc = mxUtils.parseXml(data);
-				var model = new mxGraphModel();
-				var codec = new mxCodec(doc);
-				codec.decode(doc.documentElement, model);
 
-				var children = model.getChildren(model.getChildAt(model.getRoot(), 0));
-				editorUi.editor.graph.setSelectionCells(editorUi.editor.graph.importCells(children));
-
-				// LATER: Why is hideDialog between begin-/endUpdate faster?
-				editorUi.hideDialog();
-			}
-			catch (e)
+			if (error != null)
 			{
-				error = e;
+				editorUi.handleError(error);
 			}
-			finally
-			{
-				editorUi.editor.graph.model.endUpdate();
-			}
-		}
-
-		if (error != null)
-		{
-			editorUi.handleError(error);
-		}
-	});
-	okBtn.className = 'geBtn gePrimaryBtn';
-	buttons.appendChild(okBtn);
+		});
+		applyBtn.className = 'geBtn gePrimaryBtn';
+		buttons.appendChild(applyBtn);
+	}
 
 	if (!editorUi.editor.cancelFirst)
 	{
@@ -2432,6 +2597,11 @@ var EditDiagramDialog = function(editorUi)
  * 
  */
 EditDiagramDialog.showNewWindowOption = true;
+
+/**
+ * URL for the user-facing documentation of this dialog.
+ */
+EditDiagramDialog.helpLink = 'https://www.drawio.com/docs/manual/advanced/diagram-source-edit/';
 
 /**
  * Constructs a new export dialog.
@@ -3263,7 +3433,8 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 
 		// Avoid ':' in attribute names which seems to be valid in Chrome
 		if (name.length > 0 && name != 'label' && name != 'id' &&
-			name != 'placeholders' && name.indexOf(':') < 0)
+			name != 'placeholders' && name.indexOf(':') < 0 &&
+			EditDataDialog.isValidAttributeName(name))
 		{
 			try
 			{
@@ -3495,6 +3666,38 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 	};
 
 	this.container = container;
+};
+
+/**
+ * Characters allowed as the first character of an XML attribute name
+ * (NameStartChar in the XML Name production, restricted to the BMP).
+ * See https://www.w3.org/TR/xml/#NT-Name.
+ */
+EditDataDialog.nameStartChar = ':A-Z_a-z' +
+	'\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF' +
+	'\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD';
+
+/**
+ * Characters allowed in an XML attribute name after the first character
+ * (NameChar in the XML Name production, restricted to the BMP).
+ */
+EditDataDialog.nameChar = '-.0-9\\u00B7\\u0300-\\u036F\\u203F-\\u2040' + EditDataDialog.nameStartChar;
+
+/**
+ * Matches a valid XML attribute name. Browsers' setAttribute does not reliably
+ * reject names that start with a digit (or other invalid characters), which
+ * produces invalid XML and silently corrupts the file on save, see
+ * jgraph/drawio#5647.
+ */
+EditDataDialog.attributeNamePattern = new RegExp('^[' + EditDataDialog.nameStartChar +
+	'][' + EditDataDialog.nameChar + ']*$');
+
+/**
+ * Returns true if the given string can be used as a data property (XML attribute) name.
+ */
+EditDataDialog.isValidAttributeName = function(name)
+{
+	return EditDataDialog.attributeNamePattern.test(name);
 };
 
 /**

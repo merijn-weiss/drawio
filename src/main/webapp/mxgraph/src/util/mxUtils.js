@@ -237,12 +237,18 @@ var mxUtils =
 					tokens[i] = tokens[i].substring(1, tokens[i].length - 1);
 				}
 
+				// Quotes are required if the family is not a valid unquoted CSS
+				// identifier, eg. if it contains a space or a special character
+				// such as * (see github.com/jgraph/drawio-desktop/issues/1604)
+				var needsQuotes = hasQuotes ||
+					!/^-?[A-Za-z_\u00A0-\uFFFF][\w\u00A0-\uFFFF-]*$/.test(tokens[i]);
+
 				if (htmlEntities)
 				{
 					tokens[i] = mxUtils.htmlEntities(tokens[i]);
 				}
 
-				if (hasQuotes || tokens[i].indexOf(' ') >= 0)
+				if (needsQuotes)
 				{
 					tokens[i] = "'" + tokens[i].replace(/'/g, "\\'") + "'";
 				}
@@ -865,18 +871,141 @@ var mxUtils =
 	parseXml: function(xml)
 	{
 		var parser = new DOMParser();
-		
+
 		var node = parser.parseFromString(xml, 'text/xml');
 
 		var errors = (node != null) ? node.getElementsByTagName('parsererror') : null;
-		
+
 		if (errors != null && errors.length > 0)
 		{
-			// Very aggressive workaround but the xml is not readable otherwise
-			node = parser.parseFromString(xml.replace(/&#([0-9a-fA-F]+);/g, ''), 'text/xml');
+			// Retries with common encoding errors repaired
+			node = parser.parseFromString(mxUtils.repairXml(xml), 'text/xml');
 		}
 
 		return node;
+	},
+
+	/**
+	 * Variable: htmlEntityCodes
+	 *
+	 * Maps the names of all HTML 4 character entities, except the predefined
+	 * XML entities, to their character codes. Used in <repairXml> to convert
+	 * named HTML entities to character references.
+	 */
+	htmlEntityCodes: {'nbsp': 160, 'iexcl': 161, 'cent': 162, 'pound': 163,
+		'curren': 164, 'yen': 165, 'brvbar': 166, 'sect': 167, 'uml': 168,
+		'copy': 169, 'ordf': 170, 'laquo': 171, 'not': 172, 'shy': 173,
+		'reg': 174, 'macr': 175, 'deg': 176, 'plusmn': 177, 'sup2': 178,
+		'sup3': 179, 'acute': 180, 'micro': 181, 'para': 182, 'middot': 183,
+		'cedil': 184, 'sup1': 185, 'ordm': 186, 'raquo': 187, 'frac14': 188,
+		'frac12': 189, 'frac34': 190, 'iquest': 191, 'Agrave': 192,
+		'Aacute': 193, 'Acirc': 194, 'Atilde': 195, 'Auml': 196, 'Aring': 197,
+		'AElig': 198, 'Ccedil': 199, 'Egrave': 200, 'Eacute': 201,
+		'Ecirc': 202, 'Euml': 203, 'Igrave': 204, 'Iacute': 205, 'Icirc': 206,
+		'Iuml': 207, 'ETH': 208, 'Ntilde': 209, 'Ograve': 210, 'Oacute': 211,
+		'Ocirc': 212, 'Otilde': 213, 'Ouml': 214, 'times': 215, 'Oslash': 216,
+		'Ugrave': 217, 'Uacute': 218, 'Ucirc': 219, 'Uuml': 220, 'Yacute': 221,
+		'THORN': 222, 'szlig': 223, 'agrave': 224, 'aacute': 225, 'acirc': 226,
+		'atilde': 227, 'auml': 228, 'aring': 229, 'aelig': 230, 'ccedil': 231,
+		'egrave': 232, 'eacute': 233, 'ecirc': 234, 'euml': 235, 'igrave': 236,
+		'iacute': 237, 'icirc': 238, 'iuml': 239, 'eth': 240, 'ntilde': 241,
+		'ograve': 242, 'oacute': 243, 'ocirc': 244, 'otilde': 245, 'ouml': 246,
+		'divide': 247, 'oslash': 248, 'ugrave': 249, 'uacute': 250,
+		'ucirc': 251, 'uuml': 252, 'yacute': 253, 'thorn': 254, 'yuml': 255,
+		'OElig': 338, 'oelig': 339, 'Scaron': 352, 'scaron': 353, 'Yuml': 376,
+		'fnof': 402, 'circ': 710, 'tilde': 732, 'Alpha': 913, 'Beta': 914,
+		'Gamma': 915, 'Delta': 916, 'Epsilon': 917, 'Zeta': 918, 'Eta': 919,
+		'Theta': 920, 'Iota': 921, 'Kappa': 922, 'Lambda': 923, 'Mu': 924,
+		'Nu': 925, 'Xi': 926, 'Omicron': 927, 'Pi': 928, 'Rho': 929,
+		'Sigma': 931, 'Tau': 932, 'Upsilon': 933, 'Phi': 934, 'Chi': 935,
+		'Psi': 936, 'Omega': 937, 'alpha': 945, 'beta': 946, 'gamma': 947,
+		'delta': 948, 'epsilon': 949, 'zeta': 950, 'eta': 951, 'theta': 952,
+		'iota': 953, 'kappa': 954, 'lambda': 955, 'mu': 956, 'nu': 957,
+		'xi': 958, 'omicron': 959, 'pi': 960, 'rho': 961, 'sigmaf': 962,
+		'sigma': 963, 'tau': 964, 'upsilon': 965, 'phi': 966, 'chi': 967,
+		'psi': 968, 'omega': 969, 'thetasym': 977, 'upsih': 978, 'piv': 982,
+		'ensp': 8194, 'emsp': 8195, 'thinsp': 8201, 'zwnj': 8204, 'zwj': 8205,
+		'lrm': 8206, 'rlm': 8207, 'ndash': 8211, 'mdash': 8212, 'lsquo': 8216,
+		'rsquo': 8217, 'sbquo': 8218, 'ldquo': 8220, 'rdquo': 8221,
+		'bdquo': 8222, 'dagger': 8224, 'Dagger': 8225, 'bull': 8226,
+		'hellip': 8230, 'permil': 8240, 'prime': 8242, 'Prime': 8243,
+		'lsaquo': 8249, 'rsaquo': 8250, 'oline': 8254, 'frasl': 8260,
+		'euro': 8364, 'image': 8465, 'weierp': 8472, 'real': 8476,
+		'trade': 8482, 'alefsym': 8501, 'larr': 8592, 'uarr': 8593,
+		'rarr': 8594, 'darr': 8595, 'harr': 8596, 'crarr': 8629, 'lArr': 8656,
+		'uArr': 8657, 'rArr': 8658, 'dArr': 8659, 'hArr': 8660, 'forall': 8704,
+		'part': 8706, 'exist': 8707, 'empty': 8709, 'nabla': 8711,
+		'isin': 8712, 'notin': 8713, 'ni': 8715, 'prod': 8719, 'sum': 8721,
+		'minus': 8722, 'lowast': 8727, 'radic': 8730, 'prop': 8733,
+		'infin': 8734, 'ang': 8736, 'and': 8743, 'or': 8744, 'cap': 8745,
+		'cup': 8746, 'int': 8747, 'there4': 8756, 'sim': 8764, 'cong': 8773,
+		'asymp': 8776, 'ne': 8800, 'equiv': 8801, 'le': 8804, 'ge': 8805,
+		'sub': 8834, 'sup': 8835, 'nsub': 8836, 'sube': 8838, 'supe': 8839,
+		'oplus': 8853, 'otimes': 8855, 'perp': 8869, 'sdot': 8901,
+		'lceil': 8968, 'rceil': 8969, 'lfloor': 8970, 'rfloor': 8971,
+		'lang': 9001, 'rang': 9002, 'loz': 9674, 'spades': 9824, 'clubs': 9827,
+		'hearts': 9829, 'diams': 9830},
+
+	/**
+	 * Function: repairXml
+	 *
+	 * Repairs common encoding errors in the given XML string for parsing in
+	 * <parseXml>: Removes characters that are not allowed in XML, removes
+	 * character references to such characters, converts named HTML entities
+	 * (eg. &nbsp;) to character references and escapes ampersands that are
+	 * not part of an entity or character reference. Character data in valid
+	 * parts of the input, including CDATA sections, is not modified, so the
+	 * result is identical to the input after parsing if the input contains
+	 * no errors.
+	 *
+	 * Parameters:
+	 *
+	 * text - String that contains the XML data.
+	 */
+	repairXml: function(text)
+	{
+		text = mxUtils.zapGremlins(text);
+
+		// Ignores the content of CDATA sections at odd indices
+		var parts = text.split(/(<!\[CDATA\[[\s\S]*?\]\]>)/);
+
+		for (var i = 0; i < parts.length; i += 2)
+		{
+			parts[i] = parts[i].replace(
+				/&(?:#([0-9]+);|#[xX]([0-9a-fA-F]+);|([a-zA-Z][a-zA-Z0-9]*);)?/g,
+				function(match, dec, hex, name)
+			{
+				if (dec != null || hex != null)
+				{
+					var code = (dec != null) ? parseInt(dec, 10) : parseInt(hex, 16);
+
+					// Removes references to characters that are not allowed in XML
+					return ((code >= 32 || code == 9 || code == 10 || code == 13) &&
+						(code < 0xD800 || code > 0xDFFF) && code != 0xFFFE &&
+						code != 0xFFFF && code <= 0x10FFFF) ? match : '';
+				}
+				else if (name != null)
+				{
+					// Keeps predefined XML entities
+					if (name == 'amp' || name == 'lt' || name == 'gt' ||
+						name == 'quot' || name == 'apos')
+					{
+						return match;
+					}
+
+					var code = mxUtils.htmlEntityCodes[name];
+
+					// Converts known HTML entities to character references and
+					// escapes unknown entities to appear as literal text
+					return (code != null) ? '&#' + code + ';' : '&amp;' + name + ';';
+				}
+
+				// Escapes ampersands that are not part of an entity
+				return '&amp;';
+			});
+		}
+
+		return parts.join('');
 	},
 
 	/**
@@ -1033,6 +1162,30 @@ var mxUtils =
 	},
 
 	/**
+	 * Function: safeDecodeURIComponent
+	 *
+	 * Returns the given URI component decoded via decodeURIComponent, or
+	 * unchanged if it is not a valid encoding, eg. if it contains a raw
+	 * percent sign. Used for values that are stored URI encoded but may
+	 * have been edited directly or predate the encoding.
+	 *
+	 * Parameters:
+	 *
+	 * value - String that contains the URI component to be decoded.
+	 */
+	safeDecodeURIComponent: function(value)
+	{
+		try
+		{
+			return decodeURIComponent(value);
+		}
+		catch (e)
+		{
+			return value;
+		}
+	},
+
+	/**
 	 * Function: getXml
 	 * 
 	 * Returns the XML content of the specified node. For Internet Explorer,
@@ -1048,7 +1201,9 @@ var mxUtils =
 	 */
 	getXml: function(node, linefeed)
 	{
-		var xml = new XMLSerializer().serializeToString(node);
+		// Removes characters that are not allowed in XML but are
+		// serialized without escaping and would break parsing
+		var xml = mxUtils.zapGremlins(new XMLSerializer().serializeToString(node));
 
 		// Replaces linefeeds with HTML Entities.
 		linefeed = linefeed || '&#xa;';
@@ -1112,8 +1267,8 @@ var mxUtils =
 			}
 			else if (node.nodeType == mxConstants.NODETYPE_COMMENT)
 			{
-				var value = mxUtils.getTextContent(node);
-				
+				var value = mxUtils.zapGremlins(mxUtils.getTextContent(node));
+
 				if (value.length > 0)
 				{
 					result.push(indent + '<!--' + value + '-->' + newline);
@@ -1121,8 +1276,8 @@ var mxUtils =
 			}
 			else if (node.nodeType == mxConstants.NODETYPE_TEXT)
 			{
-				var value = mxUtils.trim(mxUtils.getTextContent(node));
-				
+				var value = mxUtils.zapGremlins(mxUtils.trim(mxUtils.getTextContent(node)));
+
 				if (value.length > 0)
 				{
 					result.push(indent + mxUtils.htmlEntities(value, false, false) + newline);
@@ -1130,26 +1285,27 @@ var mxUtils =
 			}
 			else if (node.nodeType == mxConstants.NODETYPE_CDATA)
 			{
-				var value = mxUtils.getTextContent(node);
-				
+				var value = mxUtils.zapGremlins(mxUtils.getTextContent(node));
+
 				if (value.length > 0)
 				{
-					result.push(indent + '<![CDATA[' + value + ']]' + newline);
+					result.push(indent + '<![CDATA[' + value + ']]>' + newline);
 				}
 			}
 			else
 			{
 				result.push(indent + '<' + node.nodeName);
-				
+
 				// Creates the string with the node attributes
 				// and converts all HTML entities in the values
 				var attrs = node.attributes;
-				
+
 				if (attrs != null)
 				{
 					for (var i = 0; i < attrs.length; i++)
 					{
-						var val = mxUtils.htmlEntities(attrs[i].value);
+						var val = mxUtils.htmlEntities(mxUtils.zapGremlins(
+							attrs[i].value)).replace(/\r/g, '&#xd;');
 						result.push(' ' + attrs[i].nodeName + '="' + val + '"');
 					}
 				}
@@ -1972,6 +2128,59 @@ var mxUtils =
 	},
 
 	/**
+	 * Function: parsePadding
+	 *
+	 * Parses a CSS-style padding value (1-4 space-separated numbers) into an
+	 * object with n, e, s and w (top, right, bottom, left) number properties.
+	 * Like CSS, one value applies to all four sides, two are vertical and
+	 * horizontal, three are top, horizontal and bottom, and four are top,
+	 * right, bottom and left (TRBL order, clockwise). The value is
+	 * URI-decoded first: style values are URI-encoded when written from the
+	 * properties panel, which turns the space separators into %20.
+	 *
+	 * Parameters:
+	 *
+	 * value - String or number containing 1-4 space-separated values.
+	 */
+	parsePadding: function(value)
+	{
+		var str = (value != null) ? String(value) : '';
+
+		try
+		{
+			str = decodeURIComponent(str);
+		}
+		catch (e)
+		{
+			// keep str as-is
+		}
+
+		var parts = str.trim().split(/\s+/);
+		var nums = parts.map(function(p)
+		{
+			var n = parseFloat(p);
+			return isNaN(n) ? 0 : n;
+		});
+
+		if (nums.length === 1)
+		{
+			return {n: nums[0], e: nums[0], s: nums[0], w: nums[0]};
+		}
+
+		if (nums.length === 2)
+		{
+			return {n: nums[0], e: nums[1], s: nums[0], w: nums[1]};
+		}
+
+		if (nums.length === 3)
+		{
+			return {n: nums[0], e: nums[1], s: nums[2], w: nums[1]};
+		}
+
+		return {n: nums[0], e: nums[1], s: nums[2], w: nums[3]};
+	},
+
+	/**
 	 * Function: isLightDarkColor
 	 * 
 	 * Returns true if the given color is a light-dark color.
@@ -2612,7 +2821,10 @@ var mxUtils =
         		seif = -1;
         	}
             
-        	sds = seif * Math.sqrt((r1x * r2y - r1x * rydd - r2y * rxdd) / (r1x * rydd + r2y * rxdd));
+        	// Clamps radicand to zero for radii that only just span the chord
+        	// (eg. semicircles), where rounding errors can make it negative and
+        	// the NaN would otherwise silently drop the arc (SVG spec F.6.6.2)
+        	sds = seif * Math.sqrt(Math.max(0, (r1x * r2y - r1x * rydd - r2y * rxdd) / (r1x * rydd + r2y * rxdd)));
         }
         
         var txd = sds * r1 * ryd / r2;
@@ -3422,37 +3634,52 @@ var mxUtils =
 	
 	/**
 	 * Function: zapGremlins
-	 * 
+	 *
 	 * Removes all illegal control characters with ASCII code <32 except TAB, LF
-	 * and CR.
-	 * 
+	 * and CR, and all unpaired surrogates.
+	 *
 	 * Parameters:
-	 * 
+	 *
 	 * text - String that represents the text.
 	 */
 	zapGremlins: function(text)
 	{
 		var lastIndex = 0;
 		var checked = [];
-		
+
 		for (var i = 0; i < text.length; i++)
 		{
 			var code = text.charCodeAt(i);
-			
-			// Removes all control chars except TAB, LF and CR
-			if (!((code >= 32 || code == 9 || code == 10 || code == 13) &&
-				code != 0xFFFF && code != 0xFFFE))
+			var valid = (code >= 32 || code == 9 || code == 10 || code == 13) &&
+				code != 0xFFFF && code != 0xFFFE;
+
+			// Removes unpaired surrogates
+			if (valid && code >= 0xD800 && code <= 0xDFFF)
+			{
+				if (code <= 0xDBFF)
+				{
+					var next = (i + 1 < text.length) ? text.charCodeAt(i + 1) : 0;
+					valid = next >= 0xDC00 && next <= 0xDFFF;
+				}
+				else
+				{
+					var prev = (i > 0) ? text.charCodeAt(i - 1) : 0;
+					valid = prev >= 0xD800 && prev <= 0xDBFF;
+				}
+			}
+
+			if (!valid)
 			{
 				checked.push(text.substring(lastIndex, i));
 				lastIndex = i + 1;
 			}
 		}
-		
+
 		if (lastIndex > 0 && lastIndex < text.length)
 		{
 			checked.push(text.substring(lastIndex));
 		}
-		
+
 		return (checked.length == 0) ? text : checked.join('');
 	},
 
@@ -3513,6 +3740,28 @@ var mxUtils =
 	trim: function(str, chars)
 	{
 		return mxUtils.ltrim(mxUtils.rtrim(str, chars), chars);
+	},
+
+	/**
+	 * Function: hashCode
+	 *
+	 * Returns a 32-bit hash of the given string as an unsigned
+	 * base36 string.
+	 *
+	 * Parameters:
+	 *
+	 * str - String to be hashed.
+	 */
+	hashCode: function(str)
+	{
+		var h = 5381;
+
+		for (var i = 0; i < str.length; i++)
+		{
+			h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+		}
+
+		return (h >>> 0).toString(36);
 	},
 	
 	/**
@@ -5287,8 +5536,975 @@ var mxUtils =
 	},
 
 	/**
+	 * Function: isVerticalTextDirection
+	 *
+	 * Returns true if the given text direction is a vertical writing mode,
+	 * ie. starts with 'vertical-'.
+	 *
+	 * Parameters:
+	 *
+	 * dir - Text direction to check.
+	 */
+	isVerticalTextDirection: function(dir)
+	{
+		return dir != null && typeof dir === 'string' && dir.substring(0, 9) == 'vertical-';
+	},
+
+	/**
+	 * Function: canConvertHtmlToSvg
+	 *
+	 * Returns true if the given HTML label can be converted to native SVG
+	 * text elements. This is a dry-run of <convertHtmlToSvg> on the parsed
+	 * value where the output is discarded, so this check cannot diverge
+	 * from the actual conversion.
+	 *
+	 * Parameters:
+	 *
+	 * value - String that contains the HTML markup of the label.
+	 * opts - Optional settings, see <convertHtmlToSvg>.
+	 */
+	canConvertHtmlToSvg: function(value, opts)
+	{
+		var div = document.createElement('div');
+		div.innerHTML = (value != null) ? value : '';
+
+		return mxUtils.convertHtmlToSvg(div, null, null, opts);
+	},
+
+	/**
+	 * Function: convertHtmlToSvg
+	 *
+	 * Converts the child nodes of the given HTML element to SVG text and
+	 * tspan elements and returns true if the conversion was possible. This
+	 * is used by <mxSvgCanvas2D.text> to render HTML labels as native SVG
+	 * (where false means the caller should fall back to foreignObject) and
+	 * by the format panel to check if the conversion is possible. If text
+	 * or offset are null then throwaway nodes are used, ie. the function
+	 * performs a dry-run that checks if the content can be converted.
+	 *
+	 * Parameters:
+	 *
+	 * elt - HTML element whose child nodes are converted.
+	 * text - Optional SVG text element to add the result to. For block
+	 * content the resulting text elements are added as children and should
+	 * be moved to a group element by the caller (see offset.textHeight).
+	 * offset - Optional <mxPoint> that receives the resulting offsets,
+	 * where offset.textHeight is set for multiline (block) content.
+	 * opts - Optional object with the following settings:
+	 *
+	 * dir - Text direction of the label. Vertical writing modes are not
+	 * supported by the SVG text conversion (see mxText.js) so this function
+	 * returns false for those and the caller should fall back to
+	 * foreignObject, which does support them.
+	 * fontSize - Base font size. Default is <mxConstants.DEFAULT_FONTSIZE>.
+	 * fontScale - Optional scale for explicit font sizes.
+	 * createElement - Optional function that returns a new SVG element for
+	 * the given tag name. Default uses the current document. Canvases pass
+	 * their own implementation so that elements are created in the document
+	 * that owns the canvas root (eg. for exports).
+	 */
+	convertHtmlToSvg: function(elt, text, offset, opts)
+	{
+		opts = {
+			dir: (opts != null) ? opts.dir : null,
+			fontScale: (opts != null) ? opts.fontScale : null,
+			fontSize: (opts != null && opts.fontSize != null) ?
+				opts.fontSize : mxConstants.DEFAULT_FONTSIZE,
+			createElement: (opts != null && opts.createElement != null) ?
+				opts.createElement : function(tagName)
+				{
+					return document.createElementNS(mxConstants.NS_SVG, tagName);
+				}
+		};
+
+		// Vertical writing-mode is not supported by the SVG text conversion
+		// (see mxText.js), callers fall back to foreignObject which does
+		if (mxUtils.isVerticalTextDirection(opts.dir))
+		{
+			return false;
+		}
+
+		// Uses throwaway nodes for dry-runs
+		text = (text != null) ? text : opts.createElement('text');
+		offset = (offset != null) ? offset : new mxPoint(0, 0);
+		var result = true;
+
+		if (elt != null)
+		{
+			// Checks if any child is a block element
+			if (mxUtils.containsBlockChild(elt))
+			{
+				result = mxUtils.convertHtmlBlocksToSvg(elt, text, offset, opts);
+			}
+			else if (mxUtils.containsBrElement(elt))
+			{
+				result = mxUtils.convertHtmlWithBreaksToSvg(elt, text, offset,
+					opts.fontScale, opts);
+			}
+			else
+			{
+				result = mxUtils.convertHtmlInlineToSvg(elt, text, offset,
+					opts.fontScale, null, opts);
+			}
+		}
+
+		return result;
+	},
+
+	/**
+	 * Function: getBlockElementStyle
+	 *
+	 * Returns default style properties for HTML block elements.
+	 */
+	getBlockElementStyle: function(nodeName)
+	{
+		switch (nodeName)
+		{
+			case 'H1': return {sizeFactor: 2.0, weight: 'bold', family: null, marginTop: 0.67, marginBottom: 0.67, indent: 0};
+			case 'H2': return {sizeFactor: 1.5, weight: 'bold', family: null, marginTop: 0.83, marginBottom: 0.83, indent: 0};
+			case 'H3': return {sizeFactor: 1.17, weight: 'bold', family: null, marginTop: 1.0, marginBottom: 1.0, indent: 0};
+			case 'H4': return {sizeFactor: 1.0, weight: 'bold', family: null, marginTop: 1.33, marginBottom: 1.33, indent: 0};
+			case 'H5': return {sizeFactor: 0.83, weight: 'bold', family: null, marginTop: 1.67, marginBottom: 1.67, indent: 0};
+			case 'H6': return {sizeFactor: 0.67, weight: 'bold', family: null, marginTop: 2.33, marginBottom: 2.33, indent: 0};
+			case 'P': return {sizeFactor: 1.0, weight: null, family: null, marginTop: 1.0, marginBottom: 1.0, indent: 0};
+			case 'PRE': return {sizeFactor: 1.0, weight: null, family: 'monospace', marginTop: 1.0, marginBottom: 1.0, indent: 0};
+			case 'BLOCKQUOTE': return {sizeFactor: 1.0, weight: null, family: null, marginTop: 1.0, marginBottom: 1.0, indent: 40};
+			case 'DIV': return {sizeFactor: 1.0, weight: null, family: null, marginTop: 0, marginBottom: 0, indent: 0};
+			default: return null;
+		}
+	},
+
+	/**
+	 * Function: getMaxInlineFontSize
+	 *
+	 * Recursively finds the maximum font size (in px) among inline children of
+	 * the given element. Returns the block font size if no larger inline font
+	 * is found.
+	 */
+	getMaxInlineFontSize: function(elt, blockFontSize)
+	{
+		var maxSize = blockFontSize;
+
+		for (var i = 0; i < elt.childNodes.length; i++)
+		{
+			var child = elt.childNodes[i];
+
+			if (child.nodeType == mxConstants.NODETYPE_ELEMENT && child.style != null)
+			{
+				var fs = child.style.fontSize;
+
+				if (fs != null && fs != '')
+				{
+					if (fs.slice(-2) == 'px')
+					{
+						var px = parseFloat(fs);
+
+						if (!isNaN(px))
+						{
+							maxSize = Math.max(maxSize, px);
+						}
+					}
+					else if (fs.slice(-2) == 'pt')
+					{
+						var pt = parseFloat(fs);
+
+						if (!isNaN(pt))
+						{
+							maxSize = Math.max(maxSize, pt * 4 / 3);
+						}
+					}
+					else if (fs.slice(-2) == 'em')
+					{
+						var em = parseFloat(fs);
+
+						if (!isNaN(em))
+						{
+							maxSize = Math.max(maxSize, em * blockFontSize);
+						}
+					}
+					else if (fs.slice(-1) == '%')
+					{
+						var pct = parseFloat(fs);
+
+						if (!isNaN(pct))
+						{
+							maxSize = Math.max(maxSize, pct / 100 * blockFontSize);
+						}
+					}
+				}
+
+				// Recurse into inline children
+				var childMax = mxUtils.getMaxInlineFontSize(child, blockFontSize);
+				maxSize = Math.max(maxSize, childMax);
+			}
+		}
+
+		return maxSize;
+	},
+
+	/**
+	 * Function: containsBlockChild
+	 *
+	 * Returns true if the element contains any direct block-level children.
+	 */
+	containsBlockChild: function(elt)
+	{
+		for (var i = 0; i < elt.childNodes.length; i++)
+		{
+			if (mxUtils.getBlockElementStyle(elt.childNodes[i].nodeName) != null)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	},
+
+	/**
+	 * Function: convertHtmlBlocksToSvg
+	 *
+	 * Converts HTML with block elements to SVG text elements inside a group.
+	 * Handles nested block elements (e.g. DIV containing DIV) by flattening
+	 * them into the block flow, and treats non-whitespace text nodes between
+	 * blocks as anonymous inline lines. See <convertHtmlToSvg> for opts.
+	 */
+	convertHtmlBlocksToSvg: function(elt, container, offset, opts)
+	{
+		var baseFontSize = opts.fontSize;
+		var cursorY = 0;
+		var prevMarginBottom = 0;
+		var isFirst = true;
+		var result = true;
+
+		function processBlockInlineContent(child, blockStyle, blockFontSize, textColor)
+		{
+			var marginTop = blockStyle.marginTop;
+			var marginBottom = blockStyle.marginBottom;
+
+			// CSS color is fill in SVG, resolved in processChildren
+			var fillColor = (textColor != null && textColor != '') ?
+				mxUtils.getLightDarkColor(textColor) : null;
+
+			if (child.style != null)
+			{
+				if (child.style.marginTop != '')
+				{
+					var mt = parseFloat(child.style.marginTop);
+
+					if (!isNaN(mt))
+					{
+						if (child.style.marginTop.indexOf('px') >= 0)
+						{
+							marginTop = mt / blockFontSize;
+						}
+						else if (child.style.marginTop.indexOf('em') >= 0)
+						{
+							marginTop = mt;
+						}
+					}
+				}
+
+				if (child.style.marginBottom != '')
+				{
+					var mb = parseFloat(child.style.marginBottom);
+
+					if (!isNaN(mb))
+					{
+						if (child.style.marginBottom.indexOf('px') >= 0)
+						{
+							marginBottom = mb / blockFontSize;
+						}
+						else if (child.style.marginBottom.indexOf('em') >= 0)
+						{
+							marginBottom = mb;
+						}
+					}
+				}
+			}
+
+			// Collapses margins between adjacent blocks
+			var effectiveMarginTop = marginTop * blockFontSize;
+
+			if (isFirst)
+			{
+				cursorY += effectiveMarginTop;
+			}
+			else
+			{
+				var collapsed = Math.max(prevMarginBottom, effectiveMarginTop);
+				cursorY += collapsed;
+			}
+
+			if (mxUtils.containsBrElement(child))
+			{
+				var brLines = mxUtils.splitAtBr(child);
+
+				for (var li = 0; li < brLines.length && result; li++)
+				{
+					var lineNodes = brLines[li];
+					var tempContainer = document.createElement('span');
+
+					for (var ln = 0; ln < lineNodes.length; ln++)
+					{
+						tempContainer.appendChild(lineNodes[ln]);
+					}
+
+					var lineFontSize = mxUtils.getMaxInlineFontSize(tempContainer, blockFontSize);
+					cursorY += lineFontSize;
+
+					var textEl = opts.createElement('text');
+					textEl.setAttribute('y', mxUtils.format(cursorY));
+					textEl.setAttribute('data-line-font-size', lineFontSize);
+
+					if (blockStyle.sizeFactor != 1.0)
+					{
+						textEl.setAttribute('font-size', blockFontSize + 'px');
+					}
+
+					if (blockStyle.weight != null)
+					{
+						textEl.setAttribute('font-weight', blockStyle.weight);
+					}
+
+					if (blockStyle.family != null)
+					{
+						textEl.setAttribute('font-family', blockStyle.family);
+					}
+
+					if (blockStyle.indent > 0)
+					{
+						textEl.setAttribute('dx', blockStyle.indent);
+					}
+
+					if (fillColor != null)
+					{
+						textEl.setAttribute('fill', fillColor.light);
+						textEl.style.fill = fillColor.cssText;
+					}
+
+					var inlineOffset = new mxPoint(0, 0);
+
+					if (lineNodes.length > 0)
+					{
+						result = mxUtils.convertHtmlInlineToSvg(tempContainer, textEl,
+							inlineOffset, 1, blockFontSize, opts);
+					}
+
+					container.appendChild(textEl);
+
+					var lineDescender = lineFontSize * (mxConstants.LINE_HEIGHT - 1);
+					lineDescender += mxUtils.getSupSubLineExpansion(lineFontSize,
+						inlineOffset.supDyPx, inlineOffset.subDyPx);
+					cursorY += lineDescender;
+				}
+			}
+			else
+			{
+				var lineFontSize = mxUtils.getMaxInlineFontSize(child, blockFontSize);
+				cursorY += lineFontSize;
+
+				var textEl = opts.createElement('text');
+				textEl.setAttribute('y', mxUtils.format(cursorY));
+				textEl.setAttribute('data-line-font-size', lineFontSize);
+
+				if (blockStyle.sizeFactor != 1.0)
+				{
+					textEl.setAttribute('font-size', blockFontSize + 'px');
+				}
+
+				if (blockStyle.weight != null)
+				{
+					textEl.setAttribute('font-weight', blockStyle.weight);
+				}
+
+				if (blockStyle.family != null)
+				{
+					textEl.setAttribute('font-family', blockStyle.family);
+				}
+
+				if (blockStyle.indent > 0)
+				{
+					textEl.setAttribute('dx', blockStyle.indent);
+				}
+
+				if (fillColor != null)
+				{
+					textEl.setAttribute('fill', fillColor.light);
+					textEl.style.fill = fillColor.cssText;
+				}
+
+				var inlineOffset = new mxPoint(0, 0);
+				result = mxUtils.convertHtmlInlineToSvg(child, textEl,
+					inlineOffset, 1, blockFontSize, opts);
+
+				container.appendChild(textEl);
+
+				var lineDescender = lineFontSize * (mxConstants.LINE_HEIGHT - 1);
+				lineDescender += mxUtils.getSupSubLineExpansion(lineFontSize,
+					inlineOffset.supDyPx, inlineOffset.subDyPx,
+					inlineOffset.supFontSize, inlineOffset.subFontSize);
+				cursorY += lineDescender;
+			}
+
+			prevMarginBottom = marginBottom * blockFontSize;
+			isFirst = false;
+		}
+
+		function isInlineNode(node)
+		{
+			// Non-element nodes are part of the inline flow, where comments
+			// and other non-rendered node types are ignored downstream
+			return node.nodeType != mxConstants.NODETYPE_ELEMENT ||
+				mxUtils.getBlockElementStyle(node.nodeName) == null;
+		}
+
+		function processAnonymousInlineRun(nodes, textColor)
+		{
+			// CSS color is fill in SVG, inherited from the parent block
+			var fillColor = (textColor != null && textColor != '') ?
+				mxUtils.getLightDarkColor(textColor) : null;
+
+			// Creates a temporary span container for the inline nodes
+			var tempContainer = document.createElement('span');
+
+			for (var k = 0; k < nodes.length; k++)
+			{
+				tempContainer.appendChild(nodes[k].cloneNode(true));
+			}
+
+			// Checks if any non-whitespace content exists
+			var hasContent = false;
+
+			for (var k = 0; k < tempContainer.childNodes.length; k++)
+			{
+				var n = tempContainer.childNodes[k];
+
+				if (n.nodeType == mxConstants.NODETYPE_ELEMENT ||
+					(n.nodeType == mxConstants.NODETYPE_TEXT &&
+					mxUtils.trim(n.nodeValue).length > 0))
+				{
+					hasContent = true;
+					break;
+				}
+			}
+
+			if (!hasContent)
+			{
+				return;
+			}
+
+			// Handles BR elements within the anonymous inline run
+			if (mxUtils.containsBrElement(tempContainer))
+			{
+				var brLines = mxUtils.splitAtBr(tempContainer);
+
+				for (var li = 0; li < brLines.length && result; li++)
+				{
+					var lineNodes = brLines[li];
+					var lineContainer = document.createElement('span');
+
+					for (var ln = 0; ln < lineNodes.length; ln++)
+					{
+						lineContainer.appendChild(lineNodes[ln]);
+					}
+
+					var lineFontSize = mxUtils.getMaxInlineFontSize(lineContainer, baseFontSize);
+					cursorY += lineFontSize;
+
+					var textEl = opts.createElement('text');
+					textEl.setAttribute('y', mxUtils.format(cursorY));
+					textEl.setAttribute('data-line-font-size', lineFontSize);
+
+					if (fillColor != null)
+					{
+						textEl.setAttribute('fill', fillColor.light);
+						textEl.style.fill = fillColor.cssText;
+					}
+
+					var inlineOffset = new mxPoint(0, 0);
+
+					if (lineNodes.length > 0)
+					{
+						result = mxUtils.convertHtmlInlineToSvg(lineContainer, textEl,
+							inlineOffset, 1, baseFontSize, opts);
+					}
+
+					container.appendChild(textEl);
+
+					var lineDescender = lineFontSize * (mxConstants.LINE_HEIGHT - 1);
+					lineDescender += mxUtils.getSupSubLineExpansion(lineFontSize,
+						inlineOffset.supDyPx, inlineOffset.subDyPx);
+					cursorY += lineDescender;
+				}
+			}
+			else
+			{
+				var lineFontSize = mxUtils.getMaxInlineFontSize(tempContainer, baseFontSize);
+				cursorY += lineFontSize;
+
+				var textEl = opts.createElement('text');
+				textEl.setAttribute('y', mxUtils.format(cursorY));
+				textEl.setAttribute('data-line-font-size', lineFontSize);
+
+				if (fillColor != null)
+				{
+					textEl.setAttribute('fill', fillColor.light);
+					textEl.style.fill = fillColor.cssText;
+				}
+
+				var inlineOffset = new mxPoint(0, 0);
+				result = mxUtils.convertHtmlInlineToSvg(tempContainer, textEl,
+					inlineOffset, 1, baseFontSize, opts);
+
+				container.appendChild(textEl);
+
+				var lineDescender = lineFontSize * (mxConstants.LINE_HEIGHT - 1);
+				lineDescender += mxUtils.getSupSubLineExpansion(lineFontSize,
+					inlineOffset.supDyPx, inlineOffset.subDyPx,
+					inlineOffset.supFontSize, inlineOffset.subFontSize);
+				cursorY += lineDescender;
+			}
+
+			prevMarginBottom = 0;
+			isFirst = false;
+		}
+
+		function processChildren(parentElt, inheritedColor)
+		{
+			for (var i = 0; i < parentElt.childNodes.length && result; i++)
+			{
+				var child = parentElt.childNodes[i];
+
+				// Collects consecutive inline nodes into anonymous block runs
+				if (isInlineNode(child))
+				{
+					var inlineRun = [];
+
+					while (i < parentElt.childNodes.length &&
+						isInlineNode(parentElt.childNodes[i]))
+					{
+						inlineRun.push(parentElt.childNodes[i]);
+						i++;
+					}
+
+					i--; // Adjust for the for-loop increment
+					processAnonymousInlineRun(inlineRun, inheritedColor);
+					continue;
+				}
+
+				var blockStyle = mxUtils.getBlockElementStyle(child.nodeName);
+
+				if (blockStyle == null)
+				{
+					result = false;
+					continue;
+				}
+
+				// Background color on block elements is not supported by the
+				// conversion, so callers fall back to foreignObject
+				if (child.style != null && child.style.backgroundColor != '')
+				{
+					result = false;
+					continue;
+				}
+
+				// Resolves the effective text color of the block
+				var childColor = (child.style != null && child.style.color != '') ?
+					child.style.color : inheritedColor;
+
+				// DIV with nested block children: flatten into current block flow
+				if (child.nodeName == 'DIV' && mxUtils.containsBlockChild(child))
+				{
+					processChildren(child, childColor);
+				}
+				else
+				{
+					processBlockInlineContent(child, blockStyle,
+						baseFontSize * blockStyle.sizeFactor, childColor);
+				}
+			}
+		}
+
+		processChildren(elt, null);
+
+		// Stores total text height for alignment computation
+		cursorY += prevMarginBottom;
+		offset.textHeight = cursorY;
+
+		return result;
+	},
+
+	/**
+	 * Function: convertHtmlInlineToSvg
+	 *
+	 * Converts inline HTML elements to SVG tspan elements.
+	 * effectiveFontSize tracks the current computed font size through nesting,
+	 * used for SUP/SUB dy computation relative to the parent font size.
+	 * offset.supDyPx / offset.subDyPx track the maximum SUP/SUB shift on
+	 * this line for line box expansion computation.
+	 * See <convertHtmlToSvg> for opts.
+	 */
+	convertHtmlInlineToSvg: function(elt, text, offset, fontScale, effectiveFontSize, opts)
+	{
+		var result = true;
+
+		if (elt != null)
+		{
+			fontScale = (fontScale != null) ? fontScale : 1;
+			var baseFontSize = opts.fontSize;
+			effectiveFontSize = (effectiveFontSize != null) ? effectiveFontSize : baseFontSize;
+			var currentDyPx = 0;
+
+			function setCurrentDy(tspan, targetDyPx)
+			{
+				// Tracks absolute dy position so that shifts into and
+				// out of superscript/subscript cancel exactly.
+				// Uses unitless values (SVG user units) so dy scales
+				// correctly with the SVG viewBox when zooming.
+				if (currentDyPx != 0 || targetDyPx != 0)
+				{
+					tspan.setAttribute('dy', Math.round((targetDyPx - currentDyPx) * 100) / 100);
+				}
+
+				currentDyPx = targetDyPx;
+			};
+
+			for (var i = 0; i < elt.childNodes.length && result; i++)
+			{
+				var child = elt.childNodes[i];
+
+				// Ignores comments and other node types not rendered in HTML
+				if (child.nodeType != mxConstants.NODETYPE_TEXT &&
+					child.nodeType != mxConstants.NODETYPE_ELEMENT)
+				{
+					continue;
+				}
+
+				var tspan = opts.createElement('tspan');
+				var dyPx = 0;
+
+				if (child.nodeType == mxConstants.NODETYPE_TEXT)
+				{
+					mxUtils.write(tspan, child.nodeValue);
+				}
+				else if (child.style.backgroundColor == '' &&
+					(child.nodeName == 'SUP' || child.nodeName == 'SUB' ||
+					child.nodeName == 'B' || child.nodeName == 'I' ||
+					child.nodeName == 'SPAN' || child.nodeName == 'FONT' ||
+					child.nodeName == 'STRIKE' || child.nodeName == 'U'))
+				{
+					// Uses original CSS style
+					if (child.style.cssText != '')
+					{
+						tspan.style.cssText = child.style.cssText;
+					}
+
+					if (child.getAttribute('face') != null)
+					{
+						tspan.style.fontFamily = mxUtils.parseCssFontFamily(
+							child.getAttribute('face'));
+					}
+
+					// CSS color is fill in SVG, color attribute (eg. on font
+					// elements created by the cell editor) as fallback
+					var textColor = (child.style.color != '') ?
+						child.style.color : child.getAttribute('color');
+
+					if (textColor != null && textColor != '')
+					{
+						var cssColor = mxUtils.getLightDarkColor(textColor);
+						tspan.setAttribute('fill', cssColor.light);
+						tspan.style.fill = cssColor.cssText;
+						tspan.style.color = '';
+					}
+
+					var fontSize = tspan.style.fontSize || '';
+
+					var childFontScale = fontScale;
+					var childEffectiveFontSize = effectiveFontSize;
+
+					if (child.nodeName == 'SUP' || child.nodeName == 'SUB')
+					{
+						if (fontSize == '')
+						{
+							tspan.style.fontSize = 'smaller';
+							childFontScale = fontScale * 1.2;
+							childEffectiveFontSize = effectiveFontSize / 1.2;
+						}
+
+						if (child.nodeName == 'SUP' && offset.y == 0)
+						{
+							offset.y = -0.2;
+						}
+						else if (child.nodeName == 'SUB')
+						{
+							offset.y = Math.max(offset.y, 0.15);
+						}
+
+						// Uses parent's effective font size for dy
+						dyPx = (child.nodeName == 'SUP' ? -0.35 : 0.15) * effectiveFontSize;
+
+						// Tracks extreme dy and corresponding font size for line box expansion
+						if (child.nodeName == 'SUP')
+						{
+							if (offset.supDyPx == null || dyPx < offset.supDyPx)
+							{
+								offset.supDyPx = dyPx;
+								offset.supFontSize = childEffectiveFontSize;
+							}
+						}
+						else
+						{
+							if (offset.subDyPx == null || dyPx > offset.subDyPx)
+							{
+								offset.subDyPx = dyPx;
+								offset.subFontSize = childEffectiveFontSize;
+							}
+						}
+					}
+					else
+					{
+						if (child.nodeName == 'I')
+						{
+							tspan.setAttribute('font-style', 'italic');
+						}
+						else if (child.nodeName == 'B')
+						{
+							tspan.setAttribute('font-weight', 'bold');
+						}
+						else if (child.nodeName == 'STRIKE')
+						{
+							tspan.setAttribute('text-decoration', 'line-through');
+						}
+						else if (child.nodeName == 'U')
+						{
+							tspan.setAttribute('text-decoration', 'underline');
+						}
+					}
+
+					// Computes child effective font size from explicit font-size
+					if (fontSize != '' && fontSize != 'smaller')
+					{
+						if (fontSize.slice(-2) == 'px')
+						{
+							childEffectiveFontSize = parseFloat(fontSize);
+						}
+						else if (fontSize.slice(-2) == 'em')
+						{
+							childEffectiveFontSize = parseFloat(fontSize) * effectiveFontSize;
+						}
+						else if (fontSize.slice(-1) == '%')
+						{
+							childEffectiveFontSize = parseFloat(fontSize) / 100 * effectiveFontSize;
+						}
+					}
+
+					if (fontSize.slice(-2) == 'px')
+					{
+						tspan.style.fontSize = (parseFloat(fontSize) *
+							childFontScale / baseFontSize) + 'em';
+					}
+
+					result = mxUtils.convertHtmlInlineToSvg(child, tspan, offset,
+						childFontScale, childEffectiveFontSize, opts);
+				}
+				else
+				{
+					result = false;
+				}
+
+				setCurrentDy(tspan, dyPx);
+				text.appendChild(tspan);
+			}
+		}
+
+		return result;
+	},
+
+	/**
+	 * Function: getSupSubLineExpansion
+	 *
+	 * Computes how much a line box expands when it contains superscript or
+	 * subscript elements. In CSS, vertical-align: super/sub shifts the inline
+	 * box, which can extend beyond the normal line box boundaries.
+	 *
+	 * supDyPx/subDyPx are the extreme dy values (negative for sup, positive for sub).
+	 * supFontSize/subFontSize are the effective font sizes of those elements.
+	 *
+	 * Returns the additional height to add to the line's descender.
+	 */
+	getSupSubLineExpansion: function(lineFontSize, supDyPx, subDyPx, supFontSize, subFontSize)
+	{
+		var expansion = 0;
+
+		if (supDyPx != null && supDyPx < 0)
+		{
+			// The sup's inline box extends above the normal line box.
+			// Sup inline top relative to baseline = dy - supFontSize
+			// Normal inline top relative to baseline = -lineFontSize
+			// In CSS, half the leading is distributed above the baseline,
+			// providing extra space for superscripts without expanding the line.
+			// Expansion above = max(0, normalTop - supTop - halfLeading)
+			var sfz = supFontSize || (lineFontSize / 1.2);
+			var halfLeading = lineFontSize * (mxConstants.LINE_HEIGHT - 1) / 2;
+			expansion = Math.max(0, sfz - lineFontSize - supDyPx - halfLeading);
+		}
+
+		if (subDyPx != null && subDyPx > 0)
+		{
+			// The sub's inline box extends below the normal line box.
+			// Sub inline bottom relative to baseline = dy + subFontSize * (LINE_HEIGHT - 1)
+			// Normal inline bottom = lineFontSize * (LINE_HEIGHT - 1)
+			var sfz = subFontSize || (lineFontSize / 1.2);
+			var subBottom = subDyPx + sfz * (mxConstants.LINE_HEIGHT - 1);
+			var normalBottom = lineFontSize * (mxConstants.LINE_HEIGHT - 1);
+			expansion = Math.max(expansion, subBottom - normalBottom);
+		}
+
+		return expansion;
+	},
+
+	/**
+	 * Function: containsBrElement
+	 *
+	 * Returns true if the element contains any BR elements at any depth.
+	 */
+	containsBrElement: function(elt)
+	{
+		for (var i = 0; i < elt.childNodes.length; i++)
+		{
+			var child = elt.childNodes[i];
+
+			if (child.nodeName == 'BR')
+			{
+				return true;
+			}
+
+			if (child.nodeType == mxConstants.NODETYPE_ELEMENT &&
+				mxUtils.containsBrElement(child))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	},
+
+	/**
+	 * Function: splitAtBr
+	 *
+	 * Splits the children of the given element at BR boundaries. Returns an
+	 * array of arrays, where each inner array contains cloned DOM nodes
+	 * forming one line. Handles BR elements nested inside inline formatting
+	 * elements by cloning the parent wrapper for each sub-line.
+	 */
+	splitAtBr: function(elt)
+	{
+		var lines = [[]];
+
+		for (var i = 0; i < elt.childNodes.length; i++)
+		{
+			var child = elt.childNodes[i];
+
+			if (child.nodeName == 'BR')
+			{
+				lines.push([]);
+			}
+			else if (child.nodeType == mxConstants.NODETYPE_TEXT)
+			{
+				lines[lines.length - 1].push(child.cloneNode(true));
+			}
+			else if (child.nodeType == mxConstants.NODETYPE_ELEMENT)
+			{
+				if (mxUtils.containsBrElement(child))
+				{
+					var subLines = mxUtils.splitAtBr(child);
+
+					for (var j = 0; j < subLines.length; j++)
+					{
+						if (j > 0)
+						{
+							lines.push([]);
+						}
+
+						if (subLines[j].length > 0)
+						{
+							var wrapper = child.cloneNode(false);
+
+							for (var k = 0; k < subLines[j].length; k++)
+							{
+								wrapper.appendChild(subLines[j][k]);
+							}
+
+							lines[lines.length - 1].push(wrapper);
+						}
+					}
+				}
+				else
+				{
+					lines[lines.length - 1].push(child.cloneNode(true));
+				}
+			}
+		}
+
+		return lines;
+	},
+
+	/**
+	 * Function: convertHtmlWithBreaksToSvg
+	 *
+	 * Converts inline HTML content containing BR elements to multiple SVG
+	 * text elements, one per line. Sets offset.textHeight for alignment.
+	 * See <convertHtmlToSvg> for opts.
+	 */
+	convertHtmlWithBreaksToSvg: function(elt, container, offset, fontScale, opts)
+	{
+		var result = true;
+		var baseFontSize = opts.fontSize;
+		var lines = mxUtils.splitAtBr(elt);
+		var cursorY = 0;
+
+		for (var i = 0; i < lines.length && result; i++)
+		{
+			var lineNodes = lines[i];
+			var tempContainer = document.createElement('span');
+
+			for (var j = 0; j < lineNodes.length; j++)
+			{
+				tempContainer.appendChild(lineNodes[j]);
+			}
+
+			var lineFontSize = mxUtils.getMaxInlineFontSize(tempContainer, baseFontSize);
+			cursorY += lineFontSize;
+
+			var textEl = opts.createElement('text');
+			textEl.setAttribute('y', mxUtils.format(cursorY));
+			textEl.setAttribute('data-line-font-size', lineFontSize);
+
+			var inlineOffset = new mxPoint(0, 0);
+
+			if (lineNodes.length > 0)
+			{
+				result = mxUtils.convertHtmlInlineToSvg(tempContainer, textEl,
+					inlineOffset, fontScale || 1, null, opts);
+			}
+
+			container.appendChild(textEl);
+
+			var lineDescender = lineFontSize * (mxConstants.LINE_HEIGHT - 1);
+			lineDescender += mxUtils.getSupSubLineExpansion(lineFontSize,
+				inlineOffset.supDyPx, inlineOffset.subDyPx);
+			cursorY += lineDescender;
+		}
+
+		offset.textHeight = cursorY;
+
+		return result;
+	},
+
+	/**
 	 * Function: format
-	 * 
+	 *
 	 * Rounds all numbers to 2 decimal points.
 	 */
 	format: function(value)

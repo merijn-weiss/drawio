@@ -1613,7 +1613,7 @@ App.prototype.init = function()
 		initOneDriveClient();
 	}
 
-	if (urlParams['ms365'] != '0')
+	if (urlParams['ms365'] != '0' && !EditorUi.isElectronApp)
 	{
 		try
 		{
@@ -1835,7 +1835,7 @@ App.prototype.init = function()
 				// Fits diagram to window
 				if (Editor.fitDiagramOnLoad)
 				{
-					this.initialFitDiagram();
+					this.fitInitialView();
 				}
 			}));
 		}
@@ -2559,10 +2559,12 @@ App.prototype.getThumbnail = function(width, fn, border)
 
 			if (this.currentPage == page)
 			{
+				graph.mathEnabled = this.editor.graph.mathEnabled;
 				graph.setBackgroundImage(bgImg);
 			}
 			else if (page.viewState != null && page.viewState != null)
 			{
+				graph.mathEnabled = page.viewState.mathEnabled;
 				bgImg = page.viewState.backgroundImage;
 				graph.setBackgroundImage(bgImg);
 			}
@@ -3723,39 +3725,59 @@ App.prototype.executeCreateObject = function(value, done)
 							urlParams['grid'] == '1');
 					}
 
-					// Fits diagram to window
-					this.initialFitDiagram(1.2);
-
-					// Easter egg: pop effect animates all cells on load
-					if (value.effect == 'pop')
+					var finish = mxUtils.bind(this, function()
 					{
-						var graph = this.editor.graph;
-						var cells = graph.model.getDescendants(
-							graph.model.getRoot());
-						var nodes = graph.getNodesForCells(cells);
-						Graph.setOpacityForNodes(nodes, 0);
+						// Fits diagram to window
+						this.initialFitDiagram(1.2);
 
-						window.setTimeout(mxUtils.bind(this, function()
+						// Easter egg: pop effect animates all cells on load
+						if (value.effect == 'pop')
 						{
-							var animations = graph.createPopAnimations(
-								cells, true);
-							graph.executeAnimations(animations);
-						}), 200);
-					}
+							var graph = this.editor.graph;
+							var cells = graph.model.getDescendants(
+								graph.model.getRoot());
+							var nodes = graph.getNodesForCells(cells);
+							Graph.setOpacityForNodes(nodes, 0);
 
-					// Needs to go before upate of hash if
-					// it replaces the history state
-					if (done != null)
+							window.setTimeout(mxUtils.bind(this, function()
+							{
+								var animations = graph.createPopAnimations(
+									cells, true);
+								graph.executeAnimations(animations);
+							}), 200);
+						}
+
+						// Needs to go before upate of hash if
+						// it replaces the history state
+						if (done != null)
+						{
+							done();
+						}
+
+						// Sets create value with compressed XML. When a layout
+						// was applied, store the laid-out XML and drop the layout
+						// so a reload reproduces the result without re-running it.
+						value.type = 'xml';
+						value.compressed = true;
+						value.data = Graph.compress((value.layout != null) ?
+							mxUtils.getXml(this.editor.getGraphXml()) : xml);
+						delete value.layout;
+						window.location.hash = 'create=' +
+							encodeURIComponent(JSON.stringify(value));
+					});
+
+					// layout: run the requested layout (a preset name or
+					// custom-layout JSON, the same format as the desktop
+					// --layout flag and the embed "layout" action) before
+					// fitting so the view reflects the new positions.
+					if (value.layout != null)
 					{
-						done();
+						this.executeLayoutSpec(value.layout, finish);
 					}
-
-					// Sets create value with compressed XML
-					value.type = 'xml';
-					value.compressed = true;
-					value.data = Graph.compress(xml);
-					window.location.hash = 'create=' +
-						encodeURIComponent(JSON.stringify(value));
+					else
+					{
+						finish();
+					}
 				}), true, null, true);
 		});
 
@@ -3768,21 +3790,36 @@ App.prototype.executeCreateObject = function(value, done)
 
 		if (value.type == 'mermaid')
 		{
-			if (window.isMermaidEnabled)
+			if (EditorUi.isMermaidSupported())
 			{
-				this.parseMermaidDiagram(data, null, mxUtils.bind(this, function(xml)
-				{
-					createDiagram(xml);
-				}), mxUtils.bind(this, function(e)
+				var onMermaidError = mxUtils.bind(this, function(e)
 				{
 					this.handleError(e);
-				}), null, true);
+				});
+
+				if (value.image)
+				{
+					// image:true creates the diagram as a static SVG image cell
+					// (carrying the mermaid source for re-editing), matching the
+					// legacy image insert. Uses the previous mermaid config.
+					this.parseMermaidImage(data, mxUtils.bind(this, function(xml)
+					{
+						createDiagram(xml);
+					}), onMermaidError);
+				}
+				else
+				{
+					this.parseMermaidDiagram(data, null, mxUtils.bind(this, function(xml)
+					{
+						createDiagram(mxMermaidToDrawio.wrapGroup(xml, data, null));
+					}), onMermaidError);
+				}
 			}
 			else
 			{
 				throw new Error(mxResources.get('serviceUnavailableOrBlocked'));
 			}
-		} 
+		}
 		else if (value.type == 'generate' && this.spinner.spin(
 			document.body, mxResources.get('generate') +
 			' \''+ data + '\''))
@@ -3793,7 +3830,7 @@ App.prototype.executeCreateObject = function(value, done)
 			}, mxUtils.bind(this, function(e)
 			{
 				this.handleError(e, mxResources.get('errorLoadingFile'));
-			}), true, {complexity: 'high'});
+			}), {complexity: 'high'});
 		}
 		else if (value.type == 'csv')
 		{
@@ -3831,8 +3868,8 @@ App.prototype.openGenerateDialog = function(prompt)
 		var saved = mxSettings.getWindowState('chat');
 		var cx = (saved != null && saved.x != null) ? saved.x : 224;
 		var cy = (saved != null && saved.y != null) ? saved.y : 104;
-		var cw = (saved != null && saved.w != null) ? saved.w : 360;
-		var ch = (saved != null && saved.h != null) ? saved.h : 480;
+		var cw = (saved != null && saved.w != null) ? saved.w : 440;
+		var ch = (saved != null && saved.h != null) ? saved.h : 440;
 
 		this.chatWindow = new ChatWindow(this, cx, cy, cw, ch);
 		this.chatWindow.window.addListener('show', mxUtils.bind(this, function()
@@ -5062,7 +5099,7 @@ App.prototype.saveFile = function(forceDialog, success)
 				}
 			}), (allowTab) ? null : ['_blank']);
 
-			this.showDialog(dlg.container, 420, 150, true, false, mxUtils.bind(this, function()
+			this.showDialog(dlg.container, 420, 162, true, false, mxUtils.bind(this, function()
 			{
 				this.hideDialog();
 			}));
@@ -6530,8 +6567,11 @@ App.prototype.updateButtonContainer = function(skipNotifications)
 					this.userButton = document.createElement('a');
 					this.userButton.className = 'geButton geRoundButton';
 
-					// User avatar
-					var userImg = document.createElement('img');
+					// User avatar (a div using a background-image rather than an
+					// <img> so the default account icon adapts in dark mode via the
+					// same geAdaptiveAsset pattern as other toolbar icons — see #5364)
+					var userImg = document.createElement('div');
+					userImg.className = 'geUserAvatar';
 					this.userButton.appendChild(userImg);
 
 					mxEvent.addListener(this.userButton, 'click', mxUtils.bind(this, function(evt)
@@ -6559,8 +6599,8 @@ App.prototype.updateButtonContainer = function(skipNotifications)
 				if (!this.unloading)
 				{
 					// Updates user image
-					var userImg = this.userButton.getElementsByTagName('img')[0];
-					var syncImg = this.userButton.getElementsByTagName('img')[1];
+					var userImg = this.userButton.getElementsByClassName('geUserAvatar')[0];
+					var syncImg = this.userButton.getElementsByTagName('img')[0];
 					var title = mxResources.get('changeUser');
 					var user = this.getMainUser();
 
@@ -6572,14 +6612,16 @@ App.prototype.updateButtonContainer = function(skipNotifications)
 					if (user != null && user.pictureUrl != null)
 					{
 						userImg.classList.remove('geAdaptiveAsset');
-						userImg.src = user.pictureUrl;
+						userImg.classList.add('geUserPhoto');
+						userImg.style.backgroundImage = 'url(' + user.pictureUrl + ')';
 						syncImg.style.top = '3px';
 						syncImg.style.right = '0';
 					}
 					else
 					{
+						userImg.classList.remove('geUserPhoto');
 						userImg.classList.add('geAdaptiveAsset');
-						userImg.src = Editor.userImage;
+						userImg.style.backgroundImage = 'url(' + Editor.userImage + ')';
 						syncImg.style.top = '6px';
 						syncImg.style.right = '4px';
 					}
@@ -7884,6 +7926,10 @@ App.prototype.getMainUser = function()
 	{
 		user = this.oneDrive.getUser();
 	}
+	else if (this.m365 != null && this.m365.getUser() != null)
+	{
+		user = this.m365.getUser();
+	}
 	else if (this.dropbox != null && this.dropbox.getUser() != null)
 	{
 		user = this.dropbox.getUser();
@@ -8276,14 +8322,14 @@ App.prototype.toggleUserPanel = function()
 			{
 				var file = this.getCurrentFile();
 
-				if (file != null && file.constructor == OneDriveFile)
+				if (file != null && file.constructor == OneDriveFile && !file.isSP)
 				{
 					var doLogout = mxUtils.bind(this, function()
 					{
 						this.oneDrive.logout();
 						window.location.hash = '';
 					});
-					
+
 					if (!file.isModified())
 					{
 						doLogout();
@@ -8299,6 +8345,37 @@ App.prototype.toggleUserPanel = function()
 					this.oneDrive.logout();
 				}
 			}), mxResources.get('oneDrive'));
+		}
+
+		if (this.m365 != null)
+		{
+			addUser(this.m365.getUser(), IMAGE_PATH + '/onedrive-logo.svg', this.m365.noLogout? null : mxUtils.bind(this, function()
+			{
+				var file = this.getCurrentFile();
+
+				if (file != null && file.constructor == OneDriveFile && file.isSP)
+				{
+					var doLogout = mxUtils.bind(this, function()
+					{
+						this.m365.logout();
+						window.location.hash = '';
+					});
+
+					if (!file.isModified())
+					{
+						doLogout();
+					}
+					else
+					{
+						this.confirm(mxResources.get('allChangesLost'), null, doLogout,
+							mxResources.get('cancel'), mxResources.get('discardChanges'));
+					}
+				}
+				else
+				{
+					this.m365.logout();
+				}
+			}), mxResources.get('m365'));
 		}
 
 		if (this.gitHub != null)
@@ -8438,6 +8515,10 @@ App.prototype.getCurrentUser = function()
 	else if (this.oneDrive != null && this.oneDrive.getUser() != null)
 	{
 		user = this.oneDrive.getUser();
+	}
+	else if (this.m365 != null && this.m365.getUser() != null)
+	{
+		user = this.m365.getUser();
 	}
 	else if (this.dropbox != null && this.dropbox.getUser() != null)
 	{

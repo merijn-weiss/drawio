@@ -37,7 +37,6 @@
 	Editor.thinRedoImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iNDgiIHdpZHRoPSI0OCI+PHBhdGggZD0iTTE5Ljc1IDM3LjVxLTQuNTUgMC03Ljg1LTMuMDVUOC42IDI2LjlxMC00LjQ1IDMuMy03LjV0Ny44NS0zLjA1aDE1LjNMMjkgMTAuM2wxLjYtMS42IDguOCA4LjgtOC44IDguOC0xLjYtMS42IDYuMDUtNi4wNUgxOS43cS0zLjYgMC02LjIyNSAyLjM1LTIuNjI1IDIuMzUtMi42MjUgNS45IDAgMy42IDIuNjI1IDUuOTc1UTE2LjEgMzUuMjUgMTkuNyAzNS4yNWgxMy45djIuMjVaIi8+PC9zdmc+';
 	Editor.thinDoubleArrowRightImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iNDgiIHdpZHRoPSI0OCI+PHBhdGggZD0ibTEzIDM1LjMtMS42LTEuNiA5Ljc1LTkuNzUtOS43NS05LjcgMS42LTEuNiAxMS4zNSAxMS4zWm0xMi4zIDAtMS42LTEuNiA5Ljc1LTkuNzUtOS43NS05LjcgMS42LTEuNiAxMS4zIDExLjNaIi8+PC9zdmc+';
 	Editor.thinNoteImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgOTYgOTYwIDk2MCIgd2lkdGg9IjQ4Ij48cGF0aCBkPSJNMjM3LjY5NCA5NTUuOTk5cS0yMy41MjkgMC00MC42MTEtMTcuMDgyLTE3LjA4Mi0xNy4wODItMTcuMDgyLTQwLjYxMVYyNTMuNjk0cTAtMjMuNTI5IDE3LjA4Mi00MC42MTEgMTcuMDgyLTE3LjA4MiA0MC42MTEtMTcuMDgyaDM0Ny41MzdsMTk0Ljc2OCAxOTQuNzY4djUwNy41MzdxMCAyMy41MjktMTcuMDgyIDQwLjYxMS0xNy4wODIgMTcuMDgyLTQwLjYxMSAxNy4wODJIMjM3LjY5NFpNNTYyLjUzOSA0MTEuMjNWMjQxLjM4NUgyMzcuNjk0cS00LjYxNiAwLTguNDYzIDMuODQ2LTMuODQ2IDMuODQ3LTMuODQ2IDguNDYzdjY0NC42MTJxMCA0LjYxNiAzLjg0NiA4LjQ2MyAzLjg0NyAzLjg0NiA4LjQ2MyAzLjg0Nmg0ODQuNjEycTQuNjE2IDAgOC40NjMtMy44NDYgMy44NDYtMy44NDcgMy44NDYtOC40NjNWNDExLjIzSDU2Mi41MzlaTTIyNS4zODUgMjQxLjM4NVY0MTEuMjMgMjQxLjM4NXY2NjkuMjNWMjQxLjM4NVoiLz48L3N2Zz4=';
-	Editor.thinTableImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iNDgiIHdpZHRoPSI0OCI+PHBhdGggZD0iTTcgNDFWN2gzNHYzNFptMi4yNS0yMy42aDI5LjVWOS4yNUg5LjI1Wm0xMC42IDEwLjdoOC4zdi04LjRoLTguM1ptMCAxMC42NWg4LjN2LTguNGgtOC4zWk05LjI1IDI4LjFoOC4zNXYtOC40SDkuMjVabTIxLjE1IDBoOC4zNXYtOC40SDMwLjRaTTkuMjUgMzguNzVoOC4zNXYtOC40SDkuMjVabTIxLjE1IDBoOC4zNXYtOC40SDMwLjRaIi8+PC9zdmc+';
 	Editor.thinAddCircleImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iNDgiIHdpZHRoPSI0OCI+PHBhdGggZD0iTTIzIDMzLjVoMi4yNXYtOC4yaDguMjVWMjNoLTguMjV2LTguNUgyM1YyM2gtOC41djIuM0gyM1ptMSA5LjVxLTMuOTUgMC03LjQtMS41dC02LjAyNS00LjA3NVE4IDM0Ljg1IDYuNSAzMS40VDUgMjRxMC0zLjk1IDEuNS03LjQyNVE4IDEzLjEgMTAuNTc1IDEwLjU1IDEzLjE1IDggMTYuNiA2LjVUMjQgNXEzLjk1IDAgNy40MjUgMS41UTM0LjkgOCAzNy40NSAxMC41NSA0MCAxMy4xIDQxLjUgMTYuNTc1IDQzIDIwLjA1IDQzIDI0cTAgMy45NS0xLjUgNy40dC00LjA1IDYuMDI1UTM0LjkgNDAgMzEuNDI1IDQxLjUgMjcuOTUgNDMgMjQgNDNabS4wNS0yLjI1cTYuOTUgMCAxMS44MjUtNC45IDQuODc1LTQuOSA0Ljg3NS0xMS45IDAtNi45NS00Ljg3NS0xMS44MjVRMzEgNy4yNSAyNCA3LjI1cS02Ljk1IDAtMTEuODUgNC44NzVRNy4yNSAxNyA3LjI1IDI0cTAgNi45NSA0LjkgMTEuODUgNC45IDQuOSAxMS45IDQuOVpNMjQgMjRaIi8+PC9zdmc+';
 	Editor.thinDeleteImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iNDgiIHdpZHRoPSI0OCI+PHBhdGggZD0iTTEzLjkgNDFxLTEuMTUgMC0yLS44NS0uODUtLjg1LS44NS0yLjA1VjEwLjlIOVY4LjY1aDguNTV2LTEuNGgxMi45djEuNEgzOXYyLjI1aC0yLjA1djI3LjJxMCAxLjItLjg1IDIuMDUtLjg1Ljg1LTIgLjg1Wm0yMC44LTMwLjFIMTMuM3YyNy4ycTAgLjMuMTc1LjQ3NXQuNDI1LjE3NWgyMC4ycS4yIDAgLjQtLjJ0LjItLjQ1Wk0xOS4wNSAzNC41aDIuM1YxNS4xaC0yLjNabTcuNiAwaDIuM1YxNS4xaC0yLjNaTTEzLjMgMTAuOXYyNy44NVYzOC4xWiIvPjwvc3ZnPg==';
 	Editor.thinLightImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iNDgiIHdpZHRoPSI0OCI+PHBhdGggZD0iTTI0IDMwLjc1cTIuOCAwIDQuNzc1LTEuOTc1UTMwLjc1IDI2LjggMzAuNzUgMjRxMC0yLjgtMS45NzUtNC43NzVRMjYuOCAxNy4yNSAyNCAxNy4yNXEtMi44IDAtNC43NzUgMS45NzVRMTcuMjUgMjEuMiAxNy4yNSAyNHEwIDIuOCAxLjk3NSA0Ljc3NVEyMS4yIDMwLjc1IDI0IDMwLjc1Wk0yNCAzM3EtMy43NSAwLTYuMzc1LTIuNjI1VDE1IDI0cTAtMy43NSAyLjYyNS02LjM3NVQyNCAxNXEzLjc1IDAgNi4zNzUgMi42MjVUMzMgMjRxMCAzLjc1LTIuNjI1IDYuMzc1VDI0IDMzWk0zLjY1IDI1LjE1cS0uNSAwLS44MjUtLjMyNVEyLjUgMjQuNSAyLjUgMjRxMC0uNS4zMjUtLjgyNS4zMjUtLjMyNS44MjUtLjMyNWg1LjJxLjUgMCAuODI1LjMyNVExMCAyMy41IDEwIDI0cTAgLjUtLjMyNS44MjUtLjMyNS4zMjUtLjgyNS4zMjVabTM1LjUgMHEtLjUgMC0uODI1LS4zMjVRMzggMjQuNSAzOCAyNHEwLS41LjMyNS0uODI1LjMyNS0uMzI1LjgyNS0uMzI1aDUuMnEuNSAwIC44MjUuMzI1LjMyNS4zMjUuMzI1LjgyNSAwIC41LS4zMjUuODI1LS4zMjUuMzI1LS44MjUuMzI1Wk0yNCAxMHEtLjUgMC0uODI1LS4zMjUtLjMyNS0uMzI1LS4zMjUtLjgyNXYtNS4ycTAtLjUuMzI1LS44MjVRMjMuNSAyLjUgMjQgMi41cS41IDAgLjgyNS4zMjUuMzI1LjMyNS4zMjUuODI1djUuMnEwIC41LS4zMjUuODI1UTI0LjUgMTAgMjQgMTBabTAgMzUuNXEtLjUgMC0uODI1LS4zMjUtLjMyNS0uMzI1LS4zMjUtLjgyNXYtNS4ycTAtLjUuMzI1LS44MjVRMjMuNSAzOCAyNCAzOHEuNSAwIC44MjUuMzI1LjMyNS4zMjUuMzI1LjgyNXY1LjJxMCAuNS0uMzI1LjgyNS0uMzI1LjMyNS0uODI1LjMyNVpNMTIuNSAxNC4xbC0zLTIuOTVxLS4zNS0uMzUtLjMyNS0uODI1UTkuMiA5Ljg1IDkuNSA5LjVxLjM1LS4zNS44LS4zNS40NSAwIC44NS4zNWwyLjk1IDNxLjMuMzUuMy44IDAgLjQ1LS4zLjgtLjMuMy0uNzc1LjMtLjQ3NSAwLS44MjUtLjNabTI0LjM1IDI0LjQtMi45NS0zcS0uMy0uMzUtLjMtLjggMC0uNDUuMzUtLjguMjUtLjM1LjcyNS0uMzV0LjgyNS4zNWwzIDIuOTVxLjM1LjM1LjMyNS44MjUtLjAyNS40NzUtLjMyNS44MjUtLjM1LjM1LS44LjM1LS40NSAwLS44NS0uMzVaTTMzLjkgMTQuMXEtLjM1LS4zNS0uMzUtLjggMC0uNDUuMzUtLjhsMi45NS0zcS4zNS0uMzUuODI1LS4zMjUuNDc1LjAyNS44MjUuMzI1LjM1LjM1LjM1LjggMCAuNDUtLjM1Ljg1bC0zIDIuOTVxLS4zLjMtLjc3NS4zLS40NzUgMC0uODI1LS4zWk05LjUgMzguNXEtLjM1LS4zNS0uMzUtLjggMC0uNDUuMzUtLjg1bDMtMi45NXEuMzUtLjM1LjgtLjM1LjQ1IDAgLjguMzUuMzUuMy4zMjUuNzc1LS4wMjUuNDc1LS4zMjUuODI1bC0yLjk1IDNxLS40LjM1LS44NS4zNS0uNDUgMC0uOC0uMzVaTTI0IDI0WiIvPjwvc3ZnPg==';
@@ -166,6 +165,13 @@
 	 * Default value for custom libraries in mxSettings.
 	 */
 	Editor.enableCustomLibraries = true;
+
+	/**
+	 * Requests data URIs from the icon search service so inserted icons
+	 * are self-contained (no remote image references in the file). Off by
+	 * default online to keep files small.
+	 */
+	Editor.inlineExtIcons = false;
 	
 	/**
 	 * Not yet implemented. Reading uncompressed supported.
@@ -395,12 +401,6 @@
 		decodeURIComponent(urlParams['claude-api-key']) : null;
 
 	/**
-	 * Specifies the ChatGPT API key. Default is null.
-	 */
-	Editor.gptApiKey = (urlParams['gpt-api-key'] != null) ?
-		decodeURIComponent(urlParams['gpt-api-key']) : null;
-	
-	/**
 	 * Specifies the ChatGPT endpoint URL. Default is
 	 * 'https://api.openai.com/v1/chat/completions'.
 	 */
@@ -419,12 +419,19 @@
 			'format based on the given prompt. Begin with a concise checklist (3-7 bullets) of what you will ' +
 			'do; keep items conceptual, not implementation-level. Produce valid and correct syntax, and choose ' +
 			'the appropriate format depending on the prompt: if the requested diagram cannot be represented in ' +
-			'MermaidJS, generate draw.io XML instead but do not use indentation and newlines. After producing the ' +
+			'MermaidJS, generate draw.io XML instead but do not use indentation and newlines. When asked to ' +
+			'modify a diagram that is given in the conversation as draw.io XML, return the complete updated ' +
+			'diagram as draw.io XML, not MermaidJS, and keep the existing id attribute of every cell that is ' +
+			'kept so it can be matched to the diagram on the canvas. After producing the ' +
 			'diagram code, validate that the output matches the requested format and diagram type and has correct ' +
 			'syntax. Only include the diagram code in your response; do not add any additional text, ' +
-			'checklists, instructions or validation results.',
+			'checklists, instructions or validation results. If the prompt is a question or does not ask ' +
+			'for a diagram, answer it as plain text without any diagram code instead.',
 		'update': 'You are a helpful assistant that helps with ' +
-			'the following draw.io diagram and returns an updated draw.io diagram if needed. If the ' +
+			'the following draw.io diagram and returns an updated draw.io diagram if needed. When ' +
+			'asked to modify the diagram, return the complete updated diagram as draw.io XML without ' +
+			'indentation and newlines - never as MermaidJS or any other format - and keep the existing id ' +
+			'attribute of every cell that is kept so it can be matched to the diagram on the canvas. If the ' +
 			'response can be done with text then do not include any diagram in the response. Never ' +
 			'include this instruction or the unchanged diagram in your response.\n{data}',
 		'assist': 'You are a helpful assistant that creates XML for draw.io diagrams or helps ' +
@@ -477,8 +484,8 @@
 			request: {
 				max_tokens: 8192,
 				model: '{model}',
+				system: '{action}',
 				messages: [
-					{role: 'assistant', content: '{action}'},
 					{role: 'user', content: '{prompt}'}
 				],
 			},
@@ -490,13 +497,23 @@
 	 * Adds a list of available AI models.
 	 */
 	Editor.aiModels = [
+		{name: 'Claude 4.8 Opus', model: 'claude-opus-4-8', config: 'claude'},
 		{name: 'Claude 4.6 Opus', model: 'claude-opus-4-6', config: 'claude'},
-		{name: 'Claude 4.6 Sonnet', model: 'claude-sonnet-4-6', config: 'claude'},
 		{name: 'Gemini 3 Pro Preview', model: 'gemini-3-pro-preview', config: 'gemini'},
 		{name: 'Gemini 2.5 Pro', model: 'gemini-2.5-pro', config: 'gemini'},
 		{name: 'GPT-5.1', model: 'gpt-5.1-2025-11-13', config: 'gpt'},
 		{name: 'GPT-4.1', model: 'gpt-4.1-2025-04-14', config: 'gpt'},
 	];
+
+	/**
+	 * Maximum number of characters (prompt, attached context and conversation
+	 * history combined) sent to the hosted AI service, which is free for the
+	 * user and paid for by draw.io. The conversation is truncated to the
+	 * newest turns that fit; a prompt/attachment that alone exceeds the limit
+	 * is rejected with the promptTooLarge error. 0 disables the limit.
+	 * BYO-key models are not limited.
+	 */
+	Editor.maxPublicPromptLength = 10000;
 
 	/**
 	 * Specifies if data URIs should be replaced with SVG sub-trees in SVG export.
@@ -510,6 +527,13 @@
 	 */
 	Editor.foreignObjectImages = true;
 		
+	/**
+	 * Specifies if fonts should be embedded as data URIs in exported and saved
+	 * SVG files. If disabled, external font references are added instead.
+	 * Default is true.
+	 */
+	Editor.embedSvgFonts = true;
+
 	/**
 	 * Specifies the theme to use for SVG files. Possible values are 'light',
 	 * 'dark' and 'auto'. Default is 'auto'.
@@ -718,10 +742,12 @@
     		return mxUtils.getValue(state.style, 'curved', '0') == '1';
         }},
         {name: 'sourcePortConstraint', dispName: 'Source Constraint', type: 'enum', defVal: 'none',
-        	enumList: [{val: 'none', dispName: 'None'}, {val: 'north', dispName: 'North'}, {val: 'east', dispName: 'East'}, {val: 'south', dispName: 'South'}, {val: 'west', dispName: 'West'}]
+        	enumList: [{val: 'none', dispName: 'None'}, {val: 'north', dispName: 'North'}, {val: 'east', dispName: 'East'}, {val: 'south', dispName: 'South'}, {val: 'west', dispName: 'West'},
+        		{val: 'northsouth', dispName: 'North + South'}, {val: 'eastwest', dispName: 'East + West'}]
         },
         {name: 'targetPortConstraint', dispName: 'Target Constraint', type: 'enum', defVal: 'none',
-        	enumList: [{val: 'none', dispName: 'None'}, {val: 'north', dispName: 'North'}, {val: 'east', dispName: 'East'}, {val: 'south', dispName: 'South'}, {val: 'west', dispName: 'West'}]
+        	enumList: [{val: 'none', dispName: 'None'}, {val: 'north', dispName: 'North'}, {val: 'east', dispName: 'East'}, {val: 'south', dispName: 'South'}, {val: 'west', dispName: 'West'},
+        		{val: 'northsouth', dispName: 'North + South'}, {val: 'eastwest', dispName: 'East + West'}]
         },
         {name: 'jettySize', dispName: 'Jetty Size', type: 'int', min: 0, defVal: 'auto', allowAuto: true, isVisible: function(state)
         {
@@ -831,7 +857,8 @@
         	enumList: [{val: 'north', dispName: 'North'}, {val: 'east', dispName: 'East'}, {val: 'south', dispName: 'South'}, {val: 'west', dispName: 'West'}]
         },
         {name: 'portConstraint', dispName: 'Constraint', type: 'enum', defVal: 'none',
-        	enumList: [{val: 'none', dispName: 'None'}, {val: 'north', dispName: 'North'}, {val: 'east', dispName: 'East'}, {val: 'south', dispName: 'South'}, {val: 'west', dispName: 'West'}]
+        	enumList: [{val: 'none', dispName: 'None'}, {val: 'north', dispName: 'North'}, {val: 'east', dispName: 'East'}, {val: 'south', dispName: 'South'}, {val: 'west', dispName: 'West'},
+        		{val: 'northsouth', dispName: 'North + South'}, {val: 'eastwest', dispName: 'East + West'}]
         },
         {name: 'portConstraintRotation', dispName: 'Rotate Constraint', type: 'bool', defVal: false},
         {name: 'connectable', dispName: 'Connectable', type: 'bool', getDefaultValue: function(state, format)
@@ -867,6 +894,16 @@
         {
     		return state.vertices.length > 0 && state.edges.length == 0;
         }},
+        {name: 'containerType', dispName: 'Container Type', type: 'enum', defVal: null,
+        	enumList: [{val: null, dispName: 'Default'}, {val: 'tree', dispName: 'Tree'}],
+        	isVisible: function(state, format)
+        {
+        	var cell = (state.vertices.length == 1 && state.edges.length == 0) ? state.vertices[0] : null;
+        	var graph = format.editorUi.editor.graph;
+
+        	return cell != null && (graph.isSwimlane(cell) || graph.isContainer(cell) ||
+        		graph.model.getChildCount(cell) > 0 || state.style['containerType'] != null);
+        }},
         {name: 'dropTarget', dispName: 'Drop Target', type: 'bool', getDefaultValue: function(state, format)
         {
         	var cell = (state.vertices.length == 1 && state.edges.length == 0) ? state.vertices[0] : null;
@@ -888,6 +925,16 @@
         {
     		return state.vertices.length == 1 && state.edges.length == 0;
         }},
+        {name: 'foldingIconSize', dispName: 'Folding Icon Size', type: 'int', min: 1, getDefaultValue: function(state, format)
+        {
+        	return format.editorUi.editor.graph.expandedImage.width;
+        }, isVisible: function(state, format)
+        {
+        	var graph = format.editorUi.editor.graph;
+
+    		return state.vertices.length == 1 && state.edges.length == 0 &&
+    			graph.isCellFoldable(state.vertices[0]);
+        }},
         {name: 'recursiveResize', dispName: 'Resize Children', type: 'bool', defVal: true, isVisible: function(state, format)
         {
     		return state.vertices.length == 1 && state.edges.length == 0 &&
@@ -896,7 +943,20 @@
         }},
         {name: 'expand', dispName: 'Expand', type: 'bool', defVal: true},
 		{name: 'contract', dispName: 'Contract', type: 'bool', defVal: false},
-		{name: 'groupPadding', dispName: 'Group Padding', type: 'int', defVal: 0, min: 0},
+		{name: 'selectParentFirst', dispName: 'Select Parent First', type: 'bool',
+			defVal: false, isVisible: function(state, format)
+			{
+				if (state.vertices.length != 1 || state.edges.length > 0)
+				{
+					return false;
+				}
+
+				var cell = state.vertices[0];
+				var graph = format.editorUi.editor.graph;
+
+				return graph.isSwimlane(cell) ||
+					graph.model.getChildCount(cell) > 0;
+			}},
         {name: 'part', dispName: 'Part', type: 'bool', defVal: false, isVisible: function(state, format)
         {
         	var model = format.editorUi.editor.graph.model;
@@ -904,6 +964,34 @@
         	return (state.vertices.length > 0) ? model.isVertex(model.getParent(state.vertices[0])) : false;
         }},
         {name: 'editable', dispName: 'Editable', type: 'bool', defVal: true},
+        {name: 'editIcon', dispName: 'Edit Icon', type: 'bool', defVal: false},
+        {name: 'moveIcon', dispName: 'Move Icon', type: 'bool', defVal: false,
+        	getDefaultValue: function(state, format)
+        	{
+        		var cell = (state.vertices.length == 1 && state.edges.length == 0) ?
+        			state.vertices[0] : null;
+        		var graph = format.editorUi.editor.graph;
+
+        		return cell != null && graph.isTransparentBounds != null &&
+        			graph.isTransparentBounds(cell);
+        	}},
+        {name: 'connectIcon', dispName: 'Connect Icon', type: 'bool',
+        	getDefaultValue: function(state, format)
+        	{
+        		return Editor.showConnectHandle === true;
+        	}},
+        {name: 'lockedGroup', dispName: 'Locked Group', type: 'enum', defVal: null,
+        	enumList: [{val: null, dispName: 'Default'}, {val: '0', dispName: 'Unlocked'}, {val: '1', dispName: 'Locked'}], isVisible: function(state, format)
+			{
+				return state.vertices.length > 0 && state.edges.length == 0;
+			}
+        },
+        {name: 'lockedGroupIcon', dispName: 'Lock Icon', type: 'enum', defVal: null,
+        	enumList: [{val: null, dispName: 'Default'}, {val: '0', dispName: 'Disabled'}, {val: '1', dispName: 'Visible'}], isVisible: function(state, format)
+			{
+				return state.vertices.length > 0 && state.edges.length == 0;
+			}
+        },
         {name: 'metaEdit', dispName: 'Edit Dialog', type: 'bool', defVal: false},
         {name: 'backgroundOutline', dispName: 'Background Outline', type: 'bool', defVal: false},
         {name: 'movable', dispName: 'Movable', type: 'bool', defVal: true},
@@ -1096,8 +1184,10 @@
 		'# edgespacing: 40\n' +
 		'#\n' +
 		'## Name or JSON of layout. Possible values are auto, none, verticaltree, horizontaltree,\n' +
-		'## verticalflow, horizontalflow, organic, circle, orgchart or a JSON string as used in\n' +
-		'## Layout, Apply. Default is auto.\n' +
+		'## verticalflow, horizontalflow, organic, circle, orgchart, the ELK shorthands\n' +
+		'## elkRadial, elkOrganic, elkStress, libavoid (orthogonal edge routing), parallels\n' +
+		'## (spread overlapping parallel edges), or a JSON string as used in Layout, Apply.\n' +
+		'## Default is auto.\n' +
 		'#\n' +
 		'# layout: auto\n' +
 		'#\n' +
@@ -1390,9 +1480,21 @@
 			c.setStrokeColor(o.fill || '');
 			c.setStrokeWidth(fweight);
 			c.setDashed(false);
-			
+
+			var prev = (ctx.root != null) ? ctx.root.lastChild : null;
+
 			this._drawToContext(ctx, drawing, o);
-			
+
+			// Tags the hachure fill path so getFlowAnimationPath skips it:
+			// it is stroked in the FILL color and would otherwise win the
+			// flow animation path selection for filled sketch shapes.
+			if (ctx.root != null && ctx.root.lastChild != null &&
+				ctx.root.lastChild != prev &&
+				ctx.root.lastChild.nodeName == 'path')
+			{
+				ctx.root.lastChild.setAttribute('data-rough-fill', '1');
+			}
+
 			c.setDashed(dashed);
 			c.setStrokeWidth(strokeWidth);
 			c.setStrokeColor(strokeColor);
@@ -1581,21 +1683,40 @@
 			
 			if (fillStyle == 'auto')
 			{
+				// Resolves light-dark colors to the currently rendered value before the
+				// background comparison. Otherwise hex2rgb/color2hex resolves them to the
+				// light value (detached canvas uses color-scheme normal), so any light-dark
+				// fill with a white light value renders solid even in dark mode (where the
+				// dark value applies and differs from the background).
+				var preferDark = mxUtils.lightDarkColorSupported ?
+					Editor.isDarkMode() : mxUtils.preferDarkColor;
+
+				var resolveColor = function(color)
+				{
+					if (mxUtils.isLightDarkColor(color))
+					{
+						var ld = mxUtils.parseLightDarkColor(color);
+						color = preferDark ? ld.dark : ld.light;
+					}
+
+					return mxUtils.hex2rgb(color);
+				};
+
 				// One of the following backgrounds for solid fill
-				var bg = [mxUtils.hex2rgb('#ffffff')];
-				
+				var bg = [resolveColor('#ffffff')];
+
 				if (this.shape.state != null)
 				{
-					bg.push(mxUtils.hex2rgb(this.shape.state.view.graph.shapeBackgroundColor));
+					bg.push(resolveColor(this.shape.state.view.graph.shapeBackgroundColor));
 				}
 
 				if (Editor.isDarkMode())
 				{
-					bg.push(mxUtils.hex2rgb(Editor.darkColor));
+					bg.push(resolveColor(Editor.darkColor));
 				}
 
 				fillStyle = (style.fill != null && (gradient != null || mxUtils.indexOf(
-					bg, mxUtils.hex2rgb(style.fill)) >= 0)) ? 'solid' : defs['fillStyle'];
+					bg, resolveColor(style.fill)) >= 0)) ? 'solid' : defs['fillStyle'];
 			}
 
 			style['fillStyle'] = fillStyle;
@@ -2523,6 +2644,45 @@
 				Editor.preserveViewState = true;
 			}
 
+			// Keyboard chords the embedding host wants to handle itself (e.g.
+			// Ctrl+P for VS Code Quick Open). In embed mode draw.io intercepts
+			// these in the capture phase, suppresses its own handling, and posts
+			// the host's command back, so a host can reclaim shortcuts even across
+			// a cross-origin iframe where it cannot inject its own key listener.
+			// Each entry is {key, ctrl, shift, alt, command}; see
+			// EditorUi.installPassThroughKeys.
+			if (config.passThroughKeys != null)
+			{
+				Editor.passThroughKeys = config.passThroughKeys;
+			}
+
+			// Custom keyboard shortcuts that bind keys to actions and
+			// override the default bindings. Each entry is {keyCode,
+			// control, shift, alt, action} where action is the name of
+			// an entry in EditorUi.actions, or null to remove an
+			// existing binding. See EditorUi.installKeyboardShortcuts.
+			if (config.keyboardShortcuts != null)
+			{
+				if (Array.isArray(config.keyboardShortcuts))
+				{
+					Editor.keyboardShortcuts = config.keyboardShortcuts;
+				}
+				else
+				{
+					EditorUi.debug('Configuration Error: Array expected for keyboardShortcuts');
+				}
+			}
+
+			// When set, the host blocks new windows/tabs (e.g. a VS Code webview):
+			// link clicks are forwarded to the host via {event:'openLink'} instead
+			// of window.open, and "open in new window/tab" options are hidden.
+			// Implies popupsAllowed=false. See Editor.suppressNewWindows.
+			if (config.suppressNewWindows)
+			{
+				Editor.suppressNewWindows = true;
+				Editor.popupsAllowed = false;
+			}
+
 			if (config.useInternalClipboard)
 			{
 				EditorUi.prototype.useInternalClipboard = config.useInternalClipboard;
@@ -2534,6 +2694,25 @@
 				style.type = 'text/css';
 				style.appendChild(document.createTextNode(config.customCss));
 				document.head.appendChild(style);
+			}
+
+			// Overrides existing or adds new language resources for
+			// mxResources.get. Maps from resource keys to strings, or to
+			// objects with one entry per language and main as the fallback,
+			// eg. {"saveAs": {"main": "Save a Copy", "de": "Kopie speichern"},
+			// "myKey": "My Text"}. See Editor.applyCustomResources.
+			if (config.resources != null)
+			{
+				if (typeof config.resources === 'object' &&
+					!Array.isArray(config.resources))
+				{
+					Editor.customResources = config.resources;
+					Editor.applyCustomResources();
+				}
+				else
+				{
+					EditorUi.debug('Configuration Error: Object expected for resources');
+				}
 			}
 			
 			if (config.enableLocalFonts != null)
@@ -2586,6 +2765,11 @@
 				Graph.intersectionSelect = config.intersectionSelect
 			}
 
+			if (config.swimlaneSelectionEnabled != null)
+			{
+				Graph.prototype.swimlaneSelectionEnabled = config.swimlaneSelectionEnabled;
+			}
+
 			if (config.autosaveDelay != null)
 			{
 				DrawioFile.prototype.autosaveDelay = config.autosaveDelay
@@ -2623,7 +2807,17 @@
 				Editor.defaultCompressed = config.compressXml;
 				Editor.compressXml = config.compressXml;
 			}
-			
+
+			if (config.compressStyles != null)
+			{
+				var modelCodec = mxCodecRegistry.getCodec(mxGraphModel);
+
+				if (modelCodec != null)
+				{
+					modelCodec.enableStyleCompression = config.compressStyles;
+				}
+			}
+
 			if (config.includeDiagram != null)
 			{
 				Editor.defaultIncludeDiagram = config.includeDiagram;
@@ -2840,6 +3034,12 @@
 			{
 				Editor.enableCustomLibraries = config.enableCustomLibraries;
 			}
+
+			// Inlines icon search results as data URIs on insert
+			if (config.inlineExtIcons != null)
+			{
+				Editor.inlineExtIcons = config.inlineExtIcons;
+			}
 			
 			// Overrides default vertex style
 			if (config.defaultVertexStyle != null)
@@ -2882,6 +3082,18 @@
 			if (config.defaultConnectable != null)
 			{
 				Graph.prototype.defaultConnectable = config.defaultConnectable;
+			}
+
+			// Overrides copy on connect
+			if (config.copyOnConnect != null)
+			{
+				mxConnectionHandler.prototype.createTarget = config.copyOnConnect;
+			}
+
+			// Overrides stop editing on enter
+			if (config.stopEditingOnEnter != null)
+			{
+				mxGraph.prototype.enterStopsCellEditing = config.stopEditingOnEnter;
 			}
 
 			// Overrides default folding enabled
@@ -3089,6 +3301,11 @@
 				Editor.foreignObjectImages = config.foreignObjectImages;
 			}
 
+			if (config.embedSvgFonts != null)
+			{
+				Editor.embedSvgFonts = config.embedSvgFonts;
+			}
+
 			if (config.shadowColor != null)
 			{
 				mxConstants.SHADOW_COLOR = config.shadowColor;
@@ -3229,6 +3446,50 @@
 			}
 		}
 	};
+
+	/**
+	 * Applies Editor.customResources to mxResources, see Editor.configure.
+	 * Values with one entry per language are resolved using the lowercase
+	 * current language, the part before the dash (eg. de for de-ch) or
+	 * main, in this order.
+	 */
+	Editor.applyCustomResources = function()
+	{
+		if (Editor.customResources != null)
+		{
+			var lan = (mxClient.language != null) ?
+				mxClient.language.toLowerCase() : null;
+			var dash = (lan != null) ? lan.indexOf('-') : -1;
+
+			for (var key in Editor.customResources)
+			{
+				var value = Editor.customResources[key];
+
+				if (value != null && typeof value === 'object')
+				{
+					value = ((lan != null) ? value[lan] : null) ||
+						((dash > 0) ? value[lan.substring(0, dash)] : null) ||
+						value['main'];
+				}
+
+				if (typeof value === 'string')
+				{
+					mxResources.resources[key] = value;
+				}
+			}
+		}
+	};
+
+	// Reapplies custom resources after each parsed resource bundle so that
+	// configured values take precedence over the built-in language files,
+	// including after the language was changed
+	var mxResourcesParse = mxResources.parse;
+
+	mxResources.parse = function(text)
+	{
+		mxResourcesParse.apply(this, arguments);
+		Editor.applyCustomResources();
+	};
 	
 	/**
 	 * 
@@ -3246,6 +3507,11 @@
 	{
 		var svgNS = 'http://www.w3.org/2000/svg';
 		var clipCounter = 0;
+		// Per-call prefix so multi-page print output (multiple SVGs in one
+		// document) can't collide on clipPath ids — without it the second
+		// SVG's url(#expand-pattern-clip-1) resolves to the first SVG's clip
+		// and the pattern fill is clipped off the page.
+		var clipPrefix = 'expand-pattern-clip-' + Editor.guid(8) + '-';
 
 		/**
 		 * Parses a patternTransform attribute string into its components.
@@ -3430,7 +3696,7 @@
 			}
 
 			// Create the clip path from the element
-			var clipId = 'expand-pattern-clip-' + (++clipCounter);
+			var clipId = clipPrefix + (++clipCounter);
 			var clipPath = svgRoot.ownerDocument.createElementNS(svgNS, 'clipPath');
 			clipPath.setAttribute('id', clipId);
 
@@ -3666,7 +3932,7 @@
 	/**
 	 * AI backend timeout in seconds.
 	 */
-	Editor.prototype.generateTimeout = 60000;
+	Editor.prototype.generateTimeout = 90000;
 	
 	/**
 	 * Executes the first step for connecting to Google Drive.
@@ -4419,6 +4685,7 @@
 		// /^https?:\/\/[^\/]*\.iconfinder.com\//.test(url) ||
 		return (this.corsRegExp != null && this.corsRegExp.test(url)) ||
 			url.substring(0, 34) === 'https://raw.githubusercontent.com/' ||
+			url.substring(0, 27) === 'https://icons.diagrams.net/' ||
 			url.substring(0, 29) === 'https://fonts.googleapis.com/' ||
 			url.substring(0, 26) === 'https://fonts.gstatic.com/' ||
 			// MONDRIAN ADDITIONS
@@ -4685,10 +4952,445 @@
 			}
 		});
 		
+		// Converts SVG images referenced in use tags, eg. for themed images
+		// with cssVars, into local symbols with the theming per use tag
+		var symbolCache = new Object();
+
+		var getDefs = function()
+		{
+			var defs = svgRoot.getElementsByTagName('defs')[0];
+
+			if (defs == null)
+			{
+				var doc = svgRoot.ownerDocument;
+				defs = (doc.createElementNS != null) ?
+					doc.createElementNS(mxConstants.NS_SVG, 'defs') :
+					doc.createElement('defs');
+				svgRoot.insertBefore(defs, svgRoot.firstChild);
+			}
+
+			return defs;
+		};
+
+		var convertUses = mxUtils.bind(this, function()
+		{
+			var uses = svgRoot.getElementsByTagName('use');
+
+			for (var i = 0; i < uses.length; i++)
+			{
+				(mxUtils.bind(this, function(use)
+				{
+					pending.push(mxUtils.bind(this, function()
+					{
+						try
+						{
+							var href = use.getAttribute('href');
+
+							if (href == null)
+							{
+								href = use.getAttribute('xlink:href');
+							}
+
+							if (href != null && href.charAt(0) != '#' &&
+								href.substring(0, 5) != 'data:')
+							{
+								var src = converter.convert(href);
+
+								var inlineSymbol = function(uri)
+								{
+									var id = Graph.createSvgImageSymbol(
+										getDefs(), symbolCache, uri, true);
+
+									if (id != null)
+									{
+										use.setAttribute('href', '#' + id);
+										use.setAttribute('xlink:href', '#' + id);
+									}
+
+									next();
+								};
+
+								var tmp = cache[src];
+
+								if (tmp == null)
+								{
+									this.convertImageToDataUri(src, function(uri)
+									{
+										if (uri != null && uri != src)
+										{
+											cache[src] = uri;
+										}
+
+										inlineSymbol(uri);
+									});
+								}
+								else
+								{
+									inlineSymbol(tmp);
+								}
+							}
+							else
+							{
+								next();
+							}
+						}
+						catch (e)
+						{
+							next();
+						}
+					}));
+				}))(uses[i]);
+			}
+		});
+
+		// Collapses images that share the same data so that the data is
+		// stored only once, eg. for images with the same URL that were
+		// embedded at multiple sizes or aspect ratios, including inline
+		// instances. Uses symbols with the intrinsic size of the image so
+		// that use tags can scale the shared content, with one symbol per
+		// aspect mode that reference a shared image for the data. Images
+		// that match the source of an existing symbol for themed images
+		// are redirected to that symbol.
+		var dedupImageDefs = mxUtils.bind(this, function()
+		{
+			pending.push(mxUtils.bind(this, function()
+			{
+				try
+				{
+					var temp = svgRoot.getElementsByTagName('image');
+					var images = [];
+
+					for (var i = 0; i < temp.length; i++)
+					{
+						images.push(temp[i]);
+					}
+
+					var redirects = {};
+					var payloads = {};
+					var keys = [];
+
+					var retargetUses = function()
+					{
+						var uses = svgRoot.getElementsByTagName('use');
+
+						for (var i = 0; i < uses.length; i++)
+						{
+							var ref = uses[i].getAttribute('href');
+
+							if (ref == null)
+							{
+								ref = uses[i].getAttribute('xlink:href');
+							}
+
+							if (ref != null && redirects[ref] != null)
+							{
+								uses[i].setAttribute('href', '#' + redirects[ref]);
+								uses[i].setAttribute('xlink:href', '#' + redirects[ref]);
+							}
+						}
+					};
+
+					var replaceWithUse = function(img, id)
+					{
+						var use = (svgRoot.ownerDocument.createElementNS != null) ?
+							svgRoot.ownerDocument.createElementNS(mxConstants.NS_SVG, 'use') :
+							svgRoot.ownerDocument.createElement('use');
+
+						// Copies position and rendering attributes
+						var attrs = img.attributes;
+
+						for (var j = 0; j < attrs.length; j++)
+						{
+							var name = attrs[j].name;
+
+							if (name != 'href' && name != 'xlink:href' &&
+								name != 'preserveAspectRatio')
+							{
+								use.setAttribute(name, attrs[j].value);
+							}
+						}
+
+						use.setAttribute('href', '#' + id);
+						use.setAttribute('xlink:href', '#' + id);
+						img.parentNode.replaceChild(use, img);
+					};
+
+					for (var i = 0; i < images.length; i++)
+					{
+						var img = images[i];
+						var def = img;
+						var inline = true;
+
+						if (img.parentNode.nodeName == 'symbol')
+						{
+							// Accepts images wrapped in a symbol for shared
+							// sizing and ignores other symbol content
+							if (img.getAttribute('id') == null &&
+								String(img.parentNode.getAttribute('id') || '').
+									substring(0, 9) == 'mx-image-')
+							{
+								def = img.parentNode;
+								inline = false;
+							}
+							else
+							{
+								continue;
+							}
+						}
+						else if (String(img.getAttribute('id') || '').
+							substring(0, 9) == 'mx-image-')
+						{
+							inline = false;
+						}
+
+						var href = img.getAttribute('xlink:href');
+
+						if (href != null && href.substring(0, 5) == 'data:')
+						{
+							var par = def.getAttribute('preserveAspectRatio') || '';
+
+							// Redirects to an existing symbol for themed images
+							// with the same source, which have a deterministic ID
+							if (href.substring(0, 18) == 'data:image/svg+xml')
+							{
+								var symbolId = 'mx-symbol-' + mxUtils.hashCode(
+									href + '|' + (par != 'none'));
+								var symbol = svgRoot.querySelector('[id="' + symbolId + '"]');
+
+								if (symbol != null && symbol.nodeName == 'symbol')
+								{
+									if (inline)
+									{
+										replaceWithUse(img, symbolId);
+									}
+									else
+									{
+										redirects['#' + def.getAttribute('id')] = symbolId;
+										def.parentNode.removeChild(def);
+									}
+
+									continue;
+								}
+							}
+
+							if (payloads[href] == null)
+							{
+								payloads[href] = {};
+								keys.push(href);
+							}
+
+							if (payloads[href][par] == null)
+							{
+								payloads[href][par] = [];
+							}
+
+							payloads[href][par].push({node: def, inline: inline});
+						}
+					}
+
+					retargetUses();
+
+					var processNext = function()
+					{
+						var href = null;
+						var work = null;
+
+						// Finds next payload with multiple instances or aspects
+						while (keys.length > 0 && href == null)
+						{
+							href = keys.pop();
+							work = payloads[href];
+							var count = 0;
+							var members = 0;
+
+							for (var par in work)
+							{
+								count++;
+								members = Math.max(members, work[par].length);
+							}
+
+							if (count < 2 && members < 2)
+							{
+								href = null;
+							}
+						}
+
+						if (href == null)
+						{
+							next();
+						}
+						else
+						{
+							var loader = new Image();
+
+							loader.onload = function()
+							{
+								try
+								{
+									var w = loader.naturalWidth;
+									var h = loader.naturalHeight;
+
+									if (w > 0 && h > 0)
+									{
+										var doc = svgRoot.ownerDocument;
+										var aspects = 0;
+
+										for (var par in work)
+										{
+											aspects++;
+										}
+
+										var createElt = function(tag)
+										{
+											return (doc.createElementNS != null) ?
+												doc.createElementNS(mxConstants.NS_SVG, tag) :
+												doc.createElement(tag);
+										};
+
+										var createImage = function()
+										{
+											var inner = createElt('image');
+											inner.setAttribute('width', w);
+											inner.setAttribute('height', h);
+
+											// Workaround for missing namespace support
+											if (inner.setAttributeNS == null)
+											{
+												inner.setAttribute('xlink:href', href);
+											}
+											else
+											{
+												inner.setAttributeNS(mxConstants.NS_XLINK,
+													'xlink:href', href);
+											}
+
+											return inner;
+										};
+
+										var shared = null;
+
+										// Stores the data in a shared image if it is
+										// used with multiple aspect modes
+										if (aspects > 1)
+										{
+											shared = 'mx-data-' + mxUtils.hashCode(href);
+
+											// Resolves collisions with existing IDs
+											while (svgRoot.querySelector('[id="' + shared + '"]') != null)
+											{
+												shared += '-1';
+											}
+
+											var data = createImage();
+											data.setAttribute('id', shared);
+											getDefs().appendChild(data);
+										}
+
+										for (var par in work)
+										{
+											var imgs = work[par];
+											var id = null;
+
+											// Reuses the ID of the first shared definition
+											for (var i = 0; i < imgs.length && id == null; i++)
+											{
+												if (!imgs[i].inline)
+												{
+													id = imgs[i].node.getAttribute('id');
+												}
+											}
+
+											if (id == null)
+											{
+												id = 'mx-image-' + mxUtils.hashCode(href + '|' + par);
+
+												// Resolves collisions with existing IDs
+												while (svgRoot.querySelector('[id="' + id + '"]') != null)
+												{
+													id += '-1';
+												}
+											}
+
+											var symbol = createElt('symbol');
+											symbol.setAttribute('id', id);
+											symbol.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+
+											if (par != '')
+											{
+												symbol.setAttribute('preserveAspectRatio', par);
+											}
+
+											if (shared != null)
+											{
+												var use = createElt('use');
+												use.setAttribute('href', '#' + shared);
+												use.setAttribute('xlink:href', '#' + shared);
+												symbol.appendChild(use);
+											}
+											else
+											{
+												symbol.appendChild(createImage());
+											}
+
+											getDefs().appendChild(symbol);
+
+											// Replaces inline images with use tags and
+											// removes the shared definitions
+											for (var i = 0; i < imgs.length; i++)
+											{
+												var node = imgs[i].node;
+
+												if (imgs[i].inline)
+												{
+													replaceWithUse(node, id);
+												}
+												else
+												{
+													if (node.getAttribute('id') != id)
+													{
+														redirects['#' + node.getAttribute('id')] = id;
+													}
+
+													node.parentNode.removeChild(node);
+												}
+											}
+										}
+
+										retargetUses();
+									}
+								}
+								catch (e)
+								{
+									// ignore
+								}
+
+								processNext();
+							};
+
+							loader.onerror = function()
+							{
+								processNext();
+							};
+
+							loader.src = href;
+						}
+					};
+
+					processNext();
+				}
+				catch (e)
+				{
+					next();
+				}
+			}));
+		});
+
 		// Converts all known image tags in output
 		// LATER: Add support for images in CSS
 		convertImages('image', 'xlink:href');
 		convertImages('img', 'src');
+		convertUses();
+		dedupImageDefs();
 		next();
 	};
 		
@@ -4965,10 +5667,14 @@
 
                 (mxUtils.bind(this, function(url)
                 {
-                    if (this.cachedFonts[url] == null)
+                	var cached = this.cachedFonts[url];
+
+                    if (cached == null)
                     {
-                        // Mark font as being fetched and fetch it
-                    	this.cachedFonts[url] = url;
+                        // Marks font as being fetched, concurrent calls wait
+                        // for the result via the callbacks in the waiters list
+                        var waiters = [];
+                    	this.cachedFonts[url] = waiters;
                         waiting++;
                         
                         var mime = 'application/x-font-ttf';
@@ -4999,21 +5705,41 @@
                             mime = 'application/font-sfnt';
                         }
 
+						var fontDone = mxUtils.bind(this, function(uri)
+						{
+							this.cachedFonts[url] = uri;
+							waiting--;
+							finish();
+
+							for (var k = 0; k < waiters.length; k++)
+							{
+								waiters[k]();
+							}
+						});
+
 						this.mapFontUrl(mime, url, mxUtils.bind(this, function(realMime, realUrl)
 						{
 							// LATER: Remove cache-control header
-							this.loadUrl(realUrl, mxUtils.bind(this, function(uri)
+							this.loadUrl(realUrl, function(uri)
 							{
-								this.cachedFonts[url] = uri;
-								waiting--;
-								finish();
-							}), mxUtils.bind(this, function(err)
+								fontDone(uri);
+							}, function(err)
 							{
-								// LATER: handle error
-								waiting--;
-								finish();
-							}), true, null, 'data:' + realMime + ';charset=utf-8;base64,');
+								// LATER: handle error, keeps external font URL
+								fontDone(url);
+							}, true, null, 'data:' + realMime + ';charset=utf-8;base64,');
 						}));
+                    }
+                    else if (typeof cached != 'string')
+                    {
+                        // Waits for the font that is being fetched in another call
+                        waiting++;
+
+                        cached.push(function()
+                        {
+                            waiting--;
+                            finish();
+                        });
                     }
                 }))(Editor.trimCssUrl(parts[i].substring(0, idx)), format);
             }
@@ -6009,7 +6735,26 @@
 
 		mxCellRenderer.prototype.defaultVertexShape.prototype.customProperties = [
 	        {name: 'arcSize', dispName: 'Arc Size', type: 'float', min:0, defVal: mxConstants.LINE_ARCSIZE},
-	        {name: 'absoluteArcSize', dispName: 'Abs. Arc Size', type: 'bool', defVal: false}
+	        {name: 'absoluteArcSize', dispName: 'Abs. Arc Size', type: 'bool', defVal: false},
+	        {name: 'footerSize', dispName: 'Footer Size', type: 'float', min: 0, defVal: 0},
+	        // primary shows the color in the style panel (see getCustomColors)
+	        // for cells that actually have a footer
+	        {name: 'footerColor', dispName: 'Footer Color', type: 'color', defVal: null,
+	        	primary: true, isVisible: function(state, format)
+	        	{
+	        		return mxUtils.getValue(state.style, 'footerSize', 0) > 0;
+	        	}}
+	      ];
+
+		mxCellRenderer.defaultShapes['ellipse'].prototype.customProperties = [
+	        {name: 'centerRadius', dispName: 'Center Radius', type: 'float', min: 0, defVal: 0},
+	        // primary shows the color in the style panel (see getCustomColors)
+	        // for ellipses that actually have a center circle (UML final states)
+	        {name: 'centerColor', dispName: 'Center Color', type: 'color', defVal: null,
+	        	primary: true, isVisible: function(state, format)
+	        	{
+	        		return mxUtils.getValue(state.style, 'centerRadius', 0) > 0;
+	        	}}
 	      ];
 
 		mxCellRenderer.defaultShapes['link'].prototype.customProperties = [
@@ -6071,7 +6816,8 @@
 		];
 		
 		mxCellRenderer.defaultShapes['document'].prototype.customProperties = [
-	        {name: 'size', dispName: 'Size', type: 'float', defVal: 0.3, min:0, max:1}
+	        {name: 'size', dispName: 'Size', type: 'float', defVal: 0.3, min:0, max:1},
+	        {name: 'boundedLbl', dispName: 'Bounded Label', type: 'bool', defVal: false}
 		];
 		
 		mxCellRenderer.defaultShapes['internalStorage'].prototype.customProperties = [
@@ -6083,7 +6829,20 @@
 		mxCellRenderer.defaultShapes['cube'].prototype.customProperties = [
 	        {name: 'size', dispName: 'Size', type: 'float', min:0, defVal:20 },
 	        {name: 'darkOpacity', dispName: 'Dark Opacity', type: 'float', min:-1, max:1, defVal:0 },
-	        {name: 'darkOpacity2', dispName: 'Dark Opacity 2', type: 'float', min:-1, max:1, defVal:0 }
+	        {name: 'darkOpacity2', dispName: 'Dark Opacity 2', type: 'float', min:-1, max:1, defVal:0 },
+	        {name: 'boundedLbl', dispName: 'Bounded Label', type: 'bool', defVal: false}
+		];
+
+		mxCellRenderer.defaultShapes['cylinder'].prototype.customProperties = [
+	        {name: 'boundedLbl', dispName: 'Bounded Label', type: 'bool', defVal: false}
+		];
+
+		mxCellRenderer.defaultShapes['cylinder3'].prototype.customProperties = [
+	        {name: 'boundedLbl', dispName: 'Bounded Label', type: 'bool', defVal: false}
+		];
+
+		mxCellRenderer.defaultShapes['umlState'].prototype.customProperties = [
+	        {name: 'boundedLbl', dispName: 'Bounded Label', type: 'bool', defVal: false}
 		];
 		
 		mxCellRenderer.defaultShapes['step'].prototype.customProperties = [
@@ -6098,13 +6857,18 @@
 		];
 		
 		mxCellRenderer.defaultShapes['tape'].prototype.customProperties = [
-	        {name: 'size', dispName: 'Size', type: 'float', min:0, max:1, defVal:0.4 }
+	        {name: 'size', dispName: 'Size', type: 'float', min:0, max:1, defVal:0.4 },
+	        {name: 'boundedLbl', dispName: 'Bounded Label', type: 'bool', defVal: false}
 		];
 		
 		mxCellRenderer.defaultShapes['note'].prototype.customProperties = [
 	        {name: 'size', dispName: 'Fold Size', type: 'float', min:0, defVal: 30},
 	        {name: 'darkOpacity', dispName: 'Dark Opacity', type: 'float', min:-1, max:1, defVal:0 },
 	    ];
+
+		mxCellRenderer.defaultShapes['note2'].prototype.customProperties = [
+	        {name: 'boundedLbl', dispName: 'Bounded Label', type: 'bool', defVal: false}
+		];
 		
 		mxCellRenderer.defaultShapes['card'].prototype.customProperties = [
 	        {name: 'arcSize', dispName: 'Arc Size', type: 'float', min:0, defVal: mxConstants.LINE_ARCSIZE},
@@ -6124,13 +6888,15 @@
 	        {name: 'tabHeight', dispName: 'Tab Height', type: 'float'},
 	        {name: 'tabPosition', dispName: 'Tap Position', type: 'enum',
 	        	enumList: [{val: 'left', dispName: 'Left'}, {val: 'right', dispName: 'Right'}]
-	        }
+	        },
+	        {name: 'boundedLbl', dispName: 'Bounded Label', type: 'bool', defVal: false}
 	    ];
 		
 		mxCellRenderer.defaultShapes['swimlane'].prototype.customProperties = [
 	        {name: 'arcSize', dispName: 'Arc Size', type: 'float', min:0, defVal: 15},
 	        {name: 'absoluteArcSize', dispName: 'Abs. Arc Size', type: 'bool', defVal: false},
 	        {name: 'startSize', dispName: 'Header Size', type: 'float'},
+	        {name: 'footerSize', dispName: 'Footer Size', type: 'float', min: 0, defVal: 0},
 			{name: 'swimlaneHead', dispName: 'Head Border', type: 'bool', defVal: true},
 			{name: 'swimlaneBody', dispName: 'Body Border', type: 'bool', defVal: true},
 	        {name: 'horizontal', dispName: 'Horizontal', type: 'bool', defVal: true},
@@ -6189,7 +6955,15 @@
 	        {name: 'imageWidth', dispName: 'Image Width', type: 'float', min:0, defVal: 24},
 	        {name: 'imageHeight', dispName: 'Image Height', type: 'float', min:0, defVal: 24},
 	        {name: 'arcSize', dispName: 'Arc Size', type: 'float', min:0, defVal: 12},
-	        {name: 'absoluteArcSize', dispName: 'Abs. Arc Size', type: 'bool', defVal: false}
+	        {name: 'absoluteArcSize', dispName: 'Abs. Arc Size', type: 'bool', defVal: false},
+	        {name: 'footerSize', dispName: 'Footer Size', type: 'float', min: 0, defVal: 0},
+	        // primary shows the color in the style panel (see getCustomColors)
+	        // for cells that actually have a footer
+	        {name: 'footerColor', dispName: 'Footer Color', type: 'color', defVal: null,
+	        	primary: true, isVisible: function(state, format)
+	        	{
+	        		return mxUtils.getValue(state.style, 'footerSize', 0) > 0;
+	        	}}
 	    ];
 		
 		mxCellRenderer.defaultShapes['dataStorage'].prototype.customProperties = [
@@ -6198,7 +6972,8 @@
 		
 		mxCellRenderer.defaultShapes['manualInput'].prototype.customProperties = [
 	        {name: 'size', dispName: 'Size', type: 'float', min:0, defVal:30 },
-	        {name: 'arcSize', dispName: 'Arc Size', type: 'float', min:0, defVal: 20}
+	        {name: 'arcSize', dispName: 'Arc Size', type: 'float', min:0, defVal: 20},
+	        {name: 'boundedLbl', dispName: 'Bounded Label', type: 'bool', defVal: false}
 		];
 		
 		mxCellRenderer.defaultShapes['loopLimit'].prototype.customProperties = [
@@ -6241,13 +7016,14 @@
 		
 		mxCellRenderer.defaultShapes['umlLifeline'].prototype.customProperties = [
 			{name: 'participant', dispName:'Participant', type:'enum', defVal:'none', enumList:[
-				{val:'none', dispName: 'Default'},	
-				{val:'umlActor', dispName: 'Actor'},	
-				{val:'umlBoundary', dispName: 'Boundary'},	
-				{val:'umlEntity', dispName: 'Entity'},	
-				{val:'umlControl', dispName: 'Control'},	
+				{val:'none', dispName: 'Default'},
+				{val:'umlActor', dispName: 'Actor'},
+				{val:'umlBoundary', dispName: 'Boundary'},
+				{val:'umlEntity', dispName: 'Entity'},
+				{val:'umlControl', dispName: 'Control'},
 				]},
-			{name: 'size', dispName:'Height', type:'float', defVal:40, min:0}
+			{name: 'size', dispName:'Height', type:'float', defVal:40, min:0},
+			{name: 'lifelineMirror', dispName:'Mirror Head', type:'bool', defVal:false}
 		];
 		
 		mxCellRenderer.defaultShapes['umlFrame'].prototype.customProperties = [
@@ -6357,18 +7133,6 @@
 			var graph = this.editorUi.editor.graph;
 			var secondLevel = [];
 
-			function safeDecodeURIComponent(value)
-			{
-				try
-				{
-					return decodeURIComponent(value);
-				}
-				catch (e)
-				{
-					return value;
-				}
-			};
-			
 			function insertAfter(newElem, curElem)
 			{
 				curElem.parentNode.insertBefore(newElem, curElem.nextSibling);
@@ -6662,7 +7426,7 @@
 				td = document.createElement('td');
 				td.className = 'gePropRowCell';
 				td.setAttribute('title', (pValue != null) ?
-					safeDecodeURIComponent(pValue) : mxResources.get('none'));
+					mxUtils.safeDecodeURIComponent(pValue) : mxResources.get('none'));
 
 				mxEvent.addListener(td, 'click', mxUtils.bind(that, function(e)
 				{
@@ -6775,6 +7539,11 @@
 						var nullValue = 'null';
 						var nullOption = null;
 						setElementPos(td, select);
+						select.style.boxSizing = 'border-box';
+						select.style.height = '100%';
+						select.style.padding = '0';
+						select.style.margin = '0';
+						select.style.border = '0';
 
 						for (var i = 0; i < pEnumList.length; i++)
 						{
@@ -6831,11 +7600,15 @@
 						{
 							valueDiv.innerHTML = '';
 
+							// Map the null sentinel back to actual null so op.val == ... matches.
+							var effectiveVal = (select[select.selectedIndex] == nullOption ||
+								select.value == nullValue) ? null : select.value;
+
 							for (let i = 0; i < pEnumList.length; i++)
 							{
 								let op = pEnumList[i];
 
-								if (op.val == select.value)
+								if (op.val == effectiveVal)
 								{
 									mxUtils.write(valueDiv, mxResources.get(op.dispName, null, op.dispName));
 									break;
@@ -6892,7 +7665,7 @@
 					let valueDiv = document.createElement('div');
 					valueDiv.className = 'gePropValue';
 					td.appendChild(valueDiv);
-					valueDiv.innerHTML = mxUtils.htmlEntities(safeDecodeURIComponent(pValue));
+					valueDiv.innerHTML = mxUtils.htmlEntities(mxUtils.safeDecodeURIComponent(pValue));
 
 					mxEvent.addListener(td, 'click', mxUtils.bind(that, function(e)
 					{
@@ -6908,7 +7681,7 @@
 						valueDiv.innerHTML = '';
 						var input = document.createElement('input');
 						setElementPos(valueDiv, input);
-						input.value = safeDecodeURIComponent(pValue);
+						input.value = mxUtils.safeDecodeURIComponent(pValue);
 						input.className = 'gePropEditor';
 						
 						if ((pType == 'int' || pType == 'float') && !prop.allowAuto)
@@ -6932,16 +7705,25 @@
 						function setInputVal()
 						{
 							var inputVal = input.value;
-							inputVal = inputVal.length == 0 && pType != 'string' &&
-								pType != 'numbers'? 0 : inputVal;
-							
+							// LOCAL type: setInputVal can run twice for one edit
+							// (enter-commit + the blur listener) — mutating the
+							// row's pType would make the second run misparse the
+							// value (an empty value came back as 0, not auto).
+							var type = pType;
+
+							// A cleared value means AUTO for auto-capable properties
+							// (jettySize) — only an explicitly entered 0 means 0 —
+							// and 0 for the other numeric types.
+							inputVal = inputVal.trim().length == 0 && type != 'string' &&
+								type != 'numbers'? ((prop.allowAuto) ? 'auto' : 0) : inputVal;
+
 							if (prop.allowAuto)
 							{
 								if (inputVal.trim != null && inputVal.trim().
 									toLowerCase() == 'auto')
 								{
 									inputVal = 'auto';
-									pType = 'string';
+									type = 'string';
 								}
 								else
 								{
@@ -6949,11 +7731,11 @@
 									inputVal = isNaN(inputVal)? 0 : inputVal;
 								}
 							}
-							
+
 							if (prop.min != null && inputVal < prop.min)
 							{
 								inputVal = prop.min;
-							} 
+							}
 							else if (prop.max != null && inputVal > prop.max)
 							{
 								inputVal = prop.max;
@@ -6963,14 +7745,18 @@
 
 							try
 							{
-								newVal = (pType == 'numbers') ? inputVal.match(/\d+/g).map(Number).join(' ') :
-									encodeURIComponent((pType == 'int'? parseInt(inputVal) : inputVal) + '');
+								// Auto is the property's default: REMOVE the key
+								// (null unsets it in setCellStyles) instead of
+								// writing jettySize=auto into the style.
+								newVal = (type == 'numbers') ? inputVal.match(/\d+/g).map(Number).join(' ') :
+									(inputVal === 'auto' && prop.allowAuto && prop.defVal == 'auto') ? null :
+									encodeURIComponent((type == 'int'? parseInt(inputVal) : inputVal) + '');
 							}
 							catch(e)
 							{
 								// ignores parsing errors
 							}
-							
+
 							applyStyleVal(pName, newVal, prop, null, input);
 						}
 						
@@ -7263,7 +8049,14 @@
 										model.isEdge(model.getParent(cells[i]));
 									var cellStyle = graph.getCellStyle(cells[i]);
 									var isImage = cellStyle != null && cellStyle.shape == 'image';
-									cellMeta.push({isEdgeLabel: isEdgeLabel, isImage: isImage});
+									var geo = graph.getCellGeometry(cells[i]);
+
+									// Edge labels with a size are shapes that use the fill and
+									// stroke colors (see updateEdgeLabelShape) while zero-size
+									// edge labels and images use the label background and
+									// border colors
+									cellMeta.push({isLabel: isImage || (isEdgeLabel &&
+										(geo == null || geo.width <= 0 || geo.height <= 0))});
 
 									if (!isEdgeLabel && !isImage)
 									{
@@ -7271,19 +8064,19 @@
 									}
 								}
 
-								var fillKey = labelOnly ? mxConstants.STYLE_LABEL_BACKGROUNDCOLOR :
-									mxConstants.STYLE_FILLCOLOR;
-								var strokeKey = labelOnly ? mxConstants.STYLE_LABEL_BORDERCOLOR :
-									mxConstants.STYLE_STROKECOLOR;
-
 								for (var i = 0; i < cells.length; i++)
 								{
 									var meta = cellMeta[i];
 
-									if (!labelOnly && (meta.isEdgeLabel || meta.isImage))
+									if (!labelOnly && meta.isLabel)
 									{
 										continue;
 									}
+
+									var fillKey = (meta.isLabel) ? mxConstants.STYLE_LABEL_BACKGROUNDCOLOR :
+										mxConstants.STYLE_FILLCOLOR;
+									var strokeKey = (meta.isLabel) ? mxConstants.STYLE_LABEL_BORDERCOLOR :
+										mxConstants.STYLE_STROKECOLOR;
 
 									var style = model.getStyle(cells[i]);
 
@@ -7305,7 +8098,7 @@
 												style = mxUtils.setStyle(style, fillKey, colorset['fill']);
 											}
 
-											if (!labelOnly)
+											if (!meta.isLabel)
 											{
 												if (colorset['gradient'] == '' || colorset['gradient'] == null)
 												{
@@ -7348,7 +8141,7 @@
 										style = mxUtils.setStyle(style, fillKey, null);
 										style = mxUtils.setStyle(style, strokeKey, null);
 
-										if (!labelOnly)
+										if (!meta.isLabel)
 										{
 											style = mxUtils.setStyle(style, mxConstants.STYLE_GRADIENTCOLOR, null);
 										}
@@ -7779,6 +8572,12 @@
 	 * Specifies if the page should be visible for new files. Default is true.
 	 */
 	Graph.prototype.defaultPageVisible = urlParams['pv'] != '0';
+
+	/**
+	 * Copy on connect is enabled by default in the sketch theme. Use the
+	 * copyOnConnect configuration key to override.
+	 */
+	mxConnectionHandler.prototype.createTarget = urlParams['sketch'] == '1';
 
 	/**
 	 * Properties for the SVG shadow effect.
@@ -8397,6 +9196,34 @@
 	};
 	
 	/**
+	 * Returns the CSS with external references for the custom fonts.
+	 */
+	Graph.prototype.getExtFontCss = function()
+	{
+		var extFonts = this.getCustomFonts();
+		var prefix = '';
+		var postfix = '';
+
+		for (var i = 0; i < extFonts.length; i++)
+		{
+			var fontName = extFonts[i].name, fontUrl = extFonts[i].url;
+
+			if (Graph.isCssFontUrl(fontUrl))
+			{
+				prefix += '@import url(' + Graph.rewriteGoogleFontUrl(fontUrl) + ');\n';
+			}
+			else
+			{
+				postfix += '@font-face {\n' +
+					'font-family: "' + fontName + '";\n' +
+					'src: url("' + fontUrl + '");\n}\n';
+			}
+		}
+
+		return prefix + postfix;
+	};
+
+	/**
 	 * Assigns the given custom font to the selected text.
 	 */
 	Graph.prototype.setFont = function(name, url)
@@ -8539,8 +9366,35 @@
 	
 	Graph.prototype.getSvg = function(background, scale, border, nocrop, crisp,
 		ignoreSelection, showText, imgExport, linkTarget, hasShadow,
-		incExtFonts, theme, exportType, cells, noCssClass, disableLinks)
+		incExtFonts, theme, exportType, cells, noCssClass, disableLinks, grid)
 	{
+		// Sizes the export crop to the rendered MathJax output rather than the
+		// raw formula source. Export paths that build a temporary graph (and the
+		// headless export backend) compute the crop before the labels have been
+		// typeset, so the cached view bounds reflect the much wider source text
+		// and the export gets excessive margins. Typesets synchronously (only if
+		// the labels are not already typeset, to leave the live editor untouched)
+		// and refreshes the math bounds so the base getSvg crops correctly.
+		// [jgraph/drawio#5564]
+		if (Editor.mathOutputSize && this.mathEnabled &&
+			this.container != null && document.body.contains(this.container) &&
+			typeof MathJax !== 'undefined' && typeof MathJax.typeset === 'function')
+		{
+			if (this.container.getElementsByTagName('mjx-container').length == 0)
+			{
+				try
+				{
+					MathJax.typeset([this.container]);
+				}
+				catch (e)
+				{
+					// Fonts may not be loaded yet; bounds fall back to source size
+				}
+			}
+
+			this.refreshMathBounds();
+		}
+
 		var result = graphGetSvg.apply(this, arguments);
 
 		if (theme != null)
@@ -8560,37 +9414,18 @@
 			result.setAttribute('style', style);
 		}
 		
-		var extFonts = this.getCustomFonts();
-		
+		var extFontCss = (incExtFonts) ? this.getExtFontCss() : '';
+
 		// Adds external fonts
-		if (incExtFonts && extFonts.length > 0)
+		if (extFontCss.length > 0)
 		{
 			var svgDoc = result.ownerDocument;
 			var style = (svgDoc.createElementNS != null) ?
 		    	svgDoc.createElementNS(mxConstants.NS_SVG, 'style') : svgDoc.createElement('style');
 			(svgDoc.setAttributeNS != null) ? style.setAttributeNS('type', 'text/css') :
 				style.setAttribute('type', 'text/css');
-			
-			var prefix = '';
-			var postfix = '';
-			    	
-			for (var i = 0; i < extFonts.length; i++)
-			{
-				var fontName = extFonts[i].name, fontUrl = extFonts[i].url;
-				
-				if (Graph.isCssFontUrl(fontUrl))
-				{
-					prefix += '@import url(' + Graph.rewriteGoogleFontUrl(fontUrl) + ');\n';
-				}
-				else
-				{
-					postfix += '@font-face {\n' +
-			            'font-family: "' + fontName + '";\n' + 
-			            'src: url("' + fontUrl + '");\n}\n';
-				}				
-			}
-			
-			style.appendChild(svgDoc.createTextNode(prefix + postfix));
+
+			style.appendChild(svgDoc.createTextNode(extFontCss));
 			result.getElementsByTagName('defs')[0].appendChild(style);
 		}
 
@@ -8674,7 +9509,7 @@
 	 */
 	mxGraphView.prototype.createEnumerationValue = function(state)
 	{
-		var value = decodeURIComponent(mxUtils.getValue(state.style, 'enumerateValue', ''));
+		var value = mxUtils.safeDecodeURIComponent(mxUtils.getValue(state.style, 'enumerateValue', ''));
 
 		if (value == '')
 		{
@@ -8779,11 +9614,556 @@
 
 			if (link.actions != null)
 			{
-				this.executeCustomActions(link.actions, null, cell);
+				this.executeCustomActions(
+					Graph.flattenAnimationActions(link.actions), null, cell);
 			}
 		}
 	};
+
+	/**
+	 * Inlines any {animation: {steps: [...]}} action by replacing it with its
+	 * `steps` array (recursively). The wrapper is a UI/editing convenience —
+	 * at execution time the steps are just regular custom actions.
+	 */
+	Graph.flattenAnimationActions = function(actions)
+	{
+		if (!Array.isArray(actions))
+		{
+			return actions;
+		}
+
+		var out = [];
+
+		for (var i = 0; i < actions.length; i++)
+		{
+			var a = actions[i];
+
+			if (a != null && a.animation != null &&
+				Array.isArray(a.animation.steps))
+			{
+				var sub = Graph.flattenAnimationActions(a.animation.steps);
+
+				for (var j = 0; j < sub.length; j++)
+				{
+					out.push(sub[j]);
+				}
+			}
+			else
+			{
+				out.push(a);
+			}
+		}
+
+		return out;
+	};
 		
+	/**
+	 * Animates `container.scrollLeft / scrollTop` from (sx, sy) to
+	 * (tx, ty) over `duration` ms with an ease-out cubic curve.
+	 * Hand-rolled because the browser's `scrollTo({behavior:'smooth'})`
+	 * is unreliable when called immediately after a synchronous
+	 * scroll-mutating function (which is what `fitWindow` and
+	 * `scrollCellToVisible` are) — Chromium often consolidates the
+	 * sequence into a single jump.
+	 */
+	Graph.smoothScrollContainer = function(container, sx, sy, tx, ty, duration)
+	{
+		duration = duration || 600;
+
+		if (sx === tx && sy === ty) return;
+
+		container.scrollLeft = sx;
+		container.scrollTop = sy;
+
+		var startTime = (typeof performance != 'undefined' &&
+			performance.now != null) ? performance.now() : Date.now();
+		var dx = tx - sx;
+		var dy = ty - sy;
+
+		var step = function(now)
+		{
+			var t = Math.min(1, (now - startTime) / duration);
+			// Cubic ease-out: 1 - (1 - t)^3 — fast start, gentle settle.
+			var eased = 1 - Math.pow(1 - t, 3);
+			container.scrollLeft = sx + dx * eased;
+			container.scrollTop = sy + dy * eased;
+			if (t < 1) window.requestAnimationFrame(step);
+		};
+
+		window.requestAnimationFrame(step);
+	};
+
+	/**
+	 * Sets a CSS `transition: transform …` on the SVG group used in
+	 * chromeless mode. The next change to the group's `transform`
+	 * attribute (driven by updateCssTransform) will animate. The
+	 * transition is auto-cleared on `transitionend` and via a
+	 * setTimeout fail-safe (in case the new transform equals the old
+	 * and `transitionend` never fires).
+	 */
+	Graph.applyTransformTransition = function(graph, duration)
+	{
+		duration = duration || 600;
+		var pane = graph.view.getDrawPane();
+		var node = (pane != null) ? pane.parentNode : null;
+		if (node == null) return;
+
+		var prev = node.style.transition;
+		node.style.transition = 'transform ' + duration +
+			'ms cubic-bezier(0.16, 1, 0.3, 1)';
+
+		// Mark that the *next* transform change (the one this smooth step
+		// is about to make via updateCssTransform) is the intended one to
+		// animate. updateCssTransform consumes this flag; any other
+		// transform update (toolbar zoom/fit, wheel zoom, …) finds it unset
+		// and strips the transition so the viewport snaps instantly — the
+		// easing must not bleed onto user-driven viewport changes.
+		graph.armTransformTransition = true;
+
+		var clear = function()
+		{
+			node.style.transition = prev || '';
+			graph.armTransformTransition = false;
+			node.removeEventListener('transitionend', clear);
+		};
+		node.addEventListener('transitionend', clear);
+		window.setTimeout(clear, duration + 100);
+	};
+
+	/**
+	 * Chromeless-mode equivalent of `fitWindow`. The lightbox container
+	 * is scrollable (`overflow:auto`), so we drive layout the same way
+	 * the editor's `fitWindow` does — keep `view.translate` stable,
+	 * change only the scale, and position the bounds via
+	 * `container.scrollLeft/scrollTop`.
+	 *
+	 * Why scale-only:
+	 *   • `view.translate` defines what graph point lives at the SVG
+	 *     element's (0, 0). Changing it shifts the "scroll origin",
+	 *     so the diagram's top-left would no longer correspond to
+	 *     scrollLeft=0. Users expect the scrollbars' top-left to
+	 *     always show the top-left of the diagram, regardless of
+	 *     where the viewbox is centered.
+	 *   • Scale changes via CSS transform are visually instant and
+	 *     don't require re-rendering cells.
+	 *
+	 * `view.setScale` routes through `viewStateChanged → validate +
+	 * sizeDidChange`. The latter resizes the SVG root's
+	 * `minWidth/minHeight` based on `getGraphBounds()` (which, in
+	 * useCssTransforms mode, returns `(graphBounds + currentTranslate)
+	 * * currentScale`). So the container's scrollable area grows /
+	 * shrinks with the scale, and the existing `currentTranslate`
+	 * keeps the diagram's top-left anchored to the same SVG point.
+	 */
+	Graph.prototype.fitBoundsCssTransform = function(bounds, border)
+	{
+		var b = (border != null) ? border : 10;
+
+		// Clamp the requested viewbox to the diagram area — "best
+		// effort". The bits past the diagram are empty space we can't
+		// scroll into, so they'd just leave the viewbox off-centre at
+		// the edges. Intersecting with the diagram gives a viewbox we
+		// can actually position.
+		var gb = this.view.graphBounds;
+		var areaLeft = gb.x;
+		var areaTop = gb.y;
+		var areaRight = gb.x + gb.width;
+		var areaBottom = gb.y + gb.height;
+
+		var vbLeft = Math.max(areaLeft, bounds.x);
+		var vbTop = Math.max(areaTop, bounds.y);
+		var vbRight = Math.min(areaRight, bounds.x + bounds.width);
+		var vbBottom = Math.min(areaBottom, bounds.y + bounds.height);
+		var vbWidth = Math.max(1, vbRight - vbLeft);
+		var vbHeight = Math.max(1, vbBottom - vbTop);
+
+		var cw = this.container.clientWidth - b;
+		var ch = this.container.clientHeight - b;
+		var scale = Math.floor(20 * Math.min(
+			cw / vbWidth, ch / vbHeight)) / 20;
+
+		// Editor-style layout for the lightbox: translate so the
+		// diagram's top-left maps to SVG (0, 0). After `sizeDidChange`
+		// runs from `viewStateChanged`, the SVG element's `minWidth/
+		// minHeight` becomes `(gb.width * scale + 2 * getBorder())` —
+		// exactly the diagram at the current scale plus the graph's
+		// border. From the user's perspective:
+		//   • `scrollLeft = 0` → top-left of the diagram (not the
+		//     centred-with-padding layout `chromelessResize` sets up).
+		//   • Scrollable extent = diagram size at current scale.
+		//   • Panning happens entirely via `container.scrollLeft/Top`.
+		//
+		// The translate becomes a stable, scale-independent value
+		// across viewbox actions (always `-gb.x`, `-gb.y`), so repeated
+		// viewbox clicks at different zoom levels don't shift the
+		// scroll-origin's meaning.
+		this.view.scaleAndTranslate(scale, -gb.x, -gb.y);
+
+		// With the new translate, graph (gx, gy) renders at SVG position
+		// `(gx - gb.x) * scale`. Centre the clamped viewbox in the
+		// viewport using the same math as `mxGraph.fitWindow`'s
+		// hasScrollbars branch.
+		var idealLeft = (vbLeft - gb.x) * scale -
+			Math.max((cw - vbWidth * scale) / 2 + b / 2, 0);
+		var idealTop = (vbTop - gb.y) * scale -
+			Math.max((ch - vbHeight * scale) / 2 + b / 2, 0);
+
+		// Scrollable extent: SVG element's minWidth is
+		// `gb.width * scale + 2 * graphBorder`. Clamp to [0, max] so
+		// the visible viewport stays within the diagram + border area.
+		var graphBorder = this.getBorder();
+		var svgWidth = gb.width * scale + 2 * graphBorder;
+		var svgHeight = gb.height * scale + 2 * graphBorder;
+		var maxLeft = svgWidth - this.container.clientWidth;
+		var maxTop = svgHeight - this.container.clientHeight;
+
+		this.container.scrollLeft = (maxLeft < 0) ? 0 :
+			Math.max(0, Math.min(idealLeft, maxLeft));
+		this.container.scrollTop = (maxTop < 0) ? 0 :
+			Math.max(0, Math.min(idealTop, maxTop));
+	};
+
+	/**
+	 * Smooth variant of `fitWindow`.
+	 *
+	 *   • Chromeless — `fitBoundsCssTransform` changes scale via CSS
+	 *     transform and snaps scrollLeft/scrollTop to centre the
+	 *     bounds. We arm a CSS `transition: transform` so the scale
+	 *     animation is visually smooth, and tween scrollLeft/scrollTop
+	 *     in parallel with `smoothScrollContainer`.
+	 *
+	 *   • Editor — mxGraphView re-renders at each scale change, so we
+	 *     can't tween scale visually. Snap the zoom via fitWindow, then
+	 *     tween scrollLeft / scrollTop with `smoothScrollContainer`.
+	 *
+	 * The optional `done` callback fires once the transition has run its
+	 * full duration so callers (the action chain) can wait for it.
+	 */
+	/**
+	 * Returns true once the graph has been torn down — its container is null
+	 * (mxGraph.destroy nulls it) or the destroyed flag is set. Deferred
+	 * animation callbacks (loop iterations, smooth-transition timeouts, the
+	 * executeCustomActions chain) check this so they bail out instead of
+	 * dereferencing a null container after the lightbox / presentation view
+	 * closes mid-playback.
+	 */
+	Graph.prototype.isGraphTornDown = function()
+	{
+		return this.destroyed === true || this.container == null;
+	};
+
+	Graph.prototype.smoothFitWindow = function(bounds, border, done)
+	{
+		// Graph may have been torn down between scheduling and firing.
+		if (this.isGraphTornDown())
+		{
+			if (done != null) done();
+			return;
+		}
+
+		var duration = 600;
+		var container = this.container;
+		var startLeft = container.scrollLeft;
+		var startTop = container.scrollTop;
+
+		if (this.useCssTransforms)
+		{
+			Graph.applyTransformTransition(this, duration);
+			this.fitBoundsCssTransform(bounds, border);
+		}
+		else
+		{
+			this.fitWindow(bounds, border);
+		}
+
+		// Capture target scroll set by fitBoundsCssTransform / fitWindow,
+		// then animate from start → target in parallel with the CSS
+		// transform transition (chromeless) or with the snapped zoom
+		// (editor).
+		Graph.smoothScrollContainer(container, startLeft, startTop,
+			container.scrollLeft, container.scrollTop, duration);
+
+		// The scroll tween and the CSS transform transition both run for
+		// `duration` ms, so the transition is complete after `duration`.
+		if (done != null)
+		{
+			window.setTimeout(done, duration);
+		}
+	};
+
+	/**
+	 * Scrolls the given cell to the centre of the viewport in
+	 * chromeless mode. Equivalent to `scrollCellToVisible(cell, true)`
+	 * for the lightbox case.
+	 *
+	 * Normalizes `view.translate` to `(-gb.x, -gb.y)` so the
+	 * scrollable area equals the diagram at the current scale and
+	 * `scrollLeft = 0` maps to the diagram's top-left — same editor-
+	 * style layout that `fitBoundsCssTransform` produces. Without this,
+	 * if a viewbox action ran before, the translate was already
+	 * normalized; if the user clicked scroll right after lightbox
+	 * load, the translate was still the `chromelessResize` centred
+	 * value and the math would put the scroll target in the wrong
+	 * place. Normalizing makes the behaviour scale-invariant and
+	 * independent of which action came first.
+	 */
+	Graph.prototype.scrollCellToVisibleCssTransform = function(cell, border)
+	{
+		var state = this.view.getState(cell);
+
+		if (state == null) return;
+
+		var gb = this.view.graphBounds;
+		var s = this.view.scale;
+
+		// Normalize translate (no scale change). `scaleAndTranslate`
+		// routes through `viewStateChanged → validate + sizeDidChange`
+		// so the SVG element resizes to `gb.width * s + 2 * border`.
+		if (this.view.translate.x !== -gb.x ||
+			this.view.translate.y !== -gb.y)
+		{
+			this.view.scaleAndTranslate(s, -gb.x, -gb.y);
+		}
+
+		// state.x/y/w/h are in graph coords (validate runs at scale=1,
+		// translate=0 in useCssTransforms mode). With translate now
+		// `-gb`, screen position of graph (gx, gy) = `(gx - gb.x) * s`.
+		var cw = this.container.clientWidth;
+		var ch = this.container.clientHeight;
+
+		var graphBorder = this.getBorder();
+		var maxLeft = gb.width * s + 2 * graphBorder - cw;
+		var maxTop = gb.height * s + 2 * graphBorder - ch;
+
+		var left, top;
+
+		if (border != null)
+		{
+			// Bring the cell into view with `border` px of breathing room
+			// on every side, scrolling the minimum needed instead of
+			// centring. `border` is in screen px (like the viewbox border).
+			var cellLeft = (state.x - gb.x) * s;
+			var cellTop = (state.y - gb.y) * s;
+			var cellRight = (state.x + state.width - gb.x) * s;
+			var cellBottom = (state.y + state.height - gb.y) * s;
+
+			left = this.container.scrollLeft;
+			top = this.container.scrollTop;
+
+			if (cellLeft - border < left)
+			{
+				left = cellLeft - border;
+			}
+			else if (cellRight + border > left + cw)
+			{
+				left = cellRight + border - cw;
+			}
+
+			if (cellTop - border < top)
+			{
+				top = cellTop - border;
+			}
+			else if (cellBottom + border > top + ch)
+			{
+				top = cellBottom + border - ch;
+			}
+		}
+		else
+		{
+			// Centre the cell (default behaviour).
+			left = (state.x + state.width / 2 - gb.x) * s - cw / 2;
+			top = (state.y + state.height / 2 - gb.y) * s - ch / 2;
+		}
+
+		this.container.scrollLeft = (maxLeft < 0) ? 0 :
+			Math.max(0, Math.min(left, maxLeft));
+		this.container.scrollTop = (maxTop < 0) ? 0 :
+			Math.max(0, Math.min(top, maxTop));
+	};
+
+	/**
+	 * Editor (non-chromeless) scroll-to-visible with an optional `border`.
+	 * With no border this is just the base `scrollCellToVisible`. With a
+	 * border (screen px) the cell's rect is expanded by that much on every
+	 * side and scrolled minimally into view, so the cell lands with that
+	 * much breathing room instead of flush against the viewport edge.
+	 */
+	Graph.prototype.scrollCellToVisibleBorder = function(cell, border)
+	{
+		if (border == null)
+		{
+			this.scrollCellToVisible(cell);
+
+			return;
+		}
+
+		var state = this.view.getState(cell);
+
+		if (state == null) return;
+
+		// Same rect construction as the base scrollCellToVisible, expanded
+		// by `border` px on every side before scrolling it into view.
+		var x = -this.view.translate.x;
+		var y = -this.view.translate.y;
+
+		this.scrollRectToVisible(new mxRectangle(
+			x + state.x - border, y + state.y - border,
+			state.width + 2 * border, state.height + 2 * border));
+	};
+
+	/**
+	 * Smooth variant of `scrollCellToVisible`. Both chromeless and
+	 * editor paths now use `smoothScrollContainer` because
+	 * `scrollCellToVisibleCssTransform` mutates `scrollLeft/scrollTop`,
+	 * not `view.translate`, in the lightbox.
+	 *
+	 * `border` (screen px, optional) keeps that much breathing room around
+	 * the cell instead of centring it — see `scrollCellToVisibleCssTransform`
+	 * / `scrollCellToVisibleBorder`.
+	 *
+	 * The optional `done` callback fires once the transition has run its
+	 * full duration so callers (the action chain) can wait for it.
+	 */
+	Graph.prototype.smoothScrollCellToVisible = function(cell, border, done)
+	{
+		// Graph may have been torn down between scheduling and firing.
+		if (this.isGraphTornDown())
+		{
+			if (done != null) done();
+			return;
+		}
+
+		var duration = 600;
+		var container = this.container;
+		var startLeft = container.scrollLeft;
+		var startTop = container.scrollTop;
+
+		if (this.useCssTransforms)
+		{
+			this.scrollCellToVisibleCssTransform(cell, border);
+		}
+		else
+		{
+			this.scrollCellToVisibleBorder(cell, border);
+		}
+
+		Graph.smoothScrollContainer(container, startLeft, startTop,
+			container.scrollLeft, container.scrollTop, duration);
+
+		if (done != null)
+		{
+			window.setTimeout(done, duration);
+		}
+	};
+
+	/**
+	 * Transient toggle visibility — flips each cell's DOM opacity between
+	 * 0 and 1 without touching the model. Used by custom-action / animation
+	 * `toggle` steps when `transient !== false` (the default). Effects
+	 * are reverted by `graph.refresh()` since they only live in the SVG
+	 * group's inline `style.opacity`.
+	 */
+	Graph.prototype.toggleCellsTransient = function(cells)
+	{
+		var nodes = this.getNodesForCells(cells);
+
+		for (var i = 0; i < nodes.length; i++)
+		{
+			var cur = nodes[i].style.opacity;
+			// Default opacity is '' (full) — treat empty as visible.
+			var visible = (cur === '' || cur === null ||
+				parseFloat(cur) > 0);
+			nodes[i].style.opacity = visible ? 0 : 1;
+		}
+	};
+
+	/**
+	 * Transient style setter — mutates `state.style[key]` and redraws the
+	 * affected cell states without touching the model. Subsequent view
+	 * validation (zoom / pan / refresh) re-reads from `cell.style` and
+	 * reverts the change, which is exactly what we want for animation /
+	 * custom-action steps that should leave the saved diagram untouched.
+	 */
+	Graph.prototype.setCellStylesTransient = function(key, value, cells)
+	{
+		for (var i = 0; i < cells.length; i++)
+		{
+			var state = this.view.getState(cells[i]);
+
+			if (state != null && state.style != null)
+			{
+				if (value == null)
+				{
+					delete state.style[key];
+				}
+				else
+				{
+					state.style[key] = value;
+				}
+
+				// `apply` reads styled props into the shape's cached
+				// fields; `redraw` repaints. Same pair the regular
+				// `setCellStyles` path uses inside its endUpdate hook.
+				if (state.shape != null)
+				{
+					state.shape.apply(state);
+					state.shape.redraw();
+				}
+
+				if (state.text != null)
+				{
+					state.text.apply(state);
+					state.text.redraw();
+				}
+			}
+		}
+	};
+
+	/**
+	 * Transient style toggle — flips a key between `defaultValue` and its
+	 * opposite (typically '0' ↔ '1') on each cell's state.style without
+	 * model mutation. Same revert-on-refresh semantics as
+	 * setCellStylesTransient.
+	 */
+	Graph.prototype.toggleCellStylesTransient = function(key, defaultValue, cells)
+	{
+		if (defaultValue == null) defaultValue = '0';
+
+		for (var i = 0; i < cells.length; i++)
+		{
+			var state = this.view.getState(cells[i]);
+
+			if (state != null && state.style != null)
+			{
+				// Match the model-mutating mxGraph.toggleCellStyles
+				// semantics: truthy current → 0, falsy → 1 (so the key
+				// flips between '0' and '1' across repeated calls).
+				// Unlike the model path — which reads the first cell's
+				// style and applies the same value to all cells — this
+				// path toggles each cell independently, which matches
+				// what users intuitively expect from a multi-select
+				// toggle. The model path keeps its legacy semantics
+				// when invoked via `transient: false`.
+				var next = (mxUtils.getValue(state.style, key,
+					defaultValue)) ? '0' : '1';
+
+				state.style[key] = next;
+
+				if (state.shape != null)
+				{
+					state.shape.apply(state);
+					state.shape.redraw();
+				}
+
+				if (state.text != null)
+				{
+					state.text.apply(state);
+					state.text.redraw();
+				}
+			}
+		}
+	};
+
 	/**
 	 * Runs the given actions and invokes done when all actions have been executed.
 	 * When adding new actions that reference cell IDs support for updating
@@ -8816,6 +10196,22 @@
 				}
 			});
 
+			// Custom-link actions (a user clicking a cell link — `cell` is the
+			// clicked cell) default to the legacy model-mutating visibility
+			// behavior so they can reveal model-hidden cells/layers/groups, the
+			// long-standing interactive-diagram contract that predates step
+			// animations. A transient (opacity-only) toggle can't reveal a cell
+			// with visible="0" — it has no rendered state/DOM node, so the
+			// action silently no-ops. Animation steps and the dialog preview
+			// pass cell == null and stay transient by default (no model
+			// mutation, no collab sync, no undo). Either side overrides per
+			// action with an explicit `transient` flag.
+			var defaultTransient = (cell == null);
+			var isTransient = function(params)
+			{
+				return (params.transient != null) ? params.transient : defaultTransient;
+			};
+
 			var waitAndExecute = mxUtils.bind(this, function()
 			{
 				if (waitCounter > 0)
@@ -8831,8 +10227,36 @@
 
 			var executeNextAction = mxUtils.bind(this, function()
 			{
+				// Bail out if the graph was torn down (e.g. presentation /
+				// lightbox view closed) mid-animation — a deferred step must
+				// not dispatch into a null container / destroyed view. Stops
+				// the chain for ANY action type, not just the smooth viewport
+				// transitions that read this.container directly.
+				if (this.isGraphTornDown())
+				{
+					this.executingCustomActions = false;
+					this.stoppingCustomActions = false;
+					// Unwind the caller so a looping player resets its
+					// `running` flag — its runStep then hits the same guard
+					// and halts without re-dispatching. `done` is null for
+					// fire-and-forget callers (e.g. custom-link clicks).
+					if (done != null) { done(); }
+					return;
+				}
+
 				if (index < actions.length)
 				{
+					// Each iteration processes one step. The `immediate: true`
+					// step flag opts into running in parallel with the previous
+					// step: when set, we keep batching steps in the same call
+					// and they share one `waitCounter`. The chain advances once
+					// the whole batch finishes (i.e. all blocking effects in
+					// any step of the batch have completed). The first step is
+					// always processed unconditionally; only `immediate` on
+					// subsequent steps takes effect (the field is ignored on
+					// the first step in `actions`).
+					do
+					{
 					var stop = this.stoppingCustomActions;
 					var action = actions[index++];
 					var animations = [];
@@ -8895,6 +10319,40 @@
 							0 : action.fadeOut.delay);
 					}
 
+					// Animated transition to an arbitrary target opacity. Sits
+					// between the existing `opacity` (instant) and `fadeIn`/
+					// `fadeOut` (animated, hardcoded 0 or 1) — picks up where
+					// they leave off for partial-opacity effects.
+					if (action.fadeTo != null && action.fadeTo.value != null)
+					{
+						waitCounter++;
+						var fadeNodes = this.getNodesForCells(
+							this.getCellsForAction(action.fadeTo, true));
+						var fadeDelay = (stop) ? 0 :
+							(action.fadeTo.delay != null ? action.fadeTo.delay : 1000);
+
+						Graph.setTransitionForNodes(fadeNodes,
+							'all ' + fadeDelay + 'ms ease-in-out');
+						Graph.setOpacityForNodes(fadeNodes, action.fadeTo.value);
+
+						window.setTimeout(function()
+						{
+							Graph.setTransitionForNodes(fadeNodes, null);
+							waitAndExecute();
+						}, fadeDelay);
+					}
+
+					// Toggles SVG flow animation on edge path elements. The
+					// CSS class is installed once at module load (see
+					// Editor.installAnimationStyles).
+					if (action.flow != null)
+					{
+						var flowCells = this.getCellsForAction(action.flow, true);
+						Editor.toggleFlowAnimation(this, flowCells,
+							action.flow.start === false ? 'stop' :
+							action.flow.start === true ? 'start' : 'toggle');
+					}
+
 					if (action.wipeIn != null)
 					{
 						animations = animations.concat(this.createWipeAnimations(
@@ -8919,41 +10377,96 @@
 							this.getCellsForAction(action.popOut, true), false));
 					}
 
-					// Executes all actions that change cell states
+					// Visibility / style actions. The default is context-
+					// dependent (see `isTransient` / `defaultTransient`
+					// above): animation steps are transient (DOM-only,
+					// reverted by the next `graph.refresh()`, never saved /
+					// synced / undoable), while custom-link clicks mutate the
+					// model — the legacy interactive-diagram behavior that can
+					// reveal model-hidden cells / layers / groups. An explicit
+					// `transient: true|false` on the params overrides either
+					// default (hidden from the picker UI).
 					if (action.toggle != null)
 					{
-						beginUpdate();
-						this.toggleCells(this.getCellsForAction(action.toggle, true));
+						if (!isTransient(action.toggle))
+						{
+							beginUpdate();
+							// Model path: resolve layers to the layer cell
+							// itself so its `visible` is toggled (cascading
+							// to descendants), not each child's flag.
+							this.toggleCells(this.getCellsForAction(
+								action.toggle, true, true));
+						}
+						else
+						{
+							this.toggleCellsTransient(
+								this.getCellsForAction(action.toggle, true));
+						}
 					}
 
 					if (action.show != null)
 					{
-						beginUpdate();
 						var temp = this.getCellsForAction(action.show, true);
 						Graph.setOpacityForNodes(this.getNodesForCells(temp), 1);
-						this.setCellsVisible(temp, true);
+
+						if (!isTransient(action.show))
+						{
+							beginUpdate();
+							// Layers → the layer cell itself, so its `visible`
+							// is set (cascading to children) instead of each
+							// descendant's flag.
+							this.setCellsVisible(this.getCellsForAction(
+								action.show, true, true), true);
+						}
 					}
 
 					if (action.hide != null)
 					{
-						beginUpdate();
 						var temp = this.getCellsForAction(action.hide, true);
 						Graph.setOpacityForNodes(this.getNodesForCells(temp), 0);
-						this.setCellsVisible(temp, false);
+
+						if (!isTransient(action.hide))
+						{
+							beginUpdate();
+							this.setCellsVisible(this.getCellsForAction(
+								action.hide, true, true), false);
+						}
 					}
-					
+
 					if (action.toggleStyle != null && action.toggleStyle.key != null)
 					{
-						beginUpdate();
-						this.toggleCellStyles(action.toggleStyle.key, (action.toggleStyle.defaultValue != null) ?
-							action.toggleStyle.defaultValue : '0', this.getCellsForAction(action.toggleStyle, true));
+						var toggleStyleCells = this.getCellsForAction(action.toggleStyle, true);
+						var defValue = (action.toggleStyle.defaultValue != null) ?
+							action.toggleStyle.defaultValue : '0';
+
+						if (!isTransient(action.toggleStyle))
+						{
+							beginUpdate();
+							this.toggleCellStyles(action.toggleStyle.key,
+								defValue, toggleStyleCells);
+						}
+						else
+						{
+							this.toggleCellStylesTransient(action.toggleStyle.key,
+								defValue, toggleStyleCells);
+						}
 					}
 
 					if (action.style != null && action.style.key != null)
 					{
-						beginUpdate();
-						this.setCellStyles(action.style.key, action.style.value,
-							this.getCellsForAction(action.style, true));
+						var styleCells = this.getCellsForAction(action.style, true);
+
+						if (!isTransient(action.style))
+						{
+							beginUpdate();
+							this.setCellStyles(action.style.key,
+								action.style.value, styleCells);
+						}
+						else
+						{
+							this.setCellStylesTransient(action.style.key,
+								action.style.value, styleCells);
+						}
 					}
 
 					// Executes stateless actions on cells
@@ -8977,15 +10490,67 @@
 					{
 						cells = this.getCellsForAction(action.scroll);
 					}
-					
+
 					if (action.viewbox != null)
 					{
-						this.fitWindow(action.viewbox, action.viewbox.border);
+						if (action.viewbox.smooth === true && !stop)
+						{
+							// Block the action chain until the smooth
+							// transition finishes so consecutive viewbox /
+							// scroll steps don't overrun each other. During
+							// stop we fall through to the instant snap below.
+							waitCounter++;
+							this.smoothFitWindow(action.viewbox,
+								action.viewbox.border, waitAndExecute);
+						}
+						else if (this.useCssTransforms)
+						{
+							// Regular fitWindow only zooms in chromeless mode
+							// (no scrollbars to pan), so we recreate the pan
+							// ourselves via fitBoundsCssTransform.
+							this.fitBoundsCssTransform(action.viewbox, action.viewbox.border);
+						}
+						else
+						{
+							this.fitWindow(action.viewbox, action.viewbox.border);
+						}
 					}
-					
+
 					if (cells.length > 0)
 					{
-						this.scrollCellToVisible(cells[0]);
+						// Optional `scroll.border` (screen px) keeps that much
+						// breathing room around the cell instead of centring
+						// it. Only `scroll` carries it — select/highlight-
+						// driven scrolls pass null (centre / base behaviour).
+						var scrollBorder = (action.scroll != null &&
+							action.scroll.border != null && action.scroll.border !== '' &&
+							!isNaN(parseFloat(action.scroll.border))) ?
+							parseFloat(action.scroll.border) : null;
+
+						// `scroll.smooth: true` animates the scroll
+						// instead of jumping the container.
+						if (action.scroll != null && action.scroll.smooth === true && !stop)
+						{
+							// Block the action chain until the smooth scroll
+							// finishes (see viewbox above). During stop we
+							// fall through to the instant scroll below.
+							waitCounter++;
+							this.smoothScrollCellToVisible(cells[0], scrollBorder, waitAndExecute);
+						}
+						else if (this.useCssTransforms)
+						{
+							// Chromeless: use the CSS-transforms-aware
+							// helper that updates view.translate AND
+							// calls sizeDidChange (so the SVG element
+							// resizes to fit the panned region — without
+							// this the cell scrolls off-screen at
+							// high-zoom levels).
+							this.scrollCellToVisibleCssTransform(cells[0], scrollBorder);
+						}
+						else
+						{
+							this.scrollCellToVisibleBorder(cells[0], scrollBorder);
+						}
 					}
 					
 					if (cell != null && action.explore != null)
@@ -9052,10 +10617,44 @@
 					if (animations.length > 0)
 					{
 						waitCounter++;
+
+						// Honour a per-effect duration (total ms) authored via
+						// the dialog's duration input or the legacy converter,
+						// which store it nested under the effect key (e.g.
+						// action.wipeIn.delay). executeAnimations wants a frame
+						// count + per-frame interval (total ≈ frames * interval),
+						// so keep the default frame count and derive the
+						// interval. Falls back to legacy top-level action.steps /
+						// action.delay, then executeAnimations' own defaults.
+						var animFrames = (action.steps != null) ? action.steps : 30;
+						var animInterval = action.delay;
+						var animKeys = ['wipeIn', 'wipeOut', 'popIn', 'popOut'];
+						var animDurMs = null;
+
+						for (var ak = 0; ak < animKeys.length; ak++)
+						{
+							var av = action[animKeys[ak]];
+
+							if (av != null && av.delay != null)
+							{
+								animDurMs = (animDurMs == null) ? av.delay :
+									Math.max(animDurMs, av.delay);
+							}
+						}
+
+						if (animDurMs != null)
+						{
+							animInterval = animDurMs / animFrames;
+						}
+
 						this.executeAnimations(animations, waitAndExecute,
-							(stop) ? 1 : action.steps,
-							(stop) ? 0 : action.delay);
+							(stop) ? 1 : animFrames,
+							(stop) ? 0 : animInterval);
 					}
+					}
+					while (index < actions.length &&
+						actions[index].immediate === true &&
+						!this.stoppingCustomActions);
 
 					if (waitCounter == 0)
 					{
@@ -9175,6 +10774,7 @@
 			{
 				this.updateCustomLinkAction(mapping, action[name], 'cells');
 				this.updateCustomLinkAction(mapping, action[name], 'excludeCells');
+				this.updateCustomLinkAction(mapping, action[name], 'layers');
 			}
 		}
 	};
@@ -9220,28 +10820,70 @@
 	 * Handles each action in the action array of a custom link. This code
 	 * handles toggle actions for cell IDs.
 	 */
-	Graph.prototype.getCellsForAction = function(action, layers)
+	Graph.prototype.getCellsForAction = function(action, layers, layerCells)
 	{
-		var result = this.getCellsById(action.cells).concat(
-			this.getCellsForTags(action.tags, null, layers));
+		// `action.tagsMatch` opts into OR semantics (cell needs ANY of
+		// the listed tags). Default stays AND for back-compat with
+		// existing diagrams.
+		var tagMode = (action.tagsMatch === 'or') ? 'or' : 'and';
 
-		// Removes excluded cells
-		if (action.excludeCells != null)
+		// Union of cells from `cells` and `tags`. De-dup by id so a
+		// cell that matches both selectors doesn't get the action
+		// applied twice.
+		var seen = {};
+		var union = [];
+		var merge = function(cells)
 		{
-			var temp = [];
-
-			for (var i = 0; i < result.length; i++)
+			for (var i = 0; i < cells.length; i++)
 			{
-				if (action.excludeCells.indexOf(result[i].id) < 0)
+				var id = cells[i].id;
+				if (!seen[id])
 				{
-					temp.push(result[i]);
+					seen[id] = true;
+					union.push(cells[i]);
 				}
 			}
+		};
 
-			result = temp;
+		merge(this.getCellsById(action.cells));
+		merge(this.getCellsForTags(action.tags, null, layers, false, tagMode));
+		// `layerCells` resolves the action.layers selector to the layer cells
+		// themselves rather than their descendants. The transient opacity
+		// path fades descendants; the model-visibility path toggles the layer
+		// cell's own `visible` (matching the Layers panel), which cascades to
+		// every descendant at render time.
+		merge(layerCells ? this.getLayerCells(action.layers) :
+			this.getCellsForLayers(action.layers));
+
+		// Final step: subtract every cell in `excludeCells` from the
+		// union. `'*'` in the exclude list means "exclude everything",
+		// which collapses the result to []. This mirrors the wildcard
+		// semantics on `cells`.
+		if (action.excludeCells != null && action.excludeCells.length > 0)
+		{
+			var excludeIds = {};
+			var excludeAll = false;
+
+			for (var i = 0; i < action.excludeCells.length; i++)
+			{
+				if (action.excludeCells[i] === '*') { excludeAll = true; break; }
+				excludeIds[action.excludeCells[i]] = true;
+			}
+
+			if (excludeAll)
+			{
+				return [];
+			}
+
+			var filtered = [];
+			for (var i = 0; i < union.length; i++)
+			{
+				if (!excludeIds[union[i].id]) filtered.push(union[i]);
+			}
+			return filtered;
 		}
 
-		return result;
+		return union;
 	};
 	
 	/**
@@ -9251,7 +10893,7 @@
 	Graph.prototype.getCellsById = function(ids)
 	{
 		var result = [];
-		
+
 		if (ids != null)
 		{
 			for (var i = 0; i < ids.length; i++)
@@ -9259,7 +10901,7 @@
 				if (ids[i] == '*')
 				{
 					var parent = this.model.getRoot();
-					
+
 					result = result.concat(this.model.filterDescendants(function(cell)
 					{
 						return cell != parent;
@@ -9268,7 +10910,7 @@
 				else
 				{
 					var cell = this.model.getCell(ids[i]);
-					
+
 					if (cell != null)
 					{
 						result.push(cell);
@@ -9276,7 +10918,54 @@
 				}
 			}
 		}
-		
+
+		return result;
+	};
+
+	/**
+	 * Resolves an array of layer cell IDs to every descendant cell in
+	 * those layers. Layers are top-level children of the model root; we
+	 * skip the layer cell itself (so the action applies only to its
+	 * contents, not the implicit container). Used by getCellsForAction
+	 * to support "Select layers" on the cells selector.
+	 */
+	Graph.prototype.getCellsForLayers = function(layerIds)
+	{
+		var result = [];
+
+		if (Array.isArray(layerIds))
+		{
+			for (var i = 0; i < layerIds.length; i++)
+			{
+				var layer = this.model.getCell(layerIds[i]);
+				if (layer == null) continue;
+				result = result.concat(this.model.filterDescendants(
+					function(c) { return c != layer; }, layer));
+			}
+		}
+
+		return result;
+	};
+
+	/**
+	 * Returns the layer cells named by the given IDs (the cells themselves,
+	 * not their descendants). Used by the model-visibility action path so a
+	 * `layers` selector toggles each layer's own `visible` attribute —
+	 * matching the Layers panel — rather than flipping every descendant.
+	 */
+	Graph.prototype.getLayerCells = function(layerIds)
+	{
+		var result = [];
+
+		if (Array.isArray(layerIds))
+		{
+			for (var i = 0; i < layerIds.length; i++)
+			{
+				var layer = this.model.getCell(layerIds[i]);
+				if (layer != null) result.push(layer);
+			}
+		}
+
 		return result;
 	};
 
@@ -9356,17 +11045,18 @@
 	 * Returns the cells in the model (or given array) that have all of the
 	 * given tags in their tags property.
 	 */
-	Graph.prototype.getCellsForTags = function(tagList, cells, includeLayers, checkVisible)
+	Graph.prototype.getCellsForTags = function(tagList, cells, includeLayers, checkVisible, mode)
 	{
 		var result = [];
-		
+		var orMode = mode === 'or';
+
 		if (tagList != null)
 		{
 			cells = (cells != null) ? cells : this.model.getDescendants(this.model.getRoot());
-			
+
 			var tagCount = 0;
 			var lookup = {};
-			
+
 			for (var i = 0; i < tagList.length; i++)
 			{
 				if (tagList[i].length > 0)
@@ -9375,7 +11065,7 @@
 					tagCount++;
 				}
 			}
-			
+
 			for (var i = 0; i < cells.length; i++)
 			{
 				if ((includeLayers && this.model.getParent(cells[i]) == this.model.root) ||
@@ -9383,15 +11073,18 @@
 				{
 					var tags = this.getTagsForCell(cells[i]);
 					var match = false;
-	
+
 					if (tags.length > 0)
 					{
 						var tmp = tags.split(' ');
-						
-						if (tmp.length >= tagList.length)
+
+						// OR mode matches as soon as one tag overlaps. AND mode
+						// keeps the original requirement (every listed tag must
+						// be present), short-circuiting once the count hits.
+						if (orMode || tmp.length >= tagList.length)
 						{
 							var matchCount = 0;
-							
+
 							for (var j = 0; j < tmp.length && (matchCount < tagCount); j++)
 							{
 								if (lookup[tmp[j]] != null)
@@ -9399,11 +11092,11 @@
 									matchCount++;
 								}
 							}
-							
-							match = matchCount == tagCount;
+
+							match = orMode ? matchCount > 0 : matchCount == tagCount;
 						}
 					}
-					
+
 					if (match && ((checkVisible != true) || this.isCellVisible(cells[i])))
 					{
 						result.push(cells[i]);
@@ -9411,7 +11104,7 @@
 				}
 			}
 		}
-		
+
 		return result;
 	};
 
@@ -9764,6 +11457,8 @@
 		{
 			this.fireEvent(new mxEventObject('shadowVisibleChanged'));
 		}
+		
+		return Math.ceil(this.svgShadowSize * this.svgShadowBlur);
 	};
 	
 	/**
@@ -9941,14 +11636,21 @@
 	{
 		var graph = editorUi.editor.graph;
 		var div = document.createElement('div');
+		// Flex column so the footer buttons stay pinned at the bottom and the
+		// content area scrolls if the dialog is capped by viewport max-height.
+		div.style.display = 'flex';
+		div.style.flexDirection = 'column';
+		div.style.minHeight = '0';
+
+		var scrollWrapper = document.createElement('div');
+		scrollWrapper.style.flex = '1 1 auto';
+		scrollWrapper.style.minHeight = '0';
+		scrollWrapper.style.overflowY = 'auto';
+		div.appendChild(scrollWrapper);
 
 		var title = document.createElement('h3');
-		title.style.width = '100%';
-		title.style.textAlign = 'center';
-		title.style.marginTop = '0px';
-		title.style.marginBottom = '10px';
 		mxUtils.write(title, titleText || mxResources.get('print'));
-		div.appendChild(title);
+		scrollWrapper.appendChild(title);
 
 		var currentPage = 1;
 		var pageCount = 1;
@@ -10066,19 +11768,17 @@
 			pagesRadio.checked = true;
 		});
 
+		currPage.className = 'geBtn';
 		currPage.setAttribute('title', mxResources.get('currentPage'));
 		currPage.style.marginLeft = '4px';
 		currPage.style.maxWidth = '100px';
-		currPage.style.overflow = 'hidden';
-		currPage.style.textOverflow = 'ellipsis';
-		currPage.style.whiteSpace = 'nowrap';
 
 		pagesRow.appendChild(currPage);
 		pagesSection.appendChild(pagesRow);
 		
 		if (pageCount > 1)
 		{
-			div.appendChild(pagesSection);
+			scrollWrapper.appendChild(pagesSection);
 		}
 
 		// Selection only
@@ -10117,7 +11817,7 @@
 				var selectionWrapper = document.createElement('div');
 				selectionWrapper.className = 'geDialogSection';
 				selectionWrapper.appendChild(selectionSection);
-				div.appendChild(selectionWrapper);
+				scrollWrapper.appendChild(selectionWrapper);
 			}
 		}
 
@@ -10134,9 +11834,13 @@
 			allPagesRadio.checked = true;
 		}
 
+		// Less common options live in a collapsed Advanced section. The size
+		// section is the helper's content card, the options section is a
+		// second card appended to the collapsible wrapper.
+		var advanced = editorUi.addAdvancedSection(scrollWrapper);
+
 		// --- Size section ---
-		var sizeSection = document.createElement('div');
-		sizeSection.className = 'geDialogSection';
+		var sizeSection = advanced.content;
 
 		// Page view
 		var pageViewSection = document.createElement('div');
@@ -10283,7 +11987,6 @@
 		fitSection.appendChild(table);
 		
 		sizeSection.appendChild(fitSection);
-		div.appendChild(sizeSection);
 
 		// Border and zoom
 		var optionsSection = document.createElement('div');
@@ -10362,7 +12065,7 @@
 		if (!editorUi.isOffline() || mxClient.IS_CHROMEAPP)
 		{
 			shadowsRow.appendChild(editorUi.createHelpIcon(
-				'https://github.com/jgraph/drawio/discussions/5136'));
+				'https://www.drawio.com/docs/manual/export/print-diagram/#shadows-in-print-and-pdf-export'));
 		}
 
 		// Hides shadows option if not supported
@@ -10420,10 +12123,11 @@
 		}
 
 
-		div.appendChild(optionsSection);
+		advanced.wrapper.appendChild(optionsSection);
 
 		// Buttons
 		var buttons = document.createElement('div');
+		buttons.style.flex = '0 0 auto';
 		buttons.style.marginTop = '16px';
 		buttons.style.textAlign = 'right';
 		buttons.style.whiteSpace = 'nowrap';
@@ -10451,6 +12155,7 @@
 			editorUi.lastPrintZoom = zoomInput.value;
 			editorUi.lastPrintBorder = borderInput.value;
 			editorUi.lastPrintGrid = gridInput.checked;
+			editorUi.lastPrintShadow = shadowsInput.checked;
 			editorUi.lastPrintTransparent = transparentInput.checked;
 			editorUi.lastPrintInclude = includeInput.checked;
 			editorUi.lastPrintSheetsAcross = sheetsAcrossInput.value;
@@ -10493,20 +12198,50 @@
 		{
 			buttons.appendChild(cancelBtn);
 		}
+
+		// Async preview or print with spinner
+		function doPreview(print)
+		{
+			try
+			{
+				editorUi.hideDialog();
+
+				// Only the print/preview path (fn == null) renders synchronously
+				// here and needs the spinner. The export path (fn != null) issues
+				// its own request with its own spinner (e.g. saveRequest), which
+				// no-ops and silently drops the request if a spinner is already
+				// active, so it must not run under updatingPreview
+				if (fn != null)
+				{
+					preview(print);
+				}
+				else if (editorUi.spinner.spin(document.body, mxResources.get('updatingPreview')))
+				{
+					window.setTimeout(function()
+					{
+						try
+						{
+							preview(print);
+							editorUi.spinner.stop();
+						}
+						catch (e)
+						{
+							editorUi.handleError(e);
+						}
+					}, 0);
+				}
+			}
+			catch (e)
+			{
+				editorUi.handleError(e);
+			}
+		};
 		
 		if (PrintDialog.previewEnabled && fn == null)
 		{
 			var previewBtn = mxUtils.button(mxResources.get('preview'), function()
 			{
-				try
-				{
-					editorUi.hideDialog();
-					preview(false);
-				}
-				catch (e)
-				{
-					editorUi.handleError(e);
-				}
+				doPreview(false);
 			});
 
 			previewBtn.className = 'geBtn';
@@ -10517,15 +12252,7 @@
 			(!PrintDialog.previewEnabled) ? 'ok' : 'print';
 		var printBtn = mxUtils.button(mxResources.get(btnTitle), function()
 		{
-			try
-			{
-				editorUi.hideDialog();
-				preview(true);
-			}
-			catch (e)
-			{
-				editorUi.handleError(e);
-			}
+			doPreview(true);
 		});
 
 		printBtn.className = 'geBtn gePrimaryBtn';
@@ -10664,4 +12391,898 @@
             }
         }
     };
+
+	/**
+	 * Step-based animation engine. Plays a sequence of show/hide/flow/wait/
+	 * setOpacity steps on a graph by manipulating DOM opacity, leaving the
+	 * model and each cell's original opacity/label styles untouched.
+	 *
+	 * Step grammar (one per line, blank lines and lines starting with # ignored):
+	 *
+	 *     show CELL [fade|pop|wipe] [DURATION]   reveal cell (default effect: wipe)
+	 *     hide CELL [DURATION]                   fade cell out
+	 *     flow CELL [start|stop]                 toggle flow animation on an edge
+	 *     wait MS                                pause for MS milliseconds
+	 *     setOpacity CELL VALUE [DURATION]       transition cell opacity to VALUE (0–1)
+	 *
+	 * DURATION is optional milliseconds; when omitted, fades and setOpacity
+	 * default to Editor.animationFadeDelay (400 ms) and wipe/pop default to
+	 * the executeAnimations 30×30 = 900 ms preset.
+	 *
+	 * CELL is the cell id (or "*" / "all" for every shape). wipe extends
+	 * vertices left-to-right and edges along their path. fade cross-fades
+	 * opacity. pop scales in with a damped spring overshoot. setOpacity is
+	 * essentially fadeIn/fadeOut with a configurable target — animates from
+	 * each cell's current opacity to VALUE.
+	 */
+	Editor.parseAnimationScript = function(script)
+	{
+		var steps = [];
+
+		if (script == null)
+		{
+			return steps;
+		}
+
+		// Parses a non-negative numeric token. Returns the value, or undefined
+		// if the token is missing or not a valid number.
+		var parseNumber = function(tok)
+		{
+			if (tok == null)
+			{
+				return undefined;
+			}
+
+			var n = parseFloat(tok);
+
+			return (!isNaN(n) && n >= 0) ? n : undefined;
+		};
+
+		var SHOW_EFFECTS = {fade: true, pop: true, wipe: true};
+
+		var lines = script.split('\n');
+
+		for (var i = 0; i < lines.length; i++)
+		{
+			var line = mxUtils.trim(lines[i]);
+
+			if (line == '' || line.charAt(0) == '#')
+			{
+				continue;
+			}
+
+			var tokens = line.split(/\s+/);
+			var step = {action: tokens[0], cell: tokens[1], arg: tokens[2]};
+
+			if (step.action == 'wait')
+			{
+				step.delay = parseFloat(step.cell);
+
+				if (isNaN(step.delay) || step.delay < 0)
+				{
+					step.delay = 1000;
+				}
+			}
+			else if (step.action == 'setOpacity')
+			{
+				// setOpacity CELL VALUE [DURATION]
+				step.opacity = parseFloat(tokens[2]);
+
+				if (isNaN(step.opacity))
+				{
+					step.opacity = 1;
+				}
+
+				step.opacity = Math.max(0, Math.min(1, step.opacity));
+				step.duration = parseNumber(tokens[3]);
+				step.arg = undefined;
+			}
+			else if (step.action == 'show')
+			{
+				// show CELL [fade|pop|wipe] [DURATION]
+				// The third token can be an effect name OR a duration. If it
+				// parses as a number and isn't a known effect, treat it as a
+				// duration with the default (wipe) effect.
+				if (step.arg != null && !SHOW_EFFECTS[step.arg])
+				{
+					var asDur = parseNumber(step.arg);
+
+					if (asDur != null)
+					{
+						step.duration = asDur;
+						step.arg = undefined;
+					}
+				}
+
+				if (step.duration == null)
+				{
+					step.duration = parseNumber(tokens[3]);
+				}
+			}
+			else if (step.action == 'hide')
+			{
+				// hide CELL [DURATION]
+				step.duration = parseNumber(tokens[2]);
+				step.arg = undefined;
+			}
+
+			steps.push(step);
+		}
+
+		return steps;
+	};
+
+	/**
+	 * Default fade duration in ms used when fading hidden cells back in or out.
+	 */
+	Editor.animationFadeDelay = 400;
+
+	/**
+	 * True when two steps differ only by their cell reference and can run as
+	 * a single parallel batch (e.g. three "Fade In" picks on a multi-cell
+	 * selection). wait/flow steps don't batch — flow is instant anyway and
+	 * waits have no cell to fan out. Shared by the engine (batching) and the
+	 * dialog (UI grouping) so both stay in sync.
+	 */
+	Editor.canBatchAnimationSteps = function(a, b)
+	{
+		if (a.action != b.action) return false;
+		if (a.action == 'wait') return false;
+		if ((a.arg || '') != (b.arg || '')) return false;
+		if ((a.opacity != null ? a.opacity : '') != (b.opacity != null ? b.opacity : '')) return false;
+		if ((a.duration != null ? a.duration : '') != (b.duration != null ? b.duration : '')) return false;
+		return true;
+	};
+
+	/**
+	 * Converts a parsed legacy step (from parseAnimationScript) to a single
+	 * JSON action object using the keys already supported by
+	 * Graph.executeCustomActions. Returns null for unknown actions.
+	 *
+	 * The mapping preserves semantics:
+	 *   show CELL fade  → fadeIn      (forces 0 → 1)
+	 *   show CELL pop   → popIn
+	 *   show CELL       → wipeIn      (default wipe effect)
+	 *   hide CELL       → fadeOut     (forces 1 → 0)
+	 *   setOpacity X V  → fadeTo with value: V  (smooth from current → V)
+	 *   wait MS         → wait: MS
+	 *   flow CELL start → flow with start: true
+	 */
+	Editor.convertLegacyAnimationStep = function(step)
+	{
+		if (step.action == 'wait')
+		{
+			return {wait: step.delay};
+		}
+
+		var cellRef = (step.cell == 'all') ? '*' : step.cell;
+
+		if (cellRef == null)
+		{
+			return null;
+		}
+
+		var sel = {cells: [cellRef]};
+
+		// The legacy engine defaulted fade/setOpacity to 400 ms (Editor.
+		// animationFadeDelay); the new action handlers fall back to
+		// fadeNodes' built-in 1000 ms. Set the duration explicitly during
+		// conversion so old animations play at the same speed they used to.
+		if (step.duration != null)
+		{
+			sel.delay = step.duration;
+		}
+		else if (step.action == 'show' && step.arg == 'fade')
+		{
+			sel.delay = Editor.animationFadeDelay;
+		}
+		else if (step.action == 'hide' || step.action == 'setOpacity')
+		{
+			sel.delay = Editor.animationFadeDelay;
+		}
+
+		if (step.action == 'show')
+		{
+			if (step.arg == 'fade') return {fadeIn:  sel};
+			if (step.arg == 'pop')  return {popIn:   sel};
+			return {wipeIn: sel};
+		}
+
+		if (step.action == 'hide')
+		{
+			return {fadeOut: sel};
+		}
+
+		if (step.action == 'setOpacity')
+		{
+			sel.value = step.opacity;
+			return {fadeTo: sel};
+		}
+
+		if (step.action == 'flow')
+		{
+			var out = {cells: [cellRef]};
+
+			if (step.arg == 'start') out.start = true;
+			else if (step.arg == 'stop') out.start = false;
+
+			return {flow: out};
+		}
+
+		return null;
+	};
+
+	/**
+	 * Converts an old text-format animation script to the new JSON action
+	 * structure {animation: {steps: [...]}}. Prepends an explicit
+	 * {opacity: {cells: ["*"], value: 0}} step to recreate the implicit
+	 * hide-initial behavior the old engine had on by default — users who
+	 * don't want it can delete that first step in the editor.
+	 *
+	 * Consecutive non-`wait` steps are merged into a single step so they
+	 * run in parallel. This matches the original plugin's semantics: its
+	 * dispatcher fired show / hide / flow synchronously (no per-step
+	 * await), so consecutive shows visually overlapped and only `wait`
+	 * blocked the chain. The new JSON dispatcher awaits each step's
+	 * completion, so without merging, a legacy script
+	 * `show A fade; show B fade; wait 500` would play in ~1300 ms instead
+	 * of the legacy ~500 ms.
+	 */
+	Editor.convertLegacyAnimation = function(text)
+	{
+		var legacy = Editor.parseAnimationScript(text);
+		var steps = [{opacity: {cells: ['*'], value: 0}}];
+		var current = null;
+
+		// Flush the in-progress merge bucket onto the steps array.
+		var flush = function()
+		{
+			if (current != null)
+			{
+				steps.push(current);
+				current = null;
+			}
+		};
+
+		// Returns true if two converted action params can share a step —
+		// same `delay`, `value`, `start` (anything that affects how the
+		// action plays). When they differ, the steps stay separate to
+		// preserve the original per-step behavior.
+		var paramsMatch = function(a, b)
+		{
+			return a.delay === b.delay &&
+				a.value === b.value &&
+				a.start === b.start;
+		};
+
+		// Adds one converted step to the merge bucket. If the new step
+		// shares an action key with the bucket AND their params match
+		// (e.g. both are `fadeIn` with delay 400), the cells are
+		// appended to the existing key's cells array. Different action
+		// keys (e.g. `fadeIn` + `wipeIn`) coexist in the same merged
+		// step — both run in parallel via the multi-key dispatch in
+		// executeCustomActions. Conflicting params (e.g. two `fadeIn`s
+		// with different delays) flush the bucket so each preserves
+		// its own timing.
+		var merge = function(converted)
+		{
+			if (current == null) current = {};
+
+			for (var key in converted)
+			{
+				var incoming = converted[key];
+
+				if (current[key] != null && incoming != null &&
+					Array.isArray(current[key].cells) &&
+					Array.isArray(incoming.cells) &&
+					paramsMatch(current[key], incoming))
+				{
+					// Same key + matching params — extend cells.
+					for (var i = 0; i < incoming.cells.length; i++)
+					{
+						current[key].cells.push(incoming.cells[i]);
+					}
+				}
+				else if (current[key] != null)
+				{
+					// Same key but params differ — flush and start a
+					// new bucket so the previous timing is preserved.
+					flush();
+					current = {};
+					current[key] = incoming;
+				}
+				else
+				{
+					current[key] = incoming;
+				}
+			}
+		};
+
+		for (var i = 0; i < legacy.length; i++)
+		{
+			var converted = Editor.convertLegacyAnimationStep(legacy[i]);
+
+			if (converted == null) continue;
+
+			// `wait` blocks the chain — it always lives in its own step.
+			if (converted.wait != null)
+			{
+				flush();
+				steps.push(converted);
+			}
+			else
+			{
+				merge(converted);
+			}
+		}
+
+		flush();
+
+		return {animation: {steps: steps}};
+	};
+
+	/**
+	 * Returns the normalized {steps: [...], loop} structure for an animation
+	 * value stored on a cell, page root, or custom-link action. Accepts:
+	 *   - a {steps: [...]} object (already normalized)
+	 *   - a {animation: {steps: [...]}} action object (unwrapped)
+	 *   - a JSON string of either of the above
+	 *   - a legacy text script (auto-converted via convertLegacyAnimation)
+	 *   - null / empty value (returns {steps: []})
+	 *
+	 * `loop` is always normalized to a boolean — defaults to true when the
+	 * field is missing (matches the legacy plugin's chromeless behavior).
+	 */
+	Editor.parseAnimationData = function(value)
+	{
+		var normalize = function(data)
+		{
+			if (data == null) data = {};
+			if (!Array.isArray(data.steps)) data.steps = [];
+			// Coerce to boolean — handles JSON 0/1, "true"/"false" strings,
+			// missing field (defaults to true). `enabled` gates chromeless
+			// autoplay; `loop` toggles repeat playback.
+			data.loop = (data.loop == null) ? true : !!data.loop;
+			data.enabled = (data.enabled == null) ? true : !!data.enabled;
+			return data;
+		};
+
+		if (value == null || value === '')
+		{
+			return normalize({steps: []});
+		}
+
+		if (typeof value == 'string')
+		{
+			var trimmed = mxUtils.trim(value);
+
+			// A leading { or [ means the text is meant as JSON. If it then
+			// fails to parse it is malformed JSON, NOT a legacy script — so
+			// let the SyntaxError propagate instead of silently routing it
+			// to convertLegacyAnimation, which would discard the user's
+			// steps and leave only its hide-all prepend. Callers reading
+			// from storage guard against the throw; the dialog textarea
+			// handler catches it and keeps the last valid data in place.
+			if (trimmed.charAt(0) == '{' || trimmed.charAt(0) == '[')
+			{
+				return Editor.parseAnimationData(JSON.parse(trimmed));
+			}
+
+			// Legacy text format (never starts with { or [).
+			return normalize(Editor.convertLegacyAnimation(value).animation);
+		}
+
+		if (value.animation != null && value.animation.steps != null)
+		{
+			return normalize(value.animation);
+		}
+
+		if (Array.isArray(value.steps))
+		{
+			return normalize(value);
+		}
+
+		return normalize({steps: []});
+	};
+
+	/**
+	 * Animation runner. Plays a step-based animation by delegating each step
+	 * to the existing Graph.executeCustomActions infrastructure — which
+	 * already supports parallel cell batches, sequential waits, and
+	 * cells/tags/excludeCells selectors.
+	 *
+	 * The player adds three things on top of executeCustomActions:
+	 *   1. Snapshot/restore of DOM opacity so stop() and loops are clean
+	 *   2. Loop support (re-run from step 0 when done)
+	 *   3. Accepts legacy text scripts (auto-converted on load)
+	 */
+	Editor.AnimationPlayer = function(graph, data)
+	{
+		this.graph = graph;
+		this.data = Editor.parseAnimationData(data);
+		this.running = false;
+		this.cancelled = false;
+		this.snapshot = null;
+	};
+
+	/**
+	 * Wildcard cell reference that matches every vertex and edge in the
+	 * model. Stored as the string "*" in JSON `cells` arrays — the existing
+	 * Graph.getCellsById already handles this wildcard. Kept exported for
+	 * legacy callers that referenced it directly.
+	 */
+	Editor.ANIMATION_ALL = '*';
+
+	/**
+	 * Returns every vertex and edge in the model. Used by the dialog when
+	 * resolving "select all referenced cells" against the wildcard.
+	 */
+	Editor.collectAnimatableCells = function(model)
+	{
+		var cells = [];
+
+		for (var id in model.cells)
+		{
+			var cell = model.cells[id];
+
+			if (model.isVertex(cell) || model.isEdge(cell))
+			{
+				cells.push(cell);
+			}
+		}
+
+		return cells;
+	};
+
+	/**
+	 * Walks every step in this.data.steps and returns the union of cells they
+	 * touch (resolving wildcard / tag / excludeCells via getCellsForAction).
+	 * Used to snapshot DOM opacity before play so the diagram can be restored
+	 * cleanly on stop or between loop iterations.
+	 */
+	Editor.AnimationPlayer.prototype.collectReferencedCells = function()
+	{
+		var steps = this.data.steps || [];
+		var seen = {};
+		var cells = [];
+
+		for (var i = 0; i < steps.length; i++)
+		{
+			var step = steps[i];
+
+			for (var key in step)
+			{
+				// Skip top-level scalars (wait) and non-cell action keys
+				if (key == 'wait' || key == 'open')
+				{
+					continue;
+				}
+
+				var sel = step[key];
+
+				if (typeof sel === 'object' && sel != null)
+				{
+					var refs = this.graph.getCellsForAction(sel, true);
+
+					for (var j = 0; j < refs.length; j++)
+					{
+						if (!seen[refs[j].id])
+						{
+							seen[refs[j].id] = true;
+							cells.push(refs[j]);
+						}
+					}
+				}
+			}
+		}
+
+		return cells;
+	};
+
+	/**
+	 * Snapshots the DOM opacity of every cell referenced by any step so
+	 * stop() and the next loop iteration can restore it exactly.
+	 */
+	Editor.AnimationPlayer.prototype.snapshotOpacity = function()
+	{
+		var cells = this.collectReferencedCells();
+		var nodes = this.graph.getNodesForCells(cells);
+		this.snapshot = [];
+
+		for (var i = 0; i < nodes.length; i++)
+		{
+			this.snapshot.push({
+				node: nodes[i],
+				opacity: nodes[i].style.opacity
+			});
+		}
+	};
+
+	/**
+	 * Restores DOM opacity from the most recent snapshot, clearing any
+	 * leftover CSS transitions so the restore is instant.
+	 */
+	Editor.AnimationPlayer.prototype.restoreOpacity = function()
+	{
+		if (this.snapshot == null) return;
+
+		for (var i = 0; i < this.snapshot.length; i++)
+		{
+			Graph.setTransitionForNodes([this.snapshot[i].node], null);
+			this.snapshot[i].node.style.opacity = this.snapshot[i].opacity;
+		}
+
+		this.snapshot = null;
+	};
+
+	/**
+	 * Plays the animation by dispatching its steps as a custom-action chain.
+	 *
+	 * Options:
+	 *   loop   restart from step 0 on completion
+	 *   done   callback fired when playback ends (not called between loops)
+	 */
+	Editor.AnimationPlayer.prototype.play = function(opts)
+	{
+		if (this.running)
+		{
+			return;
+		}
+
+		// Don't start on a torn-down graph (e.g. a queued autostart that
+		// fires after the view was disposed).
+		if (this.graph == null || this.graph.isGraphTornDown())
+		{
+			return;
+		}
+
+		opts = opts || {};
+		this.running = true;
+		this.cancelled = false;
+		this.graph.stoppingCustomActions = false;
+
+		// Make sure cell states exist before we touch their DOM. In
+		// chromeless autoplay, `mxEvent.ROOT` fires synchronously when
+		// the file's root is set — but `view.validate()` runs later, so
+		// at the time the player starts there are no cell states yet
+		// and `getNodesForCells([...])` returns [] for everything. The
+		// first opacity step (legacy converter's implicit "hide all"
+		// prepend) would then no-op, the cells would render at full
+		// opacity, and the user would see the initial visible state
+		// before any fade kicks in. Force validation first so cell
+		// states + shape nodes exist when we snapshot and dispatch.
+		this.graph.view.validate();
+
+		var self = this;
+		var steps = this.data.steps || [];
+
+		// Run steps one batch at a time so progress callbacks
+		// (`opts.onStep`) can fire per batch. A batch is one step plus any
+		// subsequent `immediate: true` steps — they need to dispatch in the
+		// same `executeCustomActions` call for the do/while batching to
+		// pick them up. If we passed only `[steps[idx]]` per call (the
+		// previous behaviour), the next step's `immediate` flag would
+		// never be inspected and the chain would always run sequentially.
+		var runStep = function(idx, done)
+		{
+			// Graph torn down mid-playback — halt without continuing the
+			// chain (don't call done, which could restart the loop).
+			if (self.graph == null || self.graph.isGraphTornDown())
+			{
+				self.running = false;
+				return;
+			}
+
+			if (self.cancelled || idx >= steps.length)
+			{
+				done();
+				return;
+			}
+
+			// Walk forward to find the end of the immediate batch.
+			// `immediate` on `steps[idx]` itself is ignored (no previous
+			// step to be parallel with) — same semantics as the
+			// `actions[0]` case in `executeCustomActions`.
+			var endIdx = idx + 1;
+			while (endIdx < steps.length &&
+				steps[endIdx].immediate === true &&
+				!self.cancelled)
+			{
+				endIdx++;
+			}
+
+			if (typeof opts.onStep == 'function')
+			{
+				// Pass both the start and the exclusive end so the
+				// dialog can highlight the whole parallel batch at
+				// once. Single-step (sequential) calls pass
+				// (idx, idx+1) — same effect as the legacy single-arg
+				// form, which the dialog accepts as a fallback.
+				try { opts.onStep(idx, endIdx); } catch (e) {}
+			}
+
+			self.graph.executeCustomActions(
+				Graph.flattenAnimationActions(steps.slice(idx, endIdx)),
+				function() { runStep(endIdx, done); },
+				null);
+		};
+
+		var iter = function()
+		{
+			// Stop the loop if the graph was torn down mid-playback —
+			// snapshotOpacity / runStep would otherwise touch a dead view.
+			if (self.graph == null || self.graph.isGraphTornDown())
+			{
+				self.running = false;
+				return;
+			}
+
+			if (self.cancelled)
+			{
+				self.restoreOpacity();
+				self.running = false;
+				return;
+			}
+
+			self.snapshotOpacity();
+
+			runStep(0, function()
+			{
+				if (self.cancelled)
+				{
+					self.restoreOpacity();
+					self.running = false;
+					return;
+				}
+
+				// Clear any step highlight (-1 means "no step active")
+				if (typeof opts.onStep == 'function')
+				{
+					try { opts.onStep(-1); } catch (e) {}
+				}
+
+				if (opts.loop)
+				{
+					// Refresh redraws edges so flow animations restart cleanly
+					self.graph.refresh();
+					self.restoreOpacity();
+					window.setTimeout(iter, 0);
+				}
+				else
+				{
+					self.running = false;
+					self.restoreOpacity();
+					if (opts.done != null) opts.done();
+				}
+			});
+		};
+
+		// In chromeless autostart, play() runs synchronously from the
+		// mxEvent.ROOT handler that fires inside file.open() — i.e.
+		// BEFORE the lightbox's initial fit (lightboxFit/chromelessResize
+		// run later in EditorUi.fileLoaded). Running the first step now
+		// would let that fit clobber a leading `viewbox`/`scroll` step
+		// (the "first step is skipped" symptom). Deferring the first tick
+		// lets the synchronous fileLoaded flow — including the fit —
+		// finish first. iter() guards on `cancelled`, so a stop() before
+		// the tick fires is safe.
+		if (opts.defer)
+		{
+			window.setTimeout(iter, 0);
+		}
+		else
+		{
+			iter();
+		}
+	};
+
+	/**
+	 * Stops playback. The currently-running custom-action chain notices
+	 * stoppingCustomActions and unwinds with short-circuited delays; the
+	 * iter() callback then runs restoreOpacity.
+	 */
+	Editor.AnimationPlayer.prototype.stop = function()
+	{
+		this.cancelled = true;
+
+		if (this.graph != null)
+		{
+			this.graph.stoppingCustomActions = true;
+		}
+
+		// Stop flow animations on every edge we may have touched. Edges keep
+		// their CSS class until explicitly removed — restoreOpacity only
+		// resets opacity, not stroke-dasharray / class.
+		var edges = [];
+		var refs = this.collectReferencedCells();
+
+		for (var i = 0; i < refs.length; i++)
+		{
+			if (this.graph.getModel().isEdge(refs[i]))
+			{
+				edges.push(refs[i]);
+			}
+		}
+
+		if (edges.length > 0)
+		{
+			Editor.toggleFlowAnimation(this.graph, edges, 'stop');
+		}
+	};
+
+	/**
+	 * Toggles SVG flow animation on the path elements for the given edges.
+	 * The path is given the mxEdgeFlow CSS class which renders a moving
+	 * dash via CSS keyframes.
+	 */
+	Editor.toggleFlowAnimation = function(graph, cells, status)
+	{
+		status = status || 'toggle';
+
+		for (var i = 0; i < cells.length; i++)
+		{
+			if (!graph.getModel().isEdge(cells[i]))
+			{
+				continue;
+			}
+
+			var state = graph.view.getState(cells[i]);
+
+			if (state == null || state.shape == null)
+			{
+				continue;
+			}
+
+			// Shape-aware path selection (skips the hidden hit/tolerance
+			// paths, finds the rough.js stroke of sketch=1 edges and honors
+			// shape overrides like PipeShape) - the previous hardcoded
+			// paths[1] hit the invisible plain hit path on sketch edges.
+			var path = (state.shape.getFlowAnimationPath != null) ?
+				state.shape.getFlowAnimationPath() : null;
+
+			if (path == null)
+			{
+				continue;
+			}
+
+			var hasFlow = path.getAttribute('class') == 'mxEdgeFlow';
+			var enable = (status == 'start') ||
+				(status == 'toggle' && !hasFlow);
+			var disable = (status == 'stop') ||
+				(status == 'toggle' && hasFlow);
+			var dashed = mxUtils.getValue(state.style,
+				mxConstants.STYLE_DASHED, '0') == '1';
+
+			if (disable)
+			{
+				path.removeAttribute('class');
+
+				if (!dashed)
+				{
+					path.removeAttribute('stroke-dasharray');
+				}
+			}
+			else if (enable)
+			{
+				path.setAttribute('class', 'mxEdgeFlow');
+
+				if (!dashed)
+				{
+					path.setAttribute('stroke-dasharray', '8');
+				}
+			}
+		}
+	};
+
+	/**
+	 * Plays the animation attached to the given page's model root. The value
+	 * can be either the new JSON format ({steps:[...]} or {animation:{...}})
+	 * or the legacy text format — parseAnimationData sniffs and converts.
+	 * Returns a new AnimationPlayer, or null if nothing is attached.
+	 *
+	 * `loop` defaults to whatever the data carries (legacy text animations
+	 * and JSON without an explicit `loop` field default to true — the
+	 * legacy chromeless animation plugin always looped). Callers can
+	 * override either way via `opts.loop`.
+	 */
+	Editor.playAnimationOnGraph = function(graph, opts)
+	{
+		var root = graph.getModel().getRoot();
+		var raw = null;
+
+		if (root.value != null && typeof(root.value) == 'object')
+		{
+			raw = root.value.getAttribute('animation');
+		}
+
+		if (raw == null || raw == '')
+		{
+			return null;
+		}
+
+		var data;
+
+		try
+		{
+			data = Editor.parseAnimationData(raw);
+		}
+		catch (e)
+		{
+			// Malformed JSON in the stored attribute (e.g. hand-edited
+			// XML) — treat as no animation rather than throwing on load.
+			return null;
+		}
+
+		if (!data.steps || data.steps.length == 0)
+		{
+			return null;
+		}
+
+		// `enabled: false` is the dialog's "keep the script but don't
+		// autoplay" toggle — equivalent to deleting the steps for runtime
+		// purposes, but preserves them on disk so the user can flip the
+		// toggle back on later without re-authoring.
+		if (data.enabled === false)
+		{
+			return null;
+		}
+
+		// Default loop from the data unless the caller forced a value.
+		// data.loop is normalized to boolean by parseAnimationData (true
+		// when missing) so this is a simple precedence chain.
+		var playOpts = {};
+
+		if (opts != null)
+		{
+			for (var k in opts) playOpts[k] = opts[k];
+		}
+
+		if (playOpts.loop == null)
+		{
+			playOpts.loop = data.loop;
+		}
+
+		// This is the chromeless/file-attached autostart path, which runs
+		// from the mxEvent.ROOT handler before the lightbox's initial fit.
+		// Defer the first step so the fit can't clobber a leading viewbox/
+		// scroll step (see AnimationPlayer.play). Callers can override.
+		if (playOpts.defer == null)
+		{
+			playOpts.defer = true;
+		}
+
+		var player = new Editor.AnimationPlayer(graph, data);
+		player.play(playOpts);
+
+		return player;
+	};
+
+	/**
+	 * Installs the CSS keyframes required by the flow animation.
+	 */
+	Editor.installAnimationStyles = function()
+	{
+		if (Editor.animationStylesInstalled)
+		{
+			return;
+		}
+
+		Editor.animationStylesInstalled = true;
+
+		try
+		{
+			var style = document.createElement('style');
+			style.type = 'text/css';
+			style.appendChild(document.createTextNode(
+				'.mxEdgeFlow { animation: mxEdgeFlow 0.5s linear infinite; }' +
+				'@keyframes mxEdgeFlow { to { stroke-dashoffset: -16; } }'));
+			document.getElementsByTagName('head')[0].appendChild(style);
+		}
+		catch (e)
+		{
+			// ignore
+		}
+	};
+
+	Editor.installAnimationStyles();
 })();

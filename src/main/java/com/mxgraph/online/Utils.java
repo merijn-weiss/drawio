@@ -12,17 +12,31 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
+import java.net.Socket;
 import java.net.URL;
+import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.security.SecureRandom;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SNIHostName;
+import javax.net.ssl.SNIServerName;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 
 /**
  * 
@@ -57,6 +71,19 @@ public class Utils
 	private static Set<Integer> allowedPorts = new HashSet<>();
 	
 	static {
+		// Allow overriding the Host header so connections that are pinned to a
+		// literal IP (see openPinnedConnection) can still present the correct
+		// virtual host. Best-effort: only takes effect if set before the JDK
+		// HTTP client initialises its restricted-header set.
+		try
+		{
+			System.setProperty("sun.net.http.allowRestrictedHeaders", "true");
+		}
+		catch (SecurityException e)
+		{
+			// Host header override will be best-effort
+		}
+
 		// -1 is for no port urls (ports 80, 443)
 		allowedPorts.add(-1);
 
@@ -567,6 +594,78 @@ public class Utils
 	 */
 	public static boolean sanitizeUrl(String url)
 	{
+		return validatedAddress(url) != null;
+	}
+
+	/**
+	 * Returns true if the address is an IPv6 Unique Local Address (fc00::/7,
+	 * which spans fc00::/8 and fd00::/8 - including AWS's fd00:ec2::/32 IMDS
+	 * range). This must be tested on the raw address bytes: the JDK's
+	 * {@link InetAddress#getHostAddress()} always returns the fully expanded
+	 * eight-group form and never "::"-compresses, so a startsWith("fc00::")
+	 * or startsWith("fd00::") string check never matches a real ULA and lets
+	 * the whole range through.
+	 *
+	 * @param address the resolved address to test
+	 * @return true if the address is in fc00::/7
+	 */
+	private static boolean isUniqueLocalIPv6(InetAddress address)
+	{
+		if (address instanceof Inet6Address)
+		{
+			byte[] bytes = address.getAddress();
+
+			// fc00::/7: high 7 bits are 1111110, i.e. first byte 0xFC or 0xFD
+			return bytes.length == 16 && (bytes[0] & 0xFE) == 0xFC;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Returns true if the address is in the RFC 6598 shared / Carrier-Grade-NAT
+	 * range 100.64.0.0/10 (100.64.0.0 - 100.127.255.255). This range is not
+	 * octet-aligned, so it cannot be matched with a startsWith prefix without
+	 * either missing part of it or over-blocking the surrounding public
+	 * 100.0.0.0/8 space; the raw bytes are masked instead. It is routable
+	 * internal space in many deployments (AWS EKS secondary pod CIDRs, some
+	 * k8s CNIs, Oracle Cloud, Tailscale, ISP CGNAT).
+	 *
+	 * @param address the resolved address to test
+	 * @return true if the address is in 100.64.0.0/10
+	 */
+	private static boolean isSharedCgnatIPv4(InetAddress address)
+	{
+		if (address instanceof Inet4Address)
+		{
+			byte[] bytes = address.getAddress();
+
+			// 100.64.0.0/10: first octet 100, second octet's top 2 bits = 01
+			return bytes.length == 4
+					&& (bytes[0] & 0xFF) == 100
+					&& (bytes[1] & 0xC0) == 0x40;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Resolves and validates the host of the given URL exactly once and returns
+	 * the resolved address, or null if the URL is not permitted (malformed,
+	 * unknown host, non-http(s), disallowed port, or pointing at a private,
+	 * internal or reserved address).
+	 *
+	 * Callers that go on to fetch the URL must connect to the returned address
+	 * via {@link #openPinnedConnection(URL, InetAddress)} rather than letting
+	 * the JDK resolve the hostname a second, independent time - that second
+	 * lookup is what a DNS-rebinding attacker exploits to slip an internal
+	 * address past this check (TOCTOU).
+	 *
+	 * @param url the URL to check
+	 * @return the validated InetAddress, or null if the URL is not permitted
+	 */
+	public static InetAddress validatedAddress(String url)
+	{
 		if (url != null)
 		{
 			try
@@ -583,8 +682,8 @@ public class Utils
 				// Special handling: if ALLOW_INTERNAL_10_NET=1 and IP is 10.x.x.x, allow it
 				if (hostAddress.startsWith("10.") && allow10Net)
 				{
-					return (protocol.equals("http") || protocol.equals("https"))
-							&& allowedPorts.contains(parsedUrl.getPort());
+					return ((protocol.equals("http") || protocol.equals("https"))
+							&& allowedPorts.contains(parsedUrl.getPort())) ? address : null;
 				}
 	
 				// Block all other private/internal/reserved IPs
@@ -619,22 +718,154 @@ public class Utils
 						|| hostAddress.startsWith("192.168.")
 						|| hostAddress.startsWith("198.18.")
 						|| hostAddress.startsWith("198.19.")
-						|| hostAddress.startsWith("fc00::")
-						|| hostAddress.startsWith("fd00::")
+						|| isSharedCgnatIPv4(address)
+						|| isUniqueLocalIPv6(address)
 						|| host.endsWith(".arpa");
 	
-				return (protocol.equals("http") || protocol.equals("https"))
+				return ((protocol.equals("http") || protocol.equals("https"))
 						&& !isPrivateAddress
-						&& allowedPorts.contains(parsedUrl.getPort());
+						&& allowedPorts.contains(parsedUrl.getPort())) ? address : null;
 			}
 			catch (MalformedURLException | UnknownHostException e)
 			{
-				return false;
+				return null;
 			}
 		}
 		else
 		{
-			return false;
+			return null;
+		}
+	}
+
+	/**
+	 * Opens a connection to the given URL that is pinned to the supplied,
+	 * already-validated IP address, so the JDK does not perform a second,
+	 * independent DNS lookup of the hostname (which a rebinding attacker could
+	 * answer with an internal address). The original hostname is preserved for
+	 * the Host header and, for HTTPS, for SNI and certificate verification.
+	 *
+	 * @param url the original URL (carrying the hostname)
+	 * @param pinned the validated address to connect to
+	 * @return an unconnected URLConnection pinned to the validated address
+	 */
+	public static URLConnection openPinnedConnection(URL url, InetAddress pinned)
+			throws IOException
+	{
+		final String host = url.getHost();
+		int port = url.getPort();
+		String ipHost = pinned.getHostAddress();
+
+		if (pinned instanceof Inet6Address)
+		{
+			ipHost = "[" + ipHost + "]";
+		}
+
+		// Connect to the literal, already-validated IP so the hostname is not
+		// resolved again at connection time.
+		URL ipUrl = new URL(url.getProtocol(), ipHost, port, url.getFile());
+		URLConnection connection = ipUrl.openConnection();
+
+		if (connection instanceof HttpsURLConnection)
+		{
+			HttpsURLConnection https = (HttpsURLConnection) connection;
+
+			// The URL now carries the IP literal, so use the real hostname for
+			// SNI and verify the certificate against it (not the IP).
+			https.setSSLSocketFactory(new PinnedSNISocketFactory(
+					(SSLSocketFactory) SSLSocketFactory.getDefault(), host));
+
+			final HostnameVerifier defaultVerifier =
+					HttpsURLConnection.getDefaultHostnameVerifier();
+			https.setHostnameVerifier(
+					(hostname, session) -> defaultVerifier.verify(host, session));
+		}
+
+		// Preserve virtual-host routing (requires allowRestrictedHeaders, set
+		// in the static initialiser above).
+		connection.setRequestProperty("Host",
+				(port == -1) ? host : host + ":" + port);
+
+		return connection;
+	}
+
+	/**
+	 * SSLSocketFactory that layers TLS over the already IP-pinned plain socket
+	 * created by the JDK HTTPS client, while using the real hostname for SNI so
+	 * the correct certificate is served and verified.
+	 */
+	private static final class PinnedSNISocketFactory extends SSLSocketFactory
+	{
+		private final SSLSocketFactory delegate;
+		private final String sniHost;
+
+		PinnedSNISocketFactory(SSLSocketFactory delegate, String sniHost)
+		{
+			this.delegate = delegate;
+			this.sniHost = sniHost;
+		}
+
+		// Variant the JDK HTTPS client uses to layer TLS over the connected
+		// (IP-pinned) plain socket. Substituting the real hostname here drives
+		// SNI and endpoint identification onto the hostname, not the IP.
+		@Override
+		public Socket createSocket(Socket s, String host, int port,
+				boolean autoClose) throws IOException
+		{
+			SSLSocket socket =
+					(SSLSocket) delegate.createSocket(s, sniHost, port, autoClose);
+
+			try
+			{
+				SSLParameters params = socket.getSSLParameters();
+				List<SNIServerName> serverNames =
+						Collections.singletonList(new SNIHostName(sniHost));
+				params.setServerNames(serverNames);
+				socket.setSSLParameters(params);
+			}
+			catch (IllegalArgumentException e)
+			{
+				// sniHost is an IP literal; leave the default SNI handling
+			}
+
+			return socket;
+		}
+
+		@Override
+		public String[] getDefaultCipherSuites()
+		{
+			return delegate.getDefaultCipherSuites();
+		}
+
+		@Override
+		public String[] getSupportedCipherSuites()
+		{
+			return delegate.getSupportedCipherSuites();
+		}
+
+		@Override
+		public Socket createSocket(String host, int port) throws IOException
+		{
+			return delegate.createSocket(host, port);
+		}
+
+		@Override
+		public Socket createSocket(String host, int port,
+				InetAddress localHost, int localPort) throws IOException
+		{
+			return delegate.createSocket(host, port, localHost, localPort);
+		}
+
+		@Override
+		public Socket createSocket(InetAddress host, int port) throws IOException
+		{
+			return delegate.createSocket(host, port);
+		}
+
+		@Override
+		public Socket createSocket(InetAddress address, int port,
+				InetAddress localAddress, int localPort) throws IOException
+		{
+			return delegate.createSocket(address, port, localAddress, localPort);
 		}
 	}
 	/**

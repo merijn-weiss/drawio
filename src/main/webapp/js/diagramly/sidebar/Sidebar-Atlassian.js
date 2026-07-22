@@ -87,7 +87,7 @@
 	   		{
 			   	var bg = new mxCell('MM', new mxGeometry(0, 0, 32, 32), 'shape=ellipse;fillColor=#FFAB00;strokeColor=none;fontColor=#ffffff;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=17;fontStyle=1;html=1;sketch=0;');
 			   	bg.vertex = true;
-			   	var button1 = new mxCell('', new mxGeometry(1, 1, 10, 10), s + 'away;fillColor=#7A869A;strokeColor=#ffffff;strokeWidth=2;sketch=0;');
+			   	var button1 = new mxCell('', new mxGeometry(1, 1, 10, 10), s + 'away;iconColor=#ffffff;fillColor=#7A869A;strokeColor=#ffffff;strokeWidth=2;sketch=0;');
 			   	button1.geometry.relative = true;
 			   	button1.geometry.offset = new mxPoint(-10, -10);
 			   	button1.vertex = true;
@@ -98,7 +98,7 @@
 	   		{
 			   	var bg = new mxCell('MM', new mxGeometry(0, 0, 32, 32), 'shape=ellipse;fillColor=#0065FF;strokeColor=none;fontColor=#ffffff;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=17;fontStyle=1;html=1;sketch=0;');
 			   	bg.vertex = true;
-			   	var button1 = new mxCell('', new mxGeometry(1, 1, 10, 10), s + 'do_not_disturb;fillColor=#FF5630;strokeColor=#ffffff;strokeWidth=2;sketch=0;');
+			   	var button1 = new mxCell('', new mxGeometry(1, 1, 10, 10), s + 'do_not_disturb;iconColor=#ffffff;fillColor=#FF5630;strokeColor=#ffffff;strokeWidth=2;sketch=0;');
 			   	button1.geometry.relative = true;
 			   	button1.geometry.offset = new mxPoint(-10, -10);
 			   	button1.vertex = true;
@@ -147,7 +147,7 @@
 	   		{
 			   	var bg = new mxCell('Pay now', new mxGeometry(25, 0, 86, 33), 'rounded=1;fillColor=#0057D8;align=center;strokeColor=none;html=1;whiteSpace=wrap;fontColor=#ffffff;fontSize=12;sketch=0;');
 			   	bg.vertex = true;
-			   	var icon1 = new mxCell('', new mxGeometry(0, 9, 14, 14), s + 'checkbox;fillColor=#008465;strokeColor=none;html=1;sketch=0;');
+			   	var icon1 = new mxCell('', new mxGeometry(0, 9, 14, 14), s + 'checkbox;iconColor=#ffffff;fillColor=#008465;strokeColor=none;html=1;sketch=0;');
 			   	icon1.vertex = true;
 		   		return sb.createVertexTemplateFromCells([bg, icon1], 111, 33, 'Button (Primary)');
 			}),
@@ -155,7 +155,7 @@
 	   		{
 			   	var bg = new mxCell('Create Group', new mxGeometry(25, 0, 115, 33), 'rounded=1;align=center;fillColor=#F1F2F4;strokeColor=none;html=1;whiteSpace=wrap;fontColor=#596780;fontSize=12;sketch=0;');
 			   	bg.vertex = true;
-			   	var icon1 = new mxCell('', new mxGeometry(0, 9, 14, 14), s + 'checkbox;fillColor=#008465;strokeColor=none;html=1;sketch=0;');
+			   	var icon1 = new mxCell('', new mxGeometry(0, 9, 14, 14), s + 'checkbox;iconColor=#ffffff;fillColor=#008465;strokeColor=none;html=1;sketch=0;');
 			   	icon1.vertex = true;
 		   		return sb.createVertexTemplateFromCells([bg, icon1], 140, 33, 'Button (Standard)');
 			}),
@@ -163,7 +163,7 @@
 	   		{
 			   	var bg = new mxCell('Visit documentation', new mxGeometry(25, 0, 125, 33), 'fillColor=none;strokeColor=none;html=1;fontColor=#0057D8;align=left;fontSize=12;sketch=0;');
 			   	bg.vertex = true;
-			   	var icon1 = new mxCell('', new mxGeometry(0, 9, 14, 14), s + 'checkbox;fillColor=#008465;strokeColor=none;html=1;sketch=0;');
+			   	var icon1 = new mxCell('', new mxGeometry(0, 9, 14, 14), s + 'checkbox;iconColor=#ffffff;fillColor=#008465;strokeColor=none;html=1;sketch=0;');
 			   	icon1.vertex = true;
 		   		return sb.createVertexTemplateFromCells([bg, icon1], 150, 33, 'Button (Link)');
 			}),
@@ -171,7 +171,7 @@
 	   		{
 			   	var bg = new mxCell('Submit', new mxGeometry(25, 0, 80, 33), 'rounded=1;fillColor=#0057D8;align=center;strokeColor=none;html=1;whiteSpace=wrap;fontColor=#ffffff;fontSize=12;sketch=0;');
 			   	bg.vertex = true;
-			   	var icon1 = new mxCell('', new mxGeometry(0, 9, 14, 14), s + 'close;fillColor=#BA3200;strokeColor=none;html=1;sketch=0;');
+			   	var icon1 = new mxCell('', new mxGeometry(0, 9, 14, 14), s + 'close;iconColor=#ffffff;fillColor=#BA3200;strokeColor=none;html=1;sketch=0;');
 			   	icon1.vertex = true;
 		   		return sb.createVertexTemplateFromCells([bg, icon1], 105, 33, 'Button (Primary)');
 			}),
@@ -179,7 +179,7 @@
 	   		{
 			   	var bg = new mxCell('Done', new mxGeometry(25, 0, 55, 33), 'rounded=1;align=center;fillColor=#F1F2F4;strokeColor=none;html=1;whiteSpace=wrap;fontColor=#596780;fontSize=12;sketch=0;');
 			   	bg.vertex = true;
-			   	var icon1 = new mxCell('', new mxGeometry(0, 9, 14, 14), s + 'close;fillColor=#BA3200;strokeColor=none;html=1;sketch=0;');
+			   	var icon1 = new mxCell('', new mxGeometry(0, 9, 14, 14), s + 'close;iconColor=#ffffff;fillColor=#BA3200;strokeColor=none;html=1;sketch=0;');
 			   	icon1.vertex = true;
 		   		return sb.createVertexTemplateFromCells([bg, icon1], 80, 33, 'Button (Standard)');
 			}),
@@ -187,7 +187,7 @@
 	   		{
 			   	var bg = new mxCell('Click here', new mxGeometry(25, 0, 75, 33), 'fillColor=none;strokeColor=none;html=1;fontColor=#0057D8;align=left;fontSize=12;sketch=0;');
 			   	bg.vertex = true;
-			   	var icon1 = new mxCell('', new mxGeometry(0, 9, 14, 14), s + 'close;fillColor=#BA3200;strokeColor=none;html=1;sketch=0;');
+			   	var icon1 = new mxCell('', new mxGeometry(0, 9, 14, 14), s + 'close;iconColor=#ffffff;fillColor=#BA3200;strokeColor=none;html=1;sketch=0;');
 			   	icon1.vertex = true;
 		   		return sb.createVertexTemplateFromCells([bg, icon1], 100, 33, 'Button (Link)');
 			}),

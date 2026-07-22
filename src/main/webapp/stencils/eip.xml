@@ -806,7 +806,7 @@
     </background>
     <foreground>
         <fillstroke/>
-        <fillcolor color="#ffff00"/>
+        <fillcolor color="fillColor1" default="#ffff00"/>
         <path>
             <move x="10" y="0"/>
             <line x="12" y="2"/>
@@ -848,7 +848,7 @@
     </background>
     <foreground>
         <fillstroke/>
-        <fillcolor color="#ffff00"/>
+        <fillcolor color="fillColor1" default="#ffff00"/>
         <path>
             <move x="2" y="0"/>
             <line x="0" y="2"/>

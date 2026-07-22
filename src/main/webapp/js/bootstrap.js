@@ -282,8 +282,14 @@ if (urlParams['dev'] == '1')
     {
         mxscript('js/desktop/DesktopLibrary.js');
         mxscript('js/desktop/ElectronApp.js');
+
+        // ELK, Mermaid and PlantUML are loaded by Devel.js above. Do not
+        // load js/elk/drawio-elk.min.js again here: re-running its footer
+        // (var ElkLayout = ELK.ElkLayout) replaces the class after the
+        // ElkLayout.js editor statics have attached, breaking Arrange >
+        // Layout with "ElkLayout.runWithDialog is not a function".
     }
-    
+
     mxscript(drawDevUrl + 'js/PostConfig.js');
 }
 else
@@ -316,7 +322,22 @@ else
                                 {
                                     mxscript('js/shapes-14-6-5.min.js', function()
                                     {
-                                        mxscript('js/PostConfig.js');
+                                        // ELK and Mermaid ship inside extensions.min.js
+                                        // above (elk bundle, then the ElkLayout editor
+                                        // statics, then mermaid). Loading
+                                        // js/elk/drawio-elk.min.js again would re-run its
+                                        // footer (var ElkLayout = ELK.ElkLayout) and swap
+                                        // in a bare class without the statics, breaking
+                                        // Arrange > Layout with "ElkLayout.runWithDialog
+                                        // is not a function" [jgraph/drawio-desktop#2471].
+                                        // Only PlantUML is not in extensions.min.js; it
+                                        // is preloaded here and EditorUi.loadPlantUml
+                                        // skips its own load once mxPlantUmlToDrawio is
+                                        // defined.
+                                        mxscript('js/plantuml/drawio-plantuml.min.js', function()
+                                        {
+                                            mxscript('js/PostConfig.js');
+                                        });
                                     });
                                 });
                             });

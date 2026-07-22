@@ -65,13 +65,14 @@ var mxSettings =
 			localStorage.setItem('.drawio-config', JSON.stringify(value));
 		}
 	},
-	getShowStartScreen: function()
+	getCurrentEdgeStyle: function()
 	{
-		return mxSettings.settings.showStartScreen;
+		return (mxSettings.settings != null) ? mxSettings.settings.currentEdgeStyle : null;
 	},
-	setShowStartScreen: function(showStartScreen)
+	setCurrentEdgeStyle: function(value)
 	{
-		mxSettings.settings.showStartScreen = showStartScreen;
+		mxSettings.settings.currentEdgeStyle = value;
+		mxSettings.save();
 	},
 	getGridColor: function(darkMode)
 	{
@@ -256,14 +257,6 @@ var mxSettings =
 
 		mxSettings.settings.windowStates[name] = state;
 	},
-	isCreateTarget: function()
-	{
-		return mxSettings.settings.createTarget;
-	},
-	setCreateTarget: function(value)
-	{
-		mxSettings.settings.createTarget = value;
-	},
 	getPageFormat: function()
 	{
 		return mxSettings.settings.pageFormat;
@@ -310,10 +303,8 @@ var mxSettings =
 			sidebarWidth: null,
 			collapsedSections: {},
 			collapsedLibraries: {},
-			createTarget: urlParams['sketch'] == '1',
 			pageFormat: mxGraph.prototype.pageFormat,
 			search: true,
-			showStartScreen: false,
 			gridColor: mxGraphView.prototype.defaultGridColor,
 			darkGridColor: mxGraphView.prototype.defaultDarkGridColor,
 			darkMode: 'auto',
@@ -325,7 +316,10 @@ var mxSettings =
 			isNew: true,
 			unit: mxConstants.POINTS,
 			isRulerOn: false,
-			windowStates: {}
+			windowStates: {},
+			// Persisted global current edge style (the toolbar dropdown's choice for
+			// new edges when nothing is selected). null => use the theme default.
+			currentEdgeStyle: null
 		};
 	},
 	init: function()
@@ -424,11 +418,6 @@ var mxSettings =
 				delete mxSettings.settings.lastAlert;
 			}
 			
-			if (mxSettings.settings.createTarget == null)
-			{
-				mxSettings.settings.createTarget = false;
-			}
-			
 			if (mxSettings.settings.pageFormat == null)
 			{
 				mxSettings.settings.pageFormat = mxGraph.prototype.pageFormat;
@@ -437,11 +426,6 @@ var mxSettings =
 			if (mxSettings.settings.search == null)
 			{
 				mxSettings.settings.search = true;
-			}
-			
-			if (mxSettings.settings.showStartScreen == null)
-			{
-				mxSettings.settings.showStartScreen = false;
 			}
 			
 			if (mxSettings.settings.gridColor == null)

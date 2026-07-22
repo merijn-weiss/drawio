@@ -459,6 +459,7 @@
     </foreground>
 </shape>
 <shape name="Multi-Document" h="60.28" w="88" aspect="variable" strokewidth="inherit">
+<labelBounds if="boundedLbl" x="0" y="10" w="78" h="47"/>
 <connections>
 <constraint x="0.5" y="0" perimeter="0" name="N"/>
 <constraint x="0.5" y="0.88" perimeter="0" name="S"/>
@@ -616,7 +617,7 @@
 </connections>
 <background>
 <save/>
-<fillcolor color="#ffff00"/>
+<fillcolor color="accentColor" default="#ffff00"/>
 <path>
 <move x="47" y="15"/>
 <line x="52" y="20"/>

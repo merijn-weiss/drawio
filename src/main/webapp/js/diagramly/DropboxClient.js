@@ -266,6 +266,18 @@ DropboxClient.prototype.authenticateStep2 = function(state, success, error)
 };
 
 /**
+ * Builds a user-facing message from a Dropbox SDK error. Terminated requests
+ * (network offline, blocked by CORS, page unload) reject without a status, which
+ * previously produced "Error undefined".
+ */
+DropboxClient.prototype.getErrorMessage = function(err)
+{
+	return (err != null && err.status != null) ?
+		mxResources.get('error') + ' ' + err.status :
+		mxResources.get('noResponse');
+};
+
+/**
  * Authorizes the client, gets the userId and calls <open>.
  */
 DropboxClient.prototype.executePromise = function(promiseFn, success, error)
@@ -326,7 +338,7 @@ DropboxClient.prototype.executePromise = function(promiseFn, success, error)
 			    	}
 		    		else
 		    		{
-		    			error({message: mxResources.get('error') + ' ' + err.status});
+		    			error({message: this.getErrorMessage(err)});
 		    		}
 		    	}
 		}));
@@ -543,7 +555,7 @@ DropboxClient.prototype.readFile = function(arg, success, error, binary)
 			    	}
 		    		else
 		    		{
-		    			error({message: mxResources.get('error') + ' ' + err.status});
+		    			error({message: this.getErrorMessage(err)});
 		    		}
 		    	}
 		}));

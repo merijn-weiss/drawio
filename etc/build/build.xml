@@ -33,6 +33,14 @@ OUTPUT FILES (in src/main/webapp/js/):
 	<property file="build.properties" />
 	<taskdef name="jscomp" classname="com.google.javascript.jscomp.ant.CompileTask" classpath="${jscompiler}" />
 
+	<!-- Closure Compiler warning level for all <jscomp> tasks. Defaults to
+	     "quiet" so the build prints only errors and the per-target
+	     "N error(s), N warning(s)" summary. Pre-minified vendor libs
+	     (pako, DOMPurify) otherwise dump their entire contents as benign
+	     warnings, drowning out anything important. Override to see warnings:
+	         ant -Djscomp.warning=default   (or =verbose) -->
+	<property name="jscomp.warning" value="quiet" />
+
 	<!--
 	============================================================================
 	TARGET: merge
@@ -101,7 +109,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 			<arg value="../../src/main/webapp/js/stencils.min.js"/>
 		</java>
 		
-		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${war.dir}/js/shapes-14-6-5.min.js">
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" debug="false" forceRecompile="true" output="${war.dir}/js/shapes-14-6-5.min.js">
 			<sources dir="${basedir}/../../build">
 				<file name="shapes.js" />
 			</sources>
@@ -189,7 +197,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 		<echo file="${basedir}/Graph-Resources.js" append="true">`);</echo>
 		
 		<!-- Step 4: Compile grapheditor core components -->
-		<jscomp compilationLevel="simple" forceRecompile="true" debug="false" output="${basedir}/grapheditor.min.js">
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" forceRecompile="true" debug="false" output="${basedir}/grapheditor.min.js">
 			<sources dir="${grapheditor.dir}">
 				<file name="Editor.js" />
 				<file name="EditorUi.js" />
@@ -206,7 +214,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 		</jscomp>
 
 		<!-- Step 5: Compile all sidebar shape libraries -->
-		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/sidebar.min.js">
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/sidebar.min.js">
 			<sources dir="${war.dir}/js/diagramly/sidebar">
 				<file name="Sidebar.js" />
 				<file name="Sidebar-ActiveDirectory.js" />
@@ -246,6 +254,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 				<file name="Sidebar-FluidPower.js" />
 				<file name="Sidebar-GCP.js" />
 				<file name="Sidebar-GCP2.js" />
+				<file name="Sidebar-GCP3.js" />
 				<file name="Sidebar-GCPIcons.js" />
 				<file name="Sidebar-Gmdl.js" />
 				<file name="Sidebar-IBM.js" />
@@ -281,7 +290,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 		</jscomp>
 		
 		<!-- Step 6: Compile client.min.js (mxGraph core + initialization) -->
-		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/client.min.js">
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/client.min.js">
 			<sources dir="${war.dir}/js/deflate">
 				<file name="base64.js" />
 			</sources>
@@ -300,14 +309,14 @@ OUTPUT FILES (in src/main/webapp/js/):
 		</jscomp>
 
 		<!-- Minify config snippet -->
-		<jscomp compilationLevel="simple" forceRecompile="true" debug="false" output="${basedir}/.tmp0.min.js">
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" forceRecompile="true" debug="false" output="${basedir}/.tmp0.min.js">
 			<sources dir="${basedir}">
 				<file name=".tmp0.js"/>
 			</sources>
 		</jscomp>
 		
 		<!-- Step 7: Compile viewer components -->
-		<jscomp compilationLevel="simple" forceRecompile="true" debug="false" output="${basedir}/.tmp1.js">
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" forceRecompile="true" debug="false" output="${basedir}/.tmp1.js">
 			<sources dir="${grapheditor.dir}">
 				<file name="Editor.js" />
 				<file name="EditorUi.js" />
@@ -378,7 +387,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 			})();
 		</echo>
 		
-		<jscomp compilationLevel="simple" forceRecompile="true" debug="false" output="${basedir}/.tmp2.min.js">
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" forceRecompile="true" debug="false" output="${basedir}/.tmp2.min.js">
 			<sources dir="${basedir}">
 				<file name=".tmp2.js"/>
 			</sources>
@@ -430,7 +439,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 		<delete file="${basedir}/.tmp2.xml"/>
 
 		<!-- Compile base.min.js components (for app) -->
-		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/.tmp1.js">
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/.tmp1.js">
 			<sources dir="${war.dir}/js/diagramly">
 				<file name="DrawioFile.js" />
 				<file name="LocalFile.js" />
@@ -485,7 +494,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 		<replace file="${basedir}/base.min.js" token="@DRAWIO-VERSION@" value="${version}"/>
 		
 		<!-- Step 9: Build extensions.min.js (VSDX import, Mermaid, GraphML, OrgChart) -->
-		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${war.dir}/js/extensions.min.js">
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" debug="false" forceRecompile="true" output="${war.dir}/js/extensions.min.js">
 			<sources dir="${war.dir}/js/diagramly">
 				<file name="Extensions.js" />
 			</sources>
@@ -495,9 +504,6 @@ OUTPUT FILES (in src/main/webapp/js/):
 			</sources>
 			<sources dir="${war.dir}/js/diagramly/emf">
 				<file name="emf-svg.js" />
-			</sources>
-			<sources dir="${war.dir}/js/mermaid">
-				<file name="mermaid2drawio.js" />
 			</sources>
 			<sources dir="${war.dir}/js/diagramly/graphml">
 				<file name="mxGraphMlCodec.js" />
@@ -509,7 +515,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 		<concat destfile="${war.dir}/js/orgchart.min.js" fixlastline="yes" append="no">
 			<filelist dir="${war.dir}/js/orgchart" files="bridge.min.js,bridge.collections.min.js,OrgChart.Layout.min.js"/>
     	</concat>
-		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/.tmp3.js">
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/.tmp3.js">
 			<sources dir="${war.dir}/js/orgchart">
 				<file name="mxOrgChartLayout.js" />
 			</sources>
@@ -518,18 +524,43 @@ OUTPUT FILES (in src/main/webapp/js/):
 			<filelist dir="${basedir}" files=".tmp3.js"/>
     	</concat>
 		<delete file="${basedir}/.tmp3.js"/>
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/.tmpelk.js">
+			<sources dir="${war.dir}/js/diagramly">
+				<file name="ElkLayout.js" />
+			</sources>
+		</jscomp>
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/.tmplibavoid.js">
+			<sources dir="${war.dir}/js/diagramly">
+				<file name="LibavoidRouting.js" />
+			</sources>
+		</jscomp>
 
-		<!-- Append vendor libraries to extensions.min.js -->
+		<!-- Append vendor libraries to extensions.min.js.
+		     drawio-elk must come before drawio-mermaid so that window.ELK is
+		     defined when mermaid's layout bridge reads globalThis.ELK, and
+		     before the ElkLayout editor statics so they attach immediately.
+		     The libavoid files are concatenated raw in fixed order: the pure-JS
+		     bundle (self-contained/self-publishing — defines window.Avoid
+		     synchronously on load, like drawio-mermaid) → the shared routing core
+		     (defines AvoidRouting; canonical, vendored verbatim by drawio-mcp) →
+		     the Closure-compiled LibavoidRouting editor binding. -->
 		<concat destfile="${war.dir}/js/extensions.min.js" fixlastline="yes" append="yes">
 			<fileset file="${war.dir}/js/jszip/jszip.min.js"/>
-			<fileset file="${war.dir}/js/mermaid/mermaid.min.js"/>
+			<fileset file="${war.dir}/js/elk/drawio-elk.min.js"/>
+			<filelist dir="${basedir}" files=".tmpelk.js"/>
+			<fileset file="${war.dir}/js/mermaid/drawio-mermaid.min.js"/>
 			<fileset file="${war.dir}/js/orgchart.min.js"/>
+			<fileset file="${war.dir}/js/libavoid-js/libavoid.min.js"/>
+			<fileset file="${war.dir}/js/libavoid-js/libavoid-routing.js"/>
+			<filelist dir="${basedir}" files=".tmplibavoid.js"/>
     	</concat>
-		
+		<delete file="${basedir}/.tmpelk.js"/>
+		<delete file="${basedir}/.tmplibavoid.js"/>
+
 		<delete file="${basedir}/.tmp1.js"/>
 		
 		<!-- Step 10: Compile full app with cloud integrations -->
-		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/.tmp1.js">
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/.tmp1.js">
 			<sources dir="${war.dir}/js/diagramly">
 				<file name="DrawioFile.js" />
 				<file name="LocalFile.js" />
@@ -656,7 +687,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 			<file name="${war.dir}/js/orgchart.min.js" />
 		</concat>
 
-		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/.tmp0.js">
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/.tmp0.js">
 			<sources dir="${war.dir}/connect/common/js">
 				<file name="mxReader.js" />
 			</sources>
@@ -668,7 +699,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 			<file name="${basedir}/.tmp0.js" />
 		</concat>
 
-		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/.tmp-simple.js">
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/.tmp-simple.js">
 			<sources dir="${war.dir}/js/diagramly">
 				<file name="Simple.js" />
 			</sources>
@@ -699,7 +730,7 @@ OUTPUT FILES (in src/main/webapp/js/):
 	<target name="integrate" depends="atlas">
 		<copy file="${war.dir}/js/atlas.min.js" tofile="${war.dir}/js/integrate.min.js" overwrite="true"/>
 
-		<jscomp compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/.tmp0.js">
+		<jscomp warning="${jscomp.warning}" compilationLevel="simple" debug="false" forceRecompile="true" output="${basedir}/.tmp0.js">
 			<sources dir="${basedir}/../integrate">
 				<file name="Integrate.js" />
 			</sources>

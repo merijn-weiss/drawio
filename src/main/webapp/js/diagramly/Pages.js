@@ -80,6 +80,61 @@ DiagramPage.prototype.setName = function(value)
 };
 
 /**
+ * Returns the stored initial view as {x, y, width, height, scale} or null.
+ * The view is persisted as a space-separated "x y width height [scale]"
+ * attribute on the diagram node (see Graph.getCurrentViewBox /
+ * EditorUi.fitInitialView). The scale is optional so externally authored or
+ * legacy four-value strings still resolve (the restore then falls back to a
+ * fit). Returns null unless at least the four geometry values are finite and
+ * width/height are positive.
+ */
+DiagramPage.prototype.getViewBox = function()
+{
+	var value = this.node.getAttribute('viewBox');
+
+	if (value != null)
+	{
+		var t = value.split(' ');
+		var x = parseFloat(t[0]);
+		var y = parseFloat(t[1]);
+		var w = parseFloat(t[2]);
+		var h = parseFloat(t[3]);
+		var s = (t.length > 4) ? parseFloat(t[4]) : null;
+
+		if (isFinite(x) && isFinite(y) && isFinite(w) && isFinite(h) && w > 0 && h > 0)
+		{
+			return {x: x, y: y, width: w, height: h,
+				scale: (s != null && isFinite(s) && s > 0) ? s : null};
+		}
+	}
+
+	return null;
+};
+
+/**
+ * Stores the given {x, y, width, height, scale} as the initial view, or
+ * removes the attribute when vb is null. The scale token is omitted when null.
+ */
+DiagramPage.prototype.setViewBox = function(vb)
+{
+	if (vb == null)
+	{
+		this.node.removeAttribute('viewBox');
+	}
+	else
+	{
+		var value = vb.x + ' ' + vb.y + ' ' + vb.width + ' ' + vb.height;
+
+		if (vb.scale != null)
+		{
+			value += ' ' + vb.scale;
+		}
+
+		this.node.setAttribute('viewBox', value);
+	}
+};
+
+/**
  * Sets the diagram modified flag.
  */
 DiagramPage.prototype.setDiagramModified = function(value)
@@ -119,6 +174,30 @@ RenamePage.prototype.execute = function()
 	// Required to update page name in placeholders
 	this.ui.editor.graph.updatePlaceholders();
 	this.ui.editor.fireEvent(new mxEventObject('pageRenamed'));
+};
+
+/**
+ * Undoable change of a page's stored initial view (see DiagramPage.getViewBox).
+ */
+function ChangePageView(ui, page, viewBox)
+{
+	this.ui = ui;
+	this.page = page;
+	this.viewBox = viewBox;
+	this.previous = viewBox;
+}
+
+/**
+ * Implementation of the undoable initial-view change.
+ */
+ChangePageView.prototype.execute = function()
+{
+	var tmp = this.page.getViewBox();
+	this.page.setViewBox(this.previous);
+	this.viewBox = this.previous;
+	this.previous = tmp;
+
+	this.ui.editor.fireEvent(new mxEventObject('pageViewChanged'));
 };
 
 /**
@@ -448,7 +527,7 @@ EditorUi.prototype.pageSelected = function()
 			}
 			else if (Editor.fitDiagramOnPage)
 			{
-				this.initialFitDiagram();
+				this.fitInitialView();
 			}
 
 			if (this.chromelessResize != null)
@@ -1556,6 +1635,39 @@ EditorUi.prototype.movePage = function(oldIndex, newIndex)
 {
 	this.editor.graph.model.execute(new MovePage(this, oldIndex, newIndex));
 }
+
+/**
+ * Sorts pages by name in natural ascending order as one undoable edit.
+ */
+EditorUi.prototype.sortPages = function()
+{
+	var sorted = this.pages.slice().sort(function(a, b)
+	{
+		return (a.getName() || '').localeCompare(b.getName() || '',
+			undefined, {numeric: true, sensitivity: 'base'});
+	});
+
+	var model = this.editor.graph.model;
+	model.beginUpdate();
+	try
+	{
+		for (var i = 0; i < sorted.length; i++)
+		{
+			var index = mxUtils.indexOf(this.pages, sorted[i]);
+
+			if (index != i)
+			{
+				this.movePage(index, i);
+			}
+		}
+	}
+	finally
+	{
+		model.endUpdate();
+	}
+
+	this.scrollToPage(this.currentPage, true);
+};
 
 /**
  * Returns true if the given string contains an mxfile.

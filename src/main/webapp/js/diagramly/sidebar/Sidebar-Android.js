@@ -504,9 +504,9 @@
 	   			return sb.createVertexTemplateFromCells([bg], bg.geometry.width, bg.geometry.height, 'Split Action Bar Landscape (Bright)');
 			}),
 
-			this.createVertexTemplateEntry(s + 'statusBar;align=center;fillColor=#000000;strokeColor=#ffffff;fontColor=#ffffff;fontSize=10;sketch=0;', 
+			this.createVertexTemplateEntry(s + 'statusBar;align=center;fillColor=#000000;strokeColor=#ffffff;fontColor=#ffffff;fontSize=10;batteryColor=#444444;sketch=0;', 
 					sizeX * 0.87, sizeY * 0.0375, '', 'Status bar (portrait)', null, null, dt + 'status bar portrait'),
-			this.createVertexTemplateEntry(s + 'statusBar;align=center;fillColor=#000000;strokeColor=#ffffff;fontColor=#ffffff;fontSize=10;sketch=0;', 
+			this.createVertexTemplateEntry(s + 'statusBar;align=center;fillColor=#000000;strokeColor=#ffffff;fontColor=#ffffff;fontSize=10;batteryColor=#444444;sketch=0;', 
 					sizeX * 1.517, sizeY * 0.0375, '', 'Status bar (landscape)', null, null, dt + 'status bar landscape'),
 			this.createVertexTemplateEntry(s2 + 'switch_off;fillColor=#666666;sketch=0;strokeColor=none;', 
 					80, 20, '', 'Switch Off', null, null, dt + 'switch off'),

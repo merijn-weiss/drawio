@@ -33,7 +33,6 @@ window.DRAWIO_SERVER_URL = window.DRAWIO_SERVER_URL || window.location.origin +
 	window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/';
 window.DRAWIO_LIGHTBOX_URL = window.DRAWIO_LIGHTBOX_URL || 'https://viewer.diagrams.net';
 window.EXPORT_URL = window.EXPORT_URL || 'https://convert.diagrams.net/node/export';
-window.PLANT_URL = window.PLANT_URL || 'https://plant-aws.diagrams.net';
 window.DRAW_MATH_URL = window.DRAW_MATH_URL || 'math4/es5';
 window.VSS_CONVERT_URL = window.VSS_CONVERT_URL || 'https://convert.diagrams.net/VsdConverter/api/converter';
 window.REALTIME_URL = window.REALTIME_URL || window.DRAWIO_SERVER_URL + 'cache';
@@ -59,6 +58,11 @@ window.SHAPES_PATH = window.SHAPES_PATH || 'shapes';
 window.GRAPH_IMAGE_PATH = window.GRAPH_IMAGE_PATH || 'img';
 window.ICONSEARCH_PATH = window.ICONSEARCH_PATH || (urlParams['dev'] && window.location.protocol != 'file:' ?
 	'iconSearch2' : window.DRAWIO_SERVER_URL + 'iconSearch2');
+// Grouped icon search service (v3): returns icon sets alongside results
+// and supports server-side data URI inlining. Takes precedence over
+// ICONSEARCH_PATH in the sidebar search when defined.
+window.ICON_SERVICE_PATH = window.ICON_SERVICE_PATH || (urlParams['dev'] && window.location.protocol != 'file:' ?
+	'api/icons' : window.DRAWIO_SERVER_URL + 'api/icons');
 window.TEMPLATE_PATH = window.TEMPLATE_PATH || 'templates';
 window.NEW_DIAGRAM_CATS_PATH = window.NEW_DIAGRAM_CATS_PATH || 'newDiagramCats';
 window.PLUGINS_BASE_PATH = window.PLUGINS_BASE_PATH || '';
@@ -327,57 +331,50 @@ window.uiTheme = window.uiTheme || (function()
 })();
 
 /**
- * Overrides splash URL parameter via local storage
+ * Overrides splash URL parameter via configuration
  */
-(function() 
+(function()
 {
 	if (typeof JSON !== 'undefined')
 	{
-		// Cannot use mxSettings here
-		if (isLocalStorage) 
+		// Cannot use mxSettings or Editor.config here
+		var showSplash = (window.DRAWIO_CONFIG != null) ?
+			window.DRAWIO_CONFIG.showSplashOnStart : null;
+
+		if (isLocalStorage)
 		{
-			try
-			{
-				var key = (urlParams['sketch'] == '1') ? '.sketch-config' : '.drawio-config';
-				var value = localStorage.getItem(key);
-				var showSplash = false;
-				
-				if (value != null)
-				{
-					showSplash = JSON.parse(value).showStartScreen;
-				}
-				
-				if (showSplash == false && urlParams['splash'] == null)
-				{
-					urlParams['splash'] = '0';
-				}
-			}
-			catch (e)
-			{
-				// ignore
-			}
-			
-			// Handles lockdown configuration
+			// Handles lockdown and splash screen configuration
 			try
 			{
 				var value = localStorage.getItem('.configuration');
-				var lockdown = null;
 
 				if (value != null)
 				{
 					var config = JSON.parse(value);
-					lockdown = config.lockdown;
-				}
-				
-				if (lockdown != null)
-				{
-					urlParams['lockdown'] = lockdown;
+
+					if (config != null)
+					{
+						if (config.lockdown != null)
+						{
+							urlParams['lockdown'] = config.lockdown;
+						}
+
+						if (config.showSplashOnStart != null)
+						{
+							showSplash = config.showSplashOnStart;
+						}
+					}
 				}
 			}
 			catch (e)
 			{
 				// ignore
 			}
+		}
+
+		if (showSplash != true && urlParams['splash'] == null)
+		{
+			urlParams['splash'] = '0';
 		}
 	}
 	

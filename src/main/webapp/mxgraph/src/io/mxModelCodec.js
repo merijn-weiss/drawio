@@ -202,7 +202,7 @@ mxCodecRegistry.register(function()
 					else if (window.console != null)
 					{
 						console.error('mxModelCodec.decodeChild: Invalid reference ' +
-							index + ' in cell ' + cells[i].getAttribute('index'));
+							index + ' in cell ' + cell.getAttribute('id'));
 					}
 				}
 				else

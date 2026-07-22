@@ -1,30 +1,9 @@
 /**
  * Copyright (c) 2006-2012, JGraph Holdings Ltd
  */
-// Workaround for handling named HTML entities in mxUtils.parseXml
-// LATER: How to configure DOMParser to just ignore all entities?
+// NOTE: Named HTML entities in mxUtils.parseXml are handled in mxUtils.repairXml
 (function()
 {
-	var entities = [
-		['nbsp', '160'],
-		['shy', '173']
-    ];
-
-	// Converts HTML entites for parsing XML
-	var parseXml = mxUtils.parseXml;
-	
-	mxUtils.parseXml = function(text)
-	{
-		for (var i = 0; i < entities.length; i++)
-	    {
-	        text = text.replace(new RegExp(
-	        	'&' + entities[i][0] + ';', 'g'),
-		        '&#' + entities[i][1] + ';');
-	    }
-
-		return parseXml(text);
-	};
-
 	// Overrides color inversion if disabled
 	// TODO
 
@@ -201,7 +180,7 @@ mxGraphView.prototype.gridSteps = 4;
 mxGraphView.prototype.minGridSize = 4;
 
 // UrlParams is null in embed mode
-mxGraphView.prototype.defaultGridColor = '#d0d0d0';
+mxGraphView.prototype.defaultGridColor = '#e6e6e6';
 mxGraphView.prototype.defaultDarkGridColor = '#424242';
 mxGraphView.prototype.gridColor = mxGraphView.prototype.defaultGridColor;
 
@@ -228,24 +207,121 @@ mxShape.prototype.getConstraints = function(style, w, h)
 	return null;
 };
 
-// Override for clipSvg style
-mxImageShape.prototype.getImageDataUri = function()
+// Override for clipSvg and cssVars styles, where theming is left to the
+// given canvas via getImageCssVars if it inlines SVG images as symbols
+mxImageShape.prototype.getImageDataUri = function(c)
 {
 	var src = String(this.image);
 
-	if (src.substring(0, 26) == 'data:image/svg+xml;base64,' && this.style != null &&
-		mxUtils.getValue(this.style, 'clipSvg', '0') == '1')
+	if (src.substring(0, 26) == 'data:image/svg+xml;base64,' && this.style != null)
 	{
-		if (this.clippedSvg == null || this.clippedImage != src)
+		if (mxUtils.getValue(this.style, 'clipSvg', '0') == '1')
 		{
-			this.clippedSvg = Graph.clipSvgDataUri(src);
-			this.clippedImage = src;
+			if (this.clippedSvg == null || this.clippedImage != src)
+			{
+				this.clippedSvg = Graph.clipSvgDataUri(src);
+				this.clippedImage = src;
+			}
+
+			src = this.clippedSvg;
 		}
-		
-		src = this.clippedSvg;
+
+		if (c == null || c.createImageSymbol == null)
+		{
+			var vars = Graph.getCssVariables(this.style);
+
+			if (vars != null)
+			{
+				if (this.themedSvg == null || this.themedImage != src ||
+					this.themedVars != vars)
+				{
+					this.themedSvg = Graph.setSvgDataUriCssVars(src, vars);
+					this.themedImage = src;
+					this.themedVars = vars;
+				}
+
+				src = this.themedSvg;
+			}
+		}
+		else
+		{
+			// Canonicalizes editable CSS rules so that instances with
+			// different colors share a symbol in exports
+			var exp = mxUtils.getValue(this.style, 'editableCssRules', null);
+
+			if (exp != null)
+			{
+				if (this.canonicalSvg === undefined || this.canonicalImage != src ||
+					this.canonicalRules != exp)
+				{
+					this.canonicalSvg = Graph.canonicalizeSvgCssRules(src, exp);
+					this.canonicalImage = src;
+					this.canonicalRules = exp;
+				}
+
+				if (this.canonicalSvg != null)
+				{
+					src = this.canonicalSvg.uri;
+				}
+			}
+		}
 	}
 
 	return src;
+};
+
+// Override for cssVars style with same-origin image URLs and, if the
+// given canvas inlines SVG images as symbols, embedded SVG images
+mxImageShape.prototype.getImageCssVars = function(c)
+{
+	var src = String(this.image);
+	var result = null;
+
+	if (this.style != null)
+	{
+		if (src.substring(0, 5) != 'data:')
+		{
+			if (Graph.isSameOrigin(src))
+			{
+				result = Graph.getCssVariables(this.style);
+			}
+		}
+		else if (c != null && c.createImageSymbol != null &&
+			src.substring(0, 26) == 'data:image/svg+xml;base64,')
+		{
+			var vars = [];
+
+			// Colors of editable CSS rules, extracted in getImageDataUri
+			// which is invoked before this for the same canvas
+			if (this.canonicalSvg != null && this.canonicalRules ==
+				mxUtils.getValue(this.style, 'editableCssRules', null))
+			{
+				vars.push(this.canonicalSvg.vars);
+			}
+
+			if (mxUtils.getValue(this.style, 'cssVars', null) != null)
+			{
+				var temp = Graph.getCssVariables(this.style);
+
+				if (temp != null)
+				{
+					vars.push(temp);
+				}
+				else if (vars.length == 0)
+				{
+					// Shares unthemed instances of the image via the symbol
+					result = '';
+				}
+			}
+
+			if (vars.length > 0)
+			{
+				result = vars.join('; ');
+			}
+		}
+	}
+
+	return result;
 };
 
 // Override for default colors
@@ -895,8 +971,6 @@ Graph = function(container, model, renderHint, stylesheet, themes, standalone)
 			// Create virtual cell state for page centers
 			if (this.graph.pageVisible)
 			{
-				var guides = [];
-				
 				var pf = this.graph.pageFormat;
 				var ps = this.graph.pageScale;
 				var pw = pf.width * ps;
@@ -904,22 +978,47 @@ Graph = function(container, model, renderHint, stylesheet, themes, standalone)
 				var t = this.graph.view.translate;
 				var s = this.graph.view.scale;
 
-				var layout = this.graph.getPageLayout();
-				
-				for (var i = 0; i < layout.width; i++)
+				// Ignores pages that are too small on screen and restricts the
+				// guides to the visible pages plus one viewport of margin in
+				// each direction so that extreme cell coordinates cannot block
+				// the UI with an excessive number of guides
+				if (Math.min(pw, ph) * s > this.graph.minPageBreakDist)
 				{
-					guides.push(new mxRectangle(((layout.x + i) * pw + t.x) * s,
-						(layout.y * ph + t.y) * s, pw * s, ph * s));
+					var layout = this.graph.getPageLayout();
+					var c = this.graph.container;
+					var i0 = 0;
+					var i1 = layout.width;
+					var j0 = 1;
+					var j1 = layout.height;
+
+					if (c != null)
+					{
+						var x0 = (c.scrollLeft - c.clientWidth) / s - t.x;
+						var y0 = (c.scrollTop - c.clientHeight) / s - t.y;
+
+						i0 = Math.max(0, Math.floor(x0 / pw) - layout.x);
+						i1 = Math.min(i1, Math.ceil((x0 + 3 * c.clientWidth / s) / pw) - layout.x);
+						j0 = Math.max(1, Math.floor(y0 / ph) - layout.y);
+						j1 = Math.min(j1, Math.ceil((y0 + 3 * c.clientHeight / s) / ph) - layout.y);
+					}
+
+					var guides = [];
+
+					for (var i = i0; i < i1; i++)
+					{
+						guides.push(new mxRectangle(((layout.x + i) * pw + t.x) * s,
+							(layout.y * ph + t.y) * s, pw * s, ph * s));
+					}
+
+					for (var j = j0; j < j1; j++)
+					{
+						guides.push(new mxRectangle((layout.x * pw + t.x) * s,
+							((layout.y + j) * ph + t.y) * s, pw * s, ph * s));
+					}
+
+					// Page center guides have precedence over normal guides
+					result = guides.concat(result);
 				}
-				
-				for (var j = 1; j < layout.height; j++)
-				{
-					guides.push(new mxRectangle((layout.x * pw + t.x) * s,
-						((layout.y + j) * ph + t.y) * s, pw * s, ph * s));
-				}
-				
-				// Page center guides have precedence over normal guides
-				result = guides.concat(result);
 			}
 			
 			return result;
@@ -1266,7 +1365,14 @@ Graph = function(container, model, renderHint, stylesheet, themes, standalone)
 			{
 				return false;
 			}
-			
+
+			// Drag cannot remove children from a transparentBounds; reparenting
+			// is only allowed via explicit menu actions (e.g. Arrange tab).
+			if (this.graph.isTransparentBounds(parent))
+			{
+				return false;
+			}
+
 			return graphHandlerShouldRemoveCellsFromParent.apply(this, arguments);
 		};
 
@@ -1574,7 +1680,8 @@ Graph.pasteTextStyles = ['fontFamily', 'fontSource', 'fontSize', 'fontColor', 'f
 Graph.edgeStyles = ['edgeStyle', 'elbow', 'jumpStyle', 'jumpSize', 'startArrow',
 	'startFill', 'startSize', 'endArrow', 'endFill', 'endSize', 'flowAnimation',
 	'flowAnimationDirection', 'flowAnimationTimingFunction', 'flowAnimationDuration',
-	'sourcePerimeterSpacing', 'targetPerimeterSpacing', 'curved', 'linecap', 'linejoin'];
+	'sourcePerimeterSpacing', 'targetPerimeterSpacing', 'curved', 'linecap', 'linejoin',
+	'libavoidRouting'];
 
 /**
  * Styles that are ignored together (if one appears all are ignored).
@@ -1603,7 +1710,43 @@ Graph.cellStyles = mxUtils.addItems(mxUtils.addItems(mxUtils.addItems(
  */
 Graph.layoutNames = ['mxHierarchicalLayout', 'mxCircleLayout', 'mxCompactTreeLayout',
 	'mxEdgeLabelLayout', 'mxFastOrganicLayout', 'mxParallelEdgeLayout',
-	'mxPartitionLayout', 'mxRadialTreeLayout', 'mxStackLayout'];
+	'mxPartitionLayout', 'mxRadialTreeLayout', 'mxStackLayout',
+	'elkLayered', 'elkTree', 'elkRadial', 'elkOrganic', 'elkStress',
+	'elkDisco', 'elkBox'];
+
+/**
+ * Maps draw.io ELK layout names to their ELK algorithm. The friendly aliases
+ * (elkTree → mrtree, elkOrganic → force) match the Arrange > Layout menu
+ * vocabulary rather than the internal ELK names, so users reading the menu
+ * and writing JSON see the same words.
+ */
+Graph.elkLayoutAlgorithms = {
+	'elkLayered': 'layered',
+	'elkTree': 'mrtree',
+	'elkRadial': 'radial',
+	'elkOrganic': 'force',
+	'elkStress': 'stress',
+	'elkDisco': 'disco',
+	'elkBox': 'box'
+};
+
+/**
+ * Returns the draw.io layout name (elkLayered, elkTree, ...) for the given
+ * ELK algorithm, ie. the inverse lookup of elkLayoutAlgorithms. Returns
+ * null for unknown algorithms.
+ */
+Graph.elkLayoutNameForAlgorithm = function(algorithm)
+{
+	for (var name in Graph.elkLayoutAlgorithms)
+	{
+		if (Graph.elkLayoutAlgorithms[name] === algorithm)
+		{
+			return name;
+		}
+	}
+
+	return null;
+};
 
 /**
  * Name of the attribute to store original CSS colors in HTML labels.
@@ -1691,6 +1834,13 @@ Graph.getSvgFromDataUri = function(uri)
 };
 
 /**
+ * Name of the CSS custom property that carries the exported SVG background
+ * color so a light-dark() value is only applied where it is supported.
+ * See addAdaptiveColors.
+ */
+Graph.svgBackgroundVar = '--ge-adaptive-bg';
+
+/**
  * Helper function for creating an SVG node.
  */
 Graph.createSvgNode = function(x, y, w, h, lightDarkColor)
@@ -1699,13 +1849,13 @@ Graph.createSvgNode = function(x, y, w, h, lightDarkColor)
 	var root = (svgDoc.createElementNS != null) ?
 		svgDoc.createElementNS(mxConstants.NS_SVG, 'svg') :
 		svgDoc.createElement('svg');
-	
+
 	if (lightDarkColor != null)
 	{
 		root.setAttribute('style', 'background: ' + lightDarkColor.light +
 			'; background-color: ' + lightDarkColor.cssText + ';');
-	}	
-	
+	}
+
 	if (svgDoc.createElementNS == null)
 	{
 		root.setAttribute('xmlns', mxConstants.NS_SVG);
@@ -1724,6 +1874,84 @@ Graph.createSvgNode = function(x, y, w, h, lightDarkColor)
 	svgDoc.appendChild(root);
 
 	return root;
+};
+
+/**
+ * Rewrites adaptive (light-dark with var()) colors in the given exported SVG
+ * root to reference the Graph.svgBackgroundVar custom property, which is
+ * defined only inside an @supports block. A light-dark() value whose dark
+ * side is a var() cannot use the usual fallback: the var() keeps the
+ * declaration valid at parse time (so it overrides the plain fallback), but
+ * it is invalid at computed-value time in browsers without light-dark()
+ * (e.g. Firefox ESR 115), which resets the color to inherited/initial and
+ * paints the background/shapes black. Routing it through the custom property
+ * lets those browsers fall back to the light color instead. Only the default
+ * background color (shapeBackgroundColor) carries a var(), so its serialized
+ * value is the exact string to replace wherever it occurs (root background,
+ * background rect and shape fills). Does nothing when light-dark() support
+ * is off (fixed-theme exports force this, see EditorUi.exportSvg): colors
+ * are then resolved to a single side, and the dark side is a plain var()
+ * with a fallback that is valid in all browsers - rewriting it here would
+ * replace that fallback with the light color.
+ */
+Graph.addAdaptiveColors = function(root, shapeBackgroundColor)
+{
+	if (!mxUtils.lightDarkColorSupported)
+	{
+		return;
+	}
+
+	var adaptive = mxUtils.getLightDarkColor(shapeBackgroundColor);
+
+	if (adaptive.cssText.indexOf('var(') < 0)
+	{
+		return;
+	}
+
+	var replacement = 'var(' + Graph.svgBackgroundVar + ', ' + adaptive.light + ')';
+	var elts = root.getElementsByTagName('*');
+	var nodes = [root];
+	var modified = false;
+
+	for (var i = 0; i < elts.length; i++)
+	{
+		nodes.push(elts[i]);
+	}
+
+	for (var i = 0; i < nodes.length; i++)
+	{
+		var st = nodes[i].getAttribute('style');
+
+		if (st != null && st.indexOf(adaptive.cssText) >= 0)
+		{
+			nodes[i].setAttribute('style',
+				st.split(adaptive.cssText).join(replacement));
+			modified = true;
+		}
+	}
+
+	// Defines the custom property (gated on light-dark() support and scoped to
+	// a unique id on the root) only when at least one color was rewritten.
+	if (modified)
+	{
+		var svgDoc = root.ownerDocument;
+		var id = root.getAttribute('id');
+
+		if (id == null || id == '')
+		{
+			id = 'ge-svg-' + Editor.guid();
+			root.setAttribute('id', id);
+		}
+
+		var style = (svgDoc.createElementNS != null) ?
+			svgDoc.createElementNS(mxConstants.NS_SVG, 'style') :
+			svgDoc.createElement('style');
+		style.setAttribute('type', 'text/css');
+		style.appendChild(svgDoc.createTextNode(
+			'@supports (color: light-dark(#000, #fff)) { #' + id + ' { ' +
+			Graph.svgBackgroundVar + ': ' + adaptive.cssText + '; } }'));
+		root.insertBefore(style, root.firstChild);
+	}
 };
 
 /**
@@ -1967,9 +2195,25 @@ Graph.setTextColor = function(node, color, isForeground)
 			value: temp[i].style[property]});
 	}
 
+	// Forces CSS styling for the foreground placeholder so it is applied as an
+	// inline style instead of a <font color> attribute. The legacy attribute
+	// parser mangles the non-hex placeholder into a visible (red) color, while
+	// an inline style keeps it transparent and still detectable below.
+	var usingCss = document.queryCommandState('styleWithCSS');
+
+	if (isForeground && !usingCss)
+	{
+		document.execCommand('styleWithCSS', false, true);
+	}
+
 	document.execCommand((isForeground) ?
 		'forecolor' : 'backcolor',
 		false, placeholder);
+
+	if (isForeground && !usingCss)
+	{
+		document.execCommand('styleWithCSS', false, false);
+	}
 
 	// Finds the element and sets the real color
 	var elts = node.getElementsByTagName('*');
@@ -3263,6 +3507,572 @@ Graph.clipSvgDataUri = function(dataUri)
 };
 
 /**
+ * Returns the CSS custom property declarations for the cssVars style in
+ * the given cell style, or null if there are none. cssVars lists the
+ * comma-separated variable names, the value for each name is taken from
+ * the style key of the same name with a -- prefix, to avoid collisions
+ * with other style keys. Names without a value are ignored so that the
+ * fallbacks in the SVG take effect.
+ */
+Graph.getCssVariables = function(style)
+{
+	var names = mxUtils.getValue(style, 'cssVars', null);
+	var result = null;
+
+	if (names != null && names != '')
+	{
+		var tokens = String(names).split(',');
+		var vars = [];
+
+		for (var i = 0; i < tokens.length; i++)
+		{
+			var name = mxUtils.trim(tokens[i]);
+
+			// Tolerates the -- prefix in declared names
+			if (name.substring(0, 2) == '--')
+			{
+				name = name.substring(2);
+			}
+
+			var value = (name != '') ? mxUtils.getValue(style, '--' + name, null) : null;
+
+			if (value != null && value != '')
+			{
+				vars.push('--' + name + ': ' + value);
+			}
+		}
+
+		if (vars.length > 0)
+		{
+			result = vars.join('; ');
+		}
+	}
+
+	return result;
+};
+
+/**
+ * Adds the given CSS declarations to the style attribute of the root
+ * element in the given SVG data URI and returns the updated data URI
+ * with all script tags and event handlers removed.
+ */
+Graph.setSvgDataUriCssVars = function(dataUri, vars)
+{
+	if (dataUri != null && dataUri.substring(0, 26) == 'data:image/svg+xml;base64,' &&
+		Graph.isStyleAllowed(vars))
+	{
+		try
+		{
+			var data = decodeURIComponent(escape(atob(dataUri.substring(26))));
+			var idx = data.indexOf('<svg');
+
+			if (idx >= 0)
+			{
+				// Strips leading XML declaration and doctypes
+				var div = document.createElement('div');
+				div.innerHTML = Graph.sanitizeHtml(data.substring(idx));
+				var svgs = div.getElementsByTagName('svg');
+
+				if (svgs.length > 0)
+				{
+					var style = svgs[0].getAttribute('style');
+
+					// Enables resolution of light-dark colors in the SVG
+					if (vars.indexOf('light-dark(') >= 0 &&
+						(style == null || style.indexOf('color-scheme') < 0))
+					{
+						vars += '; color-scheme: light dark';
+					}
+
+					svgs[0].setAttribute('style', ((style != null && style != '') ?
+						style + '; ' : '') + vars);
+					dataUri = 'data:image/svg+xml;base64,' +
+						btoa(unescape(encodeURIComponent(mxUtils.getXml(svgs[0]))));
+				}
+			}
+		}
+		catch (e)
+		{
+			// ignore
+		}
+	}
+
+	return dataUri;
+};
+
+/**
+ * Returns true if the given URL resolves to the same origin as the
+ * current document.
+ */
+Graph.isSameOrigin = function(url)
+{
+	try
+	{
+		var a = document.createElement('a');
+		a.setAttribute('href', url);
+
+		return a.origin == window.location.origin;
+	}
+	catch (e)
+	{
+		return false;
+	}
+};
+
+/**
+ * Prefixes all IDs, local references and CSS class names in the given
+ * SVG element with the given prefix, to avoid collisions when the
+ * content is inlined into another document.
+ */
+Graph.prefixSvgIds = function(root, prefix)
+{
+	var refAttrs = ['fill', 'stroke', 'filter', 'clip-path', 'mask',
+		'marker-start', 'marker-mid', 'marker-end', 'style'];
+
+	var prefixUrls = function(value)
+	{
+		return value.replace(/url\(\s*(['"]?)#/g, 'url($1#' + prefix);
+	};
+
+	var prefixSelectors = function(css)
+	{
+		// Prefixes class and ID selectors outside of rule bodies. Note
+		// that nested rules, eg. in media queries, are not supported.
+		return css.replace(/([^{}]*)(\{[^{}]*\})/g, function(match, sel, body)
+		{
+			return sel.replace(/([.#])(-?[A-Za-z_][\w-]*)/g,
+				'$1' + prefix + '$2') + prefixUrls(body);
+		});
+	};
+
+	var elts = root.getElementsByTagName('*');
+
+	for (var i = 0; i < elts.length; i++)
+	{
+		var elt = elts[i];
+		var id = elt.getAttribute('id');
+
+		if (id != null && id != '')
+		{
+			elt.setAttribute('id', prefix + id);
+		}
+
+		var cls = elt.getAttribute('class');
+
+		if (cls != null && cls != '')
+		{
+			var tokens = cls.split(/\s+/);
+
+			for (var j = 0; j < tokens.length; j++)
+			{
+				if (tokens[j] != '')
+				{
+					tokens[j] = prefix + tokens[j];
+				}
+			}
+
+			elt.setAttribute('class', tokens.join(' '));
+		}
+
+		if (elt.nodeName.toLowerCase() == 'style')
+		{
+			mxUtils.setTextContent(elt, prefixSelectors(
+				mxUtils.getTextContent(elt)));
+		}
+		else
+		{
+			for (var j = 0; j < refAttrs.length; j++)
+			{
+				var value = elt.getAttribute(refAttrs[j]);
+
+				if (value != null && value.indexOf('url(') >= 0)
+				{
+					elt.setAttribute(refAttrs[j], prefixUrls(value));
+				}
+			}
+
+			var hrefAttrs = ['href', 'xlink:href'];
+
+			for (var j = 0; j < hrefAttrs.length; j++)
+			{
+				var value = elt.getAttribute(hrefAttrs[j]);
+
+				if (value != null && value.charAt(0) == '#')
+				{
+					elt.setAttribute(hrefAttrs[j], '#' + prefix + value.substring(1));
+				}
+			}
+		}
+	}
+};
+
+/**
+ * Uses the browser for parsing the given CSS into a list of rules.
+ */
+Graph.getCssRules = function(css)
+{
+	var doc = document.implementation.createHTMLDocument('');
+	var styleElement = document.createElement('style');
+
+	mxUtils.setTextContent(styleElement, css);
+	doc.body.appendChild(styleElement);
+
+	return styleElement.sheet.cssRules;
+};
+
+/**
+ * Replaces the color values of CSS rules that match the given expression
+ * in the given SVG data URI with CSS variables and returns the rewritten
+ * data URI and the variable declarations for the replaced values, or null
+ * if there are no matching rules. Instances of the same image with
+ * different colors return the same data URI, so that they can share a
+ * symbol in exports with their colors in the style of the use tags.
+ */
+Graph.canonicalizeSvgCssRules = function(dataUri, exp)
+{
+	var result = null;
+
+	if (dataUri != null && dataUri.substring(0, 26) == 'data:image/svg+xml;base64,')
+	{
+		try
+		{
+			var data = decodeURIComponent(escape(atob(dataUri.substring(26))));
+			var idx = data.indexOf('<svg');
+
+			if (idx >= 0)
+			{
+				// Strips leading XML declaration and doctypes
+				var div = document.createElement('div');
+				div.innerHTML = Graph.sanitizeHtml(data.substring(idx));
+				var svgs = div.getElementsByTagName('svg');
+
+				if (svgs.length > 0)
+				{
+					var svg = svgs[0];
+					var regex = new RegExp(exp);
+					var styles = svg.getElementsByTagName('style');
+					var props = ['fill', 'stroke', 'stop-color'];
+					var vars = [];
+
+					for (var i = 0; i < styles.length; i++)
+					{
+						var rules = Graph.getCssRules(mxUtils.getTextContent(styles[i]));
+						var cssTxt = '';
+
+						for (var j = 0; j < rules.length; j++)
+						{
+							var rule = rules[j];
+
+							if (rule.selectorText != null && regex.test(rule.selectorText))
+							{
+								for (var k = 0; k < props.length; k++)
+								{
+									var value = mxUtils.trim(rule.style.getPropertyValue(props[k]));
+
+									if (value != '' && value.substring(0, 4) != 'url(' &&
+										value.substring(0, 4) != 'var(')
+									{
+										rule.style.setProperty(props[k],
+											'var(--mx-r' + vars.length + ')');
+										vars.push('--mx-r' + vars.length + ': ' + value);
+									}
+								}
+							}
+
+							cssTxt += rule.cssText + '\n';
+						}
+
+						mxUtils.setTextContent(styles[i], cssTxt);
+					}
+
+					if (vars.length > 0)
+					{
+						// Enables resolution of light-dark colors in the values
+						if (svg.style != null &&
+							svg.style.getPropertyValue('color-scheme') == '')
+						{
+							svg.style.colorScheme = 'light dark';
+						}
+
+						result = {
+							uri: 'data:image/svg+xml;base64,' +
+								btoa(unescape(encodeURIComponent(mxUtils.getXml(svg)))),
+							vars: vars.join('; ')
+						};
+					}
+				}
+			}
+		}
+		catch (e)
+		{
+			// ignore
+		}
+	}
+
+	return result;
+};
+
+/**
+ * Replaces use tags that are the only reference to an image definition
+ * created by mxSvgCanvas2D.getImageDef with the image itself and
+ * removes the definition.
+ */
+Graph.inlineSingleUseImages = function(root)
+{
+	var uses = root.getElementsByTagName('use');
+	var counts = {};
+	var temp = [];
+
+	for (var i = 0; i < uses.length; i++)
+	{
+		var ref = uses[i].getAttribute('href');
+
+		if (ref == null)
+		{
+			ref = uses[i].getAttribute('xlink:href');
+		}
+
+		if (ref != null && ref.substring(0, 10) == '#mx-image-')
+		{
+			counts[ref] = (counts[ref] || 0) + 1;
+			temp.push(uses[i]);
+		}
+	}
+
+	for (var i = 0; i < temp.length; i++)
+	{
+		var use = temp[i];
+		var ref = use.getAttribute('href');
+
+		if (ref == null)
+		{
+			ref = use.getAttribute('xlink:href');
+		}
+
+		if (counts[ref] == 1)
+		{
+			var symbol = root.querySelector('[id="' + ref.substring(1) + '"]');
+			var img = (symbol != null && symbol.nodeName == 'symbol') ?
+				symbol.getElementsByTagName('image')[0] : null;
+
+			if (img != null)
+			{
+				// Copies position and rendering attributes from the use tag
+				var clone = img.cloneNode(true);
+				var attrs = use.attributes;
+
+				for (var j = 0; j < attrs.length; j++)
+				{
+					var name = attrs[j].name;
+
+					if (name != 'href' && name != 'xlink:href')
+					{
+						clone.setAttribute(name, attrs[j].value);
+					}
+				}
+
+				use.parentNode.replaceChild(clone, use);
+				symbol.parentNode.removeChild(symbol);
+			}
+		}
+	}
+};
+
+/**
+ * Replaces deprecated font elements with spans using the equivalent CSS
+ * styles. Existing inline styles take precedence over the legacy color,
+ * face and size attributes, same as in HTML rendering.
+ */
+Graph.replaceFontElements = function(root)
+{
+	// CSS keywords for the legacy font sizes 1-7
+	var sizes = ['x-small', 'small', 'medium', 'large',
+		'x-large', 'xx-large', 'xxx-large'];
+	var fonts = root.getElementsByTagName('font');
+	var temp = [];
+
+	// Copies the live node list as it shrinks with each replacement
+	for (var i = 0; i < fonts.length; i++)
+	{
+		temp.push(fonts[i]);
+	}
+
+	for (var i = 0; i < temp.length; i++)
+	{
+		var font = temp[i];
+		var span = (font.ownerDocument.createElementNS != null) ?
+			font.ownerDocument.createElementNS(font.namespaceURI, 'span') :
+			font.ownerDocument.createElement('span');
+		var attrs = font.attributes;
+
+		for (var j = 0; j < attrs.length; j++)
+		{
+			var name = attrs[j].name;
+
+			if (name != 'color' && name != 'face' && name != 'size')
+			{
+				span.setAttribute(name, attrs[j].value);
+			}
+		}
+
+		var color = font.getAttribute('color');
+
+		if (color != null && span.style.color == '')
+		{
+			// Adds missing hash for hexadecimal colors
+			if (/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(color))
+			{
+				color = '#' + color;
+			}
+
+			span.style.color = color;
+		}
+
+		if (font.getAttribute('face') != null && span.style.fontFamily == '')
+		{
+			span.style.fontFamily = font.getAttribute('face');
+		}
+
+		var size = font.getAttribute('size');
+
+		if (size != null && span.style.fontSize == '')
+		{
+			var n = parseInt(size);
+
+			if (!isNaN(n))
+			{
+				// Relative sizes are based on default size 3
+				if (size.charAt(0) == '+' || size.charAt(0) == '-')
+				{
+					n = 3 + n;
+				}
+
+				span.style.fontSize = sizes[Math.max(0, Math.min(6, n - 1))];
+			}
+		}
+
+		while (font.firstChild != null)
+		{
+			span.appendChild(font.firstChild);
+		}
+
+		font.parentNode.replaceChild(span, font);
+	}
+};
+
+/**
+ * Creates a symbol for the given SVG data URI in the given defs section
+ * and returns its ID, or null if no symbol could be created. Repeated
+ * calls with the same source share the symbol, so that themed instances
+ * reuse the image data with per-use CSS variables. The given cache
+ * object must be retained by the caller across calls.
+ */
+Graph.createSvgImageSymbol = function(defs, cache, src, aspect)
+{
+	if (cache.keys == null)
+	{
+		cache.keys = {};
+		cache.ids = {};
+	}
+
+	var key = src + '|' + aspect;
+	var result = cache.keys[key];
+
+	if (result === undefined)
+	{
+		result = null;
+
+		try
+		{
+			if (defs != null && src != null &&
+				src.substring(0, 26) == 'data:image/svg+xml;base64,')
+			{
+				var data = decodeURIComponent(escape(atob(src.substring(26))));
+				var idx = data.indexOf('<svg');
+
+				if (idx >= 0)
+				{
+					// Strips leading XML declaration and doctypes
+					var div = document.createElement('div');
+					div.innerHTML = Graph.sanitizeHtml(data.substring(idx));
+					var svgs = div.getElementsByTagName('svg');
+
+					if (svgs.length > 0)
+					{
+						var svg = svgs[0];
+						var vb = svg.getAttribute('viewBox');
+
+						if (vb == null || vb == '')
+						{
+							var w = parseFloat(svg.getAttribute('width'));
+							var h = parseFloat(svg.getAttribute('height'));
+							vb = (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) ?
+								'0 0 ' + w + ' ' + h : null;
+						}
+
+						// Symbols require a viewBox for scaling of the content
+						if (vb != null)
+						{
+							var id = 'mx-symbol-' + mxUtils.hashCode(key);
+
+							// Resolves hash collisions between different keys
+							while (cache.ids[id] != null)
+							{
+								id += '-1';
+							}
+
+							Graph.prefixSvgIds(svg, id + '-');
+
+							var doc = defs.ownerDocument;
+							var symbol = (doc.createElementNS != null) ?
+								doc.createElementNS(mxConstants.NS_SVG, 'symbol') :
+								doc.createElement('symbol');
+							symbol.setAttribute('id', id);
+							symbol.setAttribute('viewBox', vb);
+
+							if (!aspect)
+							{
+								symbol.setAttribute('preserveAspectRatio', 'none');
+							}
+
+							// Keeps color-scheme and other styles of the root
+							var style = svg.getAttribute('style');
+
+							if (style != null && style != '')
+							{
+								symbol.setAttribute('style', style.replace(
+									/url\(\s*(['"]?)#/g, 'url($1#' + id + '-'));
+							}
+
+							var children = svg.childNodes;
+
+							for (var i = 0; i < children.length; i++)
+							{
+								symbol.appendChild((doc.importNode != null) ?
+									doc.importNode(children[i], true) :
+									children[i].cloneNode(true));
+							}
+
+							defs.appendChild(symbol);
+							cache.ids[id] = key;
+							result = id;
+						}
+					}
+				}
+			}
+		}
+		catch (e)
+		{
+			// ignore
+		}
+
+		cache.keys[key] = result;
+	}
+
+	return result;
+};
+
+/**
  * Create remove icon. 
  */
 Graph.createRemoveIcon = function(title, onclick)
@@ -3343,6 +4153,206 @@ Graph.isLink = function(text)
  * Graph inherits from mxGraph.
  */
 mxUtils.extend(Graph, mxGraph);
+
+/**
+ * Returns true if the edge shape in the given style paints the curved style
+ * (see mxPolyline.paintCurvedLine and mxArrowConnector.getCurvePoints). A
+ * missing shape renders via mxConnector, which supports it.
+ */
+Graph.edgeSupportsCurved = function(style)
+{
+	var shape = mxUtils.getValue(style, mxConstants.STYLE_SHAPE, null);
+
+	return shape == null || shape == 'connector' || shape == 'filledEdge' ||
+		shape == 'wire' || shape == 'pipe' || shape == 'link' ||
+		shape == 'flexArrow';
+};
+
+/**
+ * Subdivides the given absolute points into a fine polyline that approximates
+ * the curve actually drawn for curved/bezier edges, so the tangent is taken
+ * from the rendered spline instead of the straight control polygon. Mirrors
+ * mxPolyline.paintCurvedLine (quadratic through midpoints) and
+ * paintBezierLine (cubic when the points form an [anchor, cp, cp, anchor, ...]
+ * sequence, otherwise the same quadratic fallback). Returns the points
+ * unchanged when none are curved.
+ */
+Graph.getCurvePoints = function(pts, bezier)
+{
+	var n = pts.length;
+
+	if (n < 3 || pts.indexOf(null) >= 0)
+	{
+		return pts;
+	}
+
+	var steps = 16;
+	var result = [pts[0]];
+
+	var quad = function(p0, pc, p1)
+	{
+		for (var t = 1; t <= steps; t++)
+		{
+			var u = t / steps, iu = 1 - u;
+			result.push(new mxPoint(
+				iu * iu * p0.x + 2 * iu * u * pc.x + u * u * p1.x,
+				iu * iu * p0.y + 2 * iu * u * pc.y + u * u * p1.y));
+		}
+	};
+
+	if (bezier && (n - 1) % 3 == 0)
+	{
+		// Points are cubic control points: [anchor, cp1, cp2, anchor, ...]
+		for (var i = 1; i + 2 < n; i += 3)
+		{
+			var p0 = pts[i - 1], c1 = pts[i], c2 = pts[i + 1], p1 = pts[i + 2];
+
+			for (var t = 1; t <= steps; t++)
+			{
+				var u = t / steps, iu = 1 - u;
+				result.push(new mxPoint(
+					iu * iu * iu * p0.x + 3 * iu * iu * u * c1.x + 3 * iu * u * u * c2.x + u * u * u * p1.x,
+					iu * iu * iu * p0.y + 3 * iu * iu * u * c1.y + 3 * iu * u * u * c2.y + u * u * u * p1.y));
+			}
+		}
+	}
+	else
+	{
+		// Quadratic through the midpoints of consecutive control points
+		var prev = pts[0];
+
+		for (var i = 1; i < n - 2; i++)
+		{
+			var mid = new mxPoint((pts[i].x + pts[i + 1].x) / 2,
+				(pts[i].y + pts[i + 1].y) / 2);
+			quad(prev, pts[i], mid);
+			prev = mid;
+		}
+
+		quad(prev, pts[n - 2], pts[n - 1]);
+	}
+
+	return result;
+};
+
+/**
+ * Returns the angle (in degrees) of the edge segment nearest to the absolute
+ * point (px, py). Uses the rendered label position rather than the stored
+ * geometry.x because dragging an edge label updates geometry.offset, not
+ * geometry.x (see mxGraph.translateCell), so a label moved onto a different
+ * segment still resolves to the segment it actually sits on. For curved/bezier
+ * edges the control polygon is subdivided first so the tangent follows the
+ * drawn spline. Returns null if the edge geometry is not yet available.
+ */
+Graph.getEdgeLabelAngle = function(edgeState, px, py)
+{
+	var pts = (edgeState != null) ? edgeState.absolutePoints : null;
+
+	if (pts == null || pts.length < 2)
+	{
+		return null;
+	}
+
+	var style = edgeState.style;
+
+	if (style != null && (style[mxConstants.STYLE_CURVED] == 1 ||
+		style[mxConstants.STYLE_BEZIER] == 1))
+	{
+		pts = Graph.getCurvePoints(pts, style[mxConstants.STYLE_BEZIER] == 1);
+	}
+
+	var angle = null;
+	var bestDist = null;
+
+	for (var i = 1; i < pts.length; i++)
+	{
+		var p0 = pts[i - 1];
+		var pe = pts[i];
+
+		if (p0 == null || pe == null)
+		{
+			continue;
+		}
+
+		// Squared distance from (px, py) to the clamped projection on segment
+		var dx = pe.x - p0.x;
+		var dy = pe.y - p0.y;
+		var len2 = dx * dx + dy * dy;
+		var t = (len2 == 0) ? 0 : Math.max(0, Math.min(1,
+			((px - p0.x) * dx + (py - p0.y) * dy) / len2));
+		var ddx = px - (p0.x + t * dx);
+		var ddy = py - (p0.y + t * dy);
+		var dist = ddx * ddx + ddy * ddy;
+
+		if (bestDist == null || dist < bestDist)
+		{
+			bestDist = dist;
+			angle = Math.atan2(dy, dx) * 180 / Math.PI;
+		}
+	}
+
+	return angle;
+};
+
+/**
+ * Returns the upright tangent angle (in degrees) for the label of the given
+ * state when the labelAutoRotate style is set, or null otherwise. Handles the
+ * main edge label (state.cell is the edge) and child label cells (parent is
+ * the edge). Shared by the label renderer (mxText.getTextRotation) and the
+ * selection handles so the dashed border and the text rotate together.
+ */
+Graph.getLabelAutoRotation = function(state)
+{
+	if (state == null || mxUtils.getValue(state.style, 'labelAutoRotate', '0') != '1')
+	{
+		return null;
+	}
+
+	var model = state.view.graph.model;
+	var edgeState = null;
+	var px, py;
+
+	if (model.isEdge(state.cell))
+	{
+		edgeState = state;
+		px = state.absoluteOffset.x;
+		py = state.absoluteOffset.y;
+	}
+	else if (model.isEdge(model.getParent(state.cell)))
+	{
+		edgeState = state.view.getState(model.getParent(state.cell));
+		px = state.getCenterX();
+		py = state.getCenterY();
+	}
+
+	var angle = (edgeState != null) ? Graph.getEdgeLabelAngle(edgeState, px, py) : null;
+
+	if (angle != null)
+	{
+		angle = mxUtils.mod(angle, 360);
+
+		// Keeps the label upright instead of rendering it upside-down
+		if (angle > 90 && angle < 270)
+		{
+			angle -= 180;
+		}
+	}
+
+	return angle;
+};
+
+/**
+ * Rotates labels tangentially to their edge when the labelAutoRotate style is
+ * set. Runs on every view validation, so the angle tracks the connector
+ * automatically when it is moved or rerouted. See jgraph/drawio#5365.
+ */
+var mxTextGetTextRotation = mxText.prototype.getTextRotation;
+mxText.prototype.getTextRotation = function()
+{
+	var angle = (this.state != null) ? Graph.getLabelAutoRotation(this.state) : null;
+
+	return (angle != null) ? angle : mxTextGetTextRotation.apply(this, arguments);
+};
 
 /**
  * Allows all values in fit.
@@ -3653,7 +4663,136 @@ Graph.prototype.init = function(container)
 		};
 	}
 
+	// Both register BEFORE_UNDO listeners on the model, which fire in
+	// registration order: the transparentBounds geometry normalization must
+	// run before the layout manager, so a layout triggered by the same edit
+	// that toggles transparentBounds sees the pinned (0,0,0,0) geometry and
+	// translated children instead of the stale frame (the children would be
+	// shifted by the old origin twice).
+	this.initTransparentBoundsStyleSync();
 	this.initLayoutManager();
+};
+
+/**
+ * Listens for transparentBounds toggling on a vertex and, in the same model
+ * edit, keeps the stored geometry consistent with the rendering mode while
+ * leaving the children visually in place:
+ *
+ *   0 -> 1 (enable): pins the geometry at (0,0,0,0) — the visible bounds are
+ *     derived from the children from here on — and translates the children by
+ *     the old origin so they don't jump.
+ *   1 -> 0 (disable): rewrites the geometry to the bounds that were derived
+ *     from the children, then translates the children back. Without this,
+ *     switching off transparent would snap to the stale stored geometry (often
+ *     (0,0,0,0)) or leave the children outside the now-opaque box.
+ *
+ * Hooking on BEFORE_UNDO means the geometry and children changes land in the
+ * same undoable edit as the style change — one undo reverts the whole thing.
+ */
+Graph.prototype.initTransparentBoundsStyleSync = function()
+{
+	this.model.addListener(mxEvent.BEFORE_UNDO, mxUtils.bind(this, function(sender, evt)
+	{
+		var edit = evt.getProperty('edit');
+
+		if (edit == null || edit.changes == null)
+		{
+			return;
+		}
+
+		var stylesheet = this.getStylesheet();
+
+		// Snapshot length so geometry changes added below aren't re-scanned.
+		var n = edit.changes.length;
+
+		for (var i = 0; i < n; i++)
+		{
+			var change = edit.changes[i];
+
+			if (!(change instanceof mxStyleChange) ||
+				!this.model.isVertex(change.cell))
+			{
+				continue;
+			}
+
+			var oldStyle = stylesheet.getCellStyle(change.previous);
+			var newStyle = stylesheet.getCellStyle(change.style);
+			var wasTransparent = oldStyle != null &&
+				oldStyle['transparentBounds'] == 1;
+			var isTransparent = newStyle != null &&
+				newStyle['transparentBounds'] == 1;
+
+			if (wasTransparent == isTransparent)
+			{
+				continue;
+			}
+
+			var oldGeo = this.getCellGeometry(change.cell);
+
+			if (oldGeo == null)
+			{
+				continue;
+			}
+
+			if (isTransparent)
+			{
+				// Enabling: pin the stored geometry at (0,0,0,0) — the visible
+				// bounds are derived from the children from here on — and translate
+				// the children by the old origin so they stay in place.
+				if (oldGeo.x != 0 || oldGeo.y != 0)
+				{
+					var count = this.model.getChildCount(change.cell);
+
+					for (var j = 0; j < count; j++)
+					{
+						this.translateCell(this.model.getChildAt(change.cell, j),
+							oldGeo.x, oldGeo.y);
+					}
+				}
+
+				if (oldGeo.x != 0 || oldGeo.y != 0 ||
+					oldGeo.width != 0 || oldGeo.height != 0)
+				{
+					var newGeo = oldGeo.clone();
+					newGeo.x = 0;
+					newGeo.y = 0;
+					newGeo.width = 0;
+					newGeo.height = 0;
+					this.model.setGeometry(change.cell, newGeo);
+				}
+			}
+			else
+			{
+				// Disabling: rewrite the stored geometry to the bounds that were
+				// derived from the children, then translate the children back so
+				// they stay in place inside the now-opaque box.
+				var bounds = this.getTransparentBounds(change.cell);
+
+				if (bounds == null)
+				{
+					continue;
+				}
+
+				var newGeo = oldGeo.clone();
+				newGeo.x += bounds.x;
+				newGeo.y += bounds.y;
+				newGeo.width = bounds.width;
+				newGeo.height = bounds.height;
+				this.model.setGeometry(change.cell, newGeo);
+
+				if (bounds.x != 0 || bounds.y != 0)
+				{
+					var count = this.model.getChildCount(change.cell);
+
+					for (var j = 0; j < count; j++)
+					{
+						this.translateCell(this.model.getChildAt(change.cell, j),
+							-bounds.x, -bounds.y);
+					}
+				}
+			}
+		}
+	}));
 };
 
 /**
@@ -4225,6 +5364,12 @@ Graph.prototype.destroy = function()
 	Graph.prototype.pasteEdgeStyle = false;
 
 	/**
+	 * Specifies if the default vertex style was set from a text cell, in
+	 * which case all cell styles are applied to inserted text cells.
+	 */
+	Graph.prototype.pasteStylesToText = false;
+
+	/**
 	 * Returns information about the current selection.
 	 */
 	Graph.prototype.isFillState = function(state)
@@ -4237,6 +5382,7 @@ Graph.prototype.destroy = function()
 			(this.model.isVertex(state.cell) ||
 			shape == 'arrow' || shape == 'pipe' || shape == 'wire' ||
 			shape == 'filledEdge' || shape == 'flexArrow' ||
+			shape == 'mermaidSankeyLink' ||
 			shape == 'mxgraph.arrows2.wedgeArrow');
 	};
 	
@@ -4264,10 +5410,28 @@ Graph.prototype.destroy = function()
 	Graph.prototype.getTextColor = function(node, isForeground)
 	{
 		var attr = (isForeground) ? 'color' : 'background-color';
-		var temp = (node == this.cellEditor.textarea && isForeground) ?
-			'default' : Graph.getGivenColor(node, attr);
+		var temp = null;
+
+		// A selection across multiple elements, eg. several lines, resolves
+		// to a common ancestor that carries no color itself, so the color
+		// given within the selection takes precedence over the ancestors
+		if (node != null && window.getSelection)
+		{
+			var selection = window.getSelection();
+			var elts = node.getElementsByTagName('*');
+
+			for (var i = 0; i < elts.length && temp == null; i++)
+			{
+				if (elts[i].style != null &&
+					selection.containsNode(elts[i], true))
+				{
+					temp = Graph.getGivenColor(elts[i], attr);
+				}
+			}
+		}
+
 		var tempNode = node;
-		
+
 		while (temp == null && tempNode != null &&
 			tempNode != this.cellEditor.textarea.parentNode)
 		{
@@ -4398,8 +5562,8 @@ Graph.prototype.destroy = function()
 			this.model.beginUpdate();
 			try
 			{
-				var styles = JSON.parse(temp);
-				
+				var styles = Graph.decodeNewEdgeStyle(temp);
+
 				for (var key in styles)
 				{
 					this.setCellStyles(key, styles[key], edges);
@@ -4418,8 +5582,428 @@ Graph.prototype.destroy = function()
 				this.model.endUpdate();
 			}
 		}
+		
+		// New self-loops are created in the converted state so they get one
+		// handle per segment (see createEdgeHandler). A self-loop is detected
+		// by comparing the edge's own terminals — NOT against the source
+		// argument, whose role depends on the caller: Trees.js passes the new
+		// child (the edge's TARGET) as the newEdgeStyle carrier, which a
+		// target-equals-argument check misdetects as a self-loop, stamping
+		// loop routing and waypoints from cloneCells' absolute-frame geometry
+		// onto every edge added via the tree tools.
+		this.model.beginUpdate();
+		try
+		{
+			for (var i = 0; i < edges.length; i++)
+			{
+				var src = this.model.getTerminal(edges[i], true);
+
+				if (src != null && src == this.model.getTerminal(edges[i], false))
+				{
+					this.applyLoopStyle(edges[i], src);
+				}
+			}
+		}
+		finally
+		{
+			this.model.endUpdate();
+		}
 	};
-	
+
+	/**
+	 * Applies the orthogonal loop style with inner waypoints to the given
+	 * self-loop edge so it gets one handle per segment (outgoing, middle and
+	 * incoming). The default waypoints reproduce the side and size of the
+	 * legacy loop routing (a small loop on the source's east side).
+	 */
+	Graph.prototype.applyLoopStyle = function(edge, source)
+	{
+		var sgeo = this.getCellGeometry(source);
+		var geo = this.getCellGeometry(edge);
+
+		if (sgeo != null && geo != null)
+		{
+			// Loop is large enough that its 5 handles (two terminals, two arms
+			// and the middle) are clearly separated and individually grabbable
+			var seg = this.gridSize;
+			var cx = sgeo.x + sgeo.width + 4 * seg;
+			var cy = sgeo.y + sgeo.height / 2;
+
+			geo = geo.clone();
+			geo.points = [new mxPoint(cx, cy - 2 * seg), new mxPoint(cx, cy + 2 * seg)];
+
+			this.model.beginUpdate();
+			try
+			{
+				this.model.setGeometry(edge, geo);
+				this.setCellStyles(mxConstants.STYLE_EDGE, 'orthogonalEdgeStyle', [edge]);
+				this.setCellStyles('innerLoopWaypoints', '1', [edge]);
+			}
+			finally
+			{
+				this.model.endUpdate();
+			}
+		}
+	};
+
+	/**
+	 * Returns which axis the source terminal's perimeter pins the connection
+	 * point to, or null for a regular boundary perimeter. The perimeter is probed
+	 * with a point far on each side of the center: a boundary perimeter moves the
+	 * anchor across the full width/height when the direction flips, a fixed-line
+	 * perimeter keeps it on a line so it barely moves along that axis. Returns 'x'
+	 * when the anchor is pinned to the vertical center line (a lifeline spine - so
+	 * the loop sits left/right of it), 'y' when pinned to the horizontal center
+	 * line (a horizontal backbone - loop sits above/below), else null. Such loops
+	 * may overlap the shape because the anchors stay on the line.
+	 */
+	Graph.prototype.getLoopFixedAxis = function(state)
+	{
+		var source = (state != null) ? state.getVisibleTerminalState(true) : null;
+
+		if (source == null || source.width == 0 || source.height == 0)
+		{
+			return null;
+		}
+
+		var view = state.view;
+
+		// A shape with no perimeter function (e.g. perimeter=none) makes
+		// view.getPerimeterPoint fall back to the shape center for every probe
+		// below, which would look like both axes are pinned to a line. Such a
+		// shape is a boundary shape (the loop must stay outside it), not a
+		// spine/backbone, so report no fixed anchor line.
+		if (view.getPerimeterFunction(source) == null)
+		{
+			return null;
+		}
+
+		var cx = source.getCenterX();
+		var cy = source.getCenterY();
+		var d = Math.max(source.width, source.height) + 100;
+		var pe = view.getPerimeterPoint(source, new mxPoint(cx + d, cy), false);
+		var pw = view.getPerimeterPoint(source, new mxPoint(cx - d, cy), false);
+		var pn = view.getPerimeterPoint(source, new mxPoint(cx, cy - d), false);
+		var ps = view.getPerimeterPoint(source, new mxPoint(cx, cy + d), false);
+
+		var fixedX = pe != null && pw != null &&
+			Math.abs(pe.x - pw.x) < source.width / 4;
+		var fixedY = pn != null && ps != null &&
+			Math.abs(pn.y - ps.y) < source.height / 4;
+
+		return fixedX ? 'x' : (fixedY ? 'y' : null);
+	};
+
+	/**
+	 * Returns true if the source terminal's perimeter pins the connection point
+	 * to a fixed internal line (see getLoopFixedAxis).
+	 */
+	Graph.prototype.loopHasFixedAnchorLine = function(state)
+	{
+		return this.getLoopFixedAxis(state) != null;
+	};
+
+	/**
+	 * Returns the two corner waypoints of a self-loop placed so its far (middle)
+	 * segment follows the mouse, moving the whole loop around the shape: the loop
+	 * jumps to the side nearest the mouse, the far segment sits at the mouse depth
+	 * (just outside the shape) and is centered under the mouse along that edge.
+	 * The loop width (distance between the arms) is preserved but capped to the
+	 * length of that side so the arms stay attached to the edge. Used by the
+	 * middle handle only; returns null if the loop is not a simple two-corner
+	 * loop.
+	 */
+	Graph.prototype.getLoopAroundPoints = function(state, point)
+	{
+		var source = (state != null) ? state.getVisibleTerminalState(true) : null;
+		var geo = (state != null) ? this.getCellGeometry(state.cell) : null;
+
+		if (source == null || point == null || geo == null)
+		{
+			return null;
+		}
+
+		var s = state.view.scale;
+		var tr = state.view.translate;
+		var o = state.origin;
+		var bx = source.x / s - tr.x - o.x;
+		var by = source.y / s - tr.y - o.y;
+		var bw = source.width / s;
+		var bh = source.height / s;
+		var mp = new mxPoint(point.x / s - tr.x - o.x, point.y / s - tr.y - o.y);
+
+		// Current corners come from the stored waypoints, or - for a loop that is
+		// still routed by the default Loop style (no waypoints yet) - from the
+		// routed absolute points. Falls back to a small default loop centred on
+		// the shape when neither is available (e.g. a center perimeter whose
+		// route collapses), so a valid two-corner loop is always produced.
+		var c1, c2;
+		var pts = state.absolutePoints;
+
+		if (geo.points != null && geo.points.length >= 2)
+		{
+			c1 = geo.points[0];
+			c2 = geo.points[geo.points.length - 1];
+		}
+		else if (pts != null && pts.length >= 4)
+		{
+			c1 = new mxPoint(pts[1].x / s - tr.x - o.x, pts[1].y / s - tr.y - o.y);
+			c2 = new mxPoint(pts[pts.length - 2].x / s - tr.x - o.x,
+				pts[pts.length - 2].y / s - tr.y - o.y);
+		}
+		else
+		{
+			c1 = new mxPoint(bx + bw / 2, by + bh / 2 - this.gridSize);
+			c2 = new mxPoint(bx + bw / 2, by + bh / 2 + this.gridSize);
+		}
+
+		var spreadIsX = Math.abs(c1.x - c2.x) >= Math.abs(c1.y - c2.y);
+		var width = Math.max(this.gridSize,
+			(spreadIsX) ? Math.abs(c1.x - c2.x) : Math.abs(c1.y - c2.y));
+		var minDepth = this.gridSize;
+
+		// Shapes whose perimeter pins the anchor to a fixed internal line (e.g. a
+		// lifeline spine, a backbone or a center perimeter) connect the message to
+		// that line, so the loop legitimately overlaps the shape. The far segment
+		// is then measured from the anchor line, not the shape edge, so dragging
+		// the middle handle towards the shape reduces the loop depth and dragging
+		// past the line flips the loop to the other side. Boundary perimeters
+		// (rectangle, ellipse, ...) connect on the boundary facing the loop and
+		// use the regular side-picking below.
+		var fixedAnchor = this.loopHasFixedAnchorLine(state);
+		var pts0 = state.absolutePoints;
+		var anchor = (pts0 != null && pts0[0] != null) ?
+			new mxPoint(pts0[0].x / s - tr.x - o.x, pts0[0].y / s - tr.y - o.y) : null;
+
+		if (fixedAnchor && anchor != null)
+		{
+			// The far segment follows the mouse along the depth axis and flips to
+			// the other side of the anchor line when dragged past it (a small
+			// dead zone keeps the loop from collapsing onto the anchor line). The
+			// cross axis follows the mouse so the loop can also be moved along the
+			// shape.
+			if (spreadIsX)
+			{
+				// Top or bottom loop: depth axis is y
+				var fy = (mp.y >= anchor.y) ? Math.max(anchor.y + minDepth, mp.y) :
+					Math.min(anchor.y - minDepth, mp.y);
+
+				return [new mxPoint(mp.x - width / 2, fy),
+					new mxPoint(mp.x + width / 2, fy)];
+			}
+			else
+			{
+				// Left or right loop: depth axis is x
+				var fx = (mp.x >= anchor.x) ? Math.max(anchor.x + minDepth, mp.x) :
+					Math.min(anchor.x - minDepth, mp.x);
+
+				return [new mxPoint(fx, mp.y - width / 2),
+					new mxPoint(fx, mp.y + width / 2)];
+			}
+		}
+
+		// Boundary perimeter: the loop attaches to the actual perimeter point
+		// facing the mouse, so the far segment depth is measured from the real
+		// outline (not the bounding box) and the loop hugs non-rectangular shapes
+		// instead of floating off their bounding-box corners. The arm bases are
+		// also pulled in until they project onto a real perimeter point, avoiding
+		// the dead zones where some perimeters (e.g. parallelogram) collapse the
+		// terminal to the shape centre.
+		var cxc = bx + bw / 2;
+		var cyc = by + bh / 2;
+
+		var perim = function(px, py, orth)
+		{
+			var pp = state.view.getPerimeterPoint(source,
+				new mxPoint((px + tr.x + o.x) * s, (py + tr.y + o.y) * s), orth);
+
+			return (pp != null) ?
+				new mxPoint(pp.x / s - tr.x - o.x, pp.y / s - tr.y - o.y) : null;
+		};
+
+		// True when the two arm bases do not project onto two distinct real
+		// perimeter points: either one lands on the centre fallback, or both land
+		// on (nearly) the same point - both of which render as a collapsed/lopsided
+		// loop (e.g. two arms of a flat loop projecting to the same slanted-edge
+		// point). Uses the orthogonal projection to match how the terminal point is
+		// computed (getFloatingTerminalPoint), so the dead zones match exactly.
+		var loopBad = function(ax, ay, bx2, by2)
+		{
+			var pa = perim(ax, ay, true);
+			var pb = perim(bx2, by2, true);
+
+			if (pa == null || pb == null)
+			{
+				return true;
+			}
+
+			if ((Math.abs(pa.x - cxc) < 2 && Math.abs(pa.y - cyc) < 2) ||
+				(Math.abs(pb.x - cxc) < 2 && Math.abs(pb.y - cyc) < 2))
+			{
+				return true;
+			}
+
+			return Math.abs(pa.x - pb.x) < minDepth / 2 &&
+				Math.abs(pa.y - pb.y) < minDepth / 2;
+		};
+
+		// Perimeter point facing the mouse gives the loop side and the depth
+		var ap = perim(mp.x, mp.y, false);
+
+		if (ap == null || (Math.abs(ap.x - cxc) < 1 && Math.abs(ap.y - cyc) < 1))
+		{
+			ap = new mxPoint(cxc, cyc);
+		}
+
+		if (Math.abs(ap.y - cyc) >= Math.abs(ap.x - cxc))
+		{
+			// Top or bottom: arms spread horizontally (never below the gridSize
+			// floor, so the two arms cannot coincide on a thin/zero-width shape)
+			width = Math.max(this.gridSize, Math.min(width, bw));
+			var fy = (ap.y >= cyc) ? Math.max(ap.y + minDepth, mp.y) :
+				Math.min(ap.y - minDepth, mp.y);
+			var cx = Math.max(bx + width / 2, Math.min(bx + bw - width / 2, mp.x));
+
+			for (var i = 0; i <= bw / this.gridSize && loopBad(cx - width / 2, fy,
+				cx + width / 2, fy); i++)
+			{
+				cx = (cx < cxc) ? Math.min(cxc, cx + this.gridSize) :
+					Math.max(cxc, cx - this.gridSize);
+			}
+
+			// Then pushes the segment further out until both arm bases clear the
+			// outline (a slanted corner can project the terminal to the centre even
+			// at the bounding-box edge, so moving outward escapes that dead band)
+			var outY = (ap.y >= cyc) ? this.gridSize : -this.gridSize;
+
+			for (var i = 0; i <= (bw + bh) / this.gridSize && loopBad(cx - width / 2, fy,
+				cx + width / 2, fy); i++)
+			{
+				fy += outY;
+			}
+
+			return [new mxPoint(cx - width / 2, fy), new mxPoint(cx + width / 2, fy)];
+		}
+		else
+		{
+			// Right or left: arms spread vertically (never below the gridSize
+			// floor, so the two arms cannot coincide on a thin/zero-height shape)
+			width = Math.max(this.gridSize, Math.min(width, bh));
+			var fx = (ap.x >= cxc) ? Math.max(ap.x + minDepth, mp.x) :
+				Math.min(ap.x - minDepth, mp.x);
+			var cy = Math.max(by + width / 2, Math.min(by + bh - width / 2, mp.y));
+
+			for (var i = 0; i <= bh / this.gridSize && loopBad(fx, cy - width / 2,
+				fx, cy + width / 2); i++)
+			{
+				cy = (cy < cyc) ? Math.min(cyc, cy + this.gridSize) :
+					Math.max(cyc, cy - this.gridSize);
+			}
+
+			// Then pushes the segment further out until both arm bases clear the
+			// outline (a slanted corner can project the terminal to the centre even
+			// at the bounding-box edge, so moving outward escapes that dead band)
+			var outX = (ap.x >= cxc) ? this.gridSize : -this.gridSize;
+
+			for (var i = 0; i <= (bw + bh) / this.gridSize && loopBad(fx, cy - width / 2,
+				fx, cy + width / 2); i++)
+			{
+				fx += outX;
+			}
+
+			return [new mxPoint(fx, cy - width / 2), new mxPoint(fx, cy + width / 2)];
+		}
+	};
+
+	/**
+	 * Keeps the waypoints of a self-loop outside its shape so that the terminal
+	 * anchors stay on the shape perimeter (the edge the loop sits against)
+	 * instead of collapsing to the shape center when a waypoint is dragged into
+	 * the shape. The loop's "home" edge is the one its body extends past the
+	 * most; any waypoint inside the shape is pushed out to that edge so the
+	 * adjacent terminal exits perpendicular to it.
+	 */
+	Graph.prototype.keepLoopOutsideShape = function(state, points)
+	{
+		var source = (state != null) ? state.getVisibleTerminalState(true) : null;
+
+		if (source == null || points == null || points.length == 0)
+		{
+			return points;
+		}
+
+		var s = state.view.scale;
+		var tr = state.view.translate;
+		var o = state.origin;
+		var bx = source.x / s - tr.x - o.x;
+		var by = source.y / s - tr.y - o.y;
+		var bw = source.width / s;
+		var bh = source.height / s;
+
+		// Shapes whose perimeter pins the anchor to a fixed internal line (e.g. a
+		// lifeline spine) may overlap, so the waypoints are left as-is (the
+		// anchors do not collapse to the center). Other shapes keep the loop out.
+		if (this.loopHasFixedAnchorLine(state))
+		{
+			return points;
+		}
+
+		var cxc = bx + bw / 2;
+		var cyc = by + bh / 2;
+		var m = this.gridSize;
+		var result = [];
+
+		for (var i = 0; i < points.length; i++)
+		{
+			var p = points[i];
+
+			if (p == null)
+			{
+				result.push(p);
+				continue;
+			}
+
+			var q = new mxPoint(p.x, p.y);
+
+			// A waypoint counts as inside only when it is closer to the centre
+			// than the actual perimeter in its direction, so a point in an empty
+			// bounding-box corner (triangle, parallelogram, ...) is left alone and
+			// the loop can hug the real outline. Inside points are pushed just past
+			// the perimeter along their own ray so the adjacent terminal projects
+			// to a real perimeter point instead of collapsing to the centre.
+			var pp = state.view.getPerimeterPoint(source,
+				new mxPoint((p.x + tr.x + o.x) * s, (p.y + tr.y + o.y) * s), false);
+
+			if (pp != null)
+			{
+				var ppx = pp.x / s - tr.x - o.x;
+				var ppy = pp.y / s - tr.y - o.y;
+				var ux = p.x - cxc;
+				var uy = p.y - cyc;
+				var dp = Math.sqrt(ux * ux + uy * uy);
+				var dpp = Math.sqrt((ppx - cxc) * (ppx - cxc) + (ppy - cyc) * (ppy - cyc));
+
+				if (dp < dpp - 0.5)
+				{
+					// Degenerate centre point: push straight down by default
+					if (dp < 1)
+					{
+						ux = 0;
+						uy = 1;
+						dp = 1;
+					}
+
+					q.x = ppx + (ux / dp) * m;
+					q.y = ppy + (uy / dp) * m;
+				}
+			}
+
+			result.push(q);
+		}
+
+		return result;
+	};
+
 	/**
 	 * Returns information about the current selection.
 	 */
@@ -4549,7 +6133,7 @@ Graph.prototype.destroy = function()
 	/**
 	 * Copies the style of the given cells to the given vertex and edge style.
 	 */
-	Graph.prototype.copyCellStyles = function(cells, keys, values, vertexStyle, edgeStyle, vertexStyleIgnored, edgeStyleIgnored)
+	Graph.prototype.copyCellStyles = function(cells, keys, values, vertexStyle, edgeStyle, vertexStyleIgnored, edgeStyleIgnored, edgeLabel)
 	{
 		var vertex = false;
 		var edge = false;
@@ -4585,7 +6169,9 @@ Graph.prototype.destroy = function()
 			{
 				if (mxUtils.indexOf(Graph.cellStyles, keys[i]) >= 0 || keys[i] == 'shape')
 				{
-					if (keys[i] != 'shape' && (vertex || common))
+					// Shared text styles also update the vertex default unless it was
+					// pinned via setDefaultStyle; edge labels never touch it
+					if (keys[i] != 'shape' && (vertex || (common && !vertexStyleIgnored)) && !edgeLabel)
 					{
 						if (values[i] == null)
 						{
@@ -4596,8 +6182,10 @@ Graph.prototype.destroy = function()
 							vertexStyle[keys[i]] = values[i];
 						}
 					}
-					
-					if (edge || common)
+
+					// Shared text styles also update the edge default unless it was
+					// pinned via setDefaultStyle
+					if (edge || (common && !edgeStyleIgnored))
 					{
 						if (values[i] == null)
 						{
@@ -4619,23 +6207,56 @@ Graph.prototype.destroy = function()
 	Graph.prototype.includeDescendants = function(cells)
 	{
 		var result = [];
-			
+
 		for (var i = 0; i < cells.length; i++)
 		{
 			result = result.concat(this.model.getDescendants(cells[i]));
 		}
-		
+
+		return result;
+	};
+
+	/**
+	 * Returns the given cells including all descendants that are constituents
+	 * of a composite shape (part=1 in the style), as those cannot be styled
+	 * independently of their parent.
+	 */
+	Graph.prototype.includeDescendantParts = function(cells)
+	{
+		var result = cells.slice();
+
+		var addParts = mxUtils.bind(this, function(cell)
+		{
+			for (var i = 0; i < this.model.getChildCount(cell); i++)
+			{
+				var child = this.model.getChildAt(cell, i);
+
+				if (mxUtils.getValue(this.getCurrentCellStyle(child),
+					'part', '0') == '1')
+				{
+					result.push(child);
+					addParts(child);
+				}
+			}
+		});
+
+		for (var i = 0; i < cells.length; i++)
+		{
+			addParts(cells[i]);
+		}
+
 		return result;
 	};
 
 	/**
 	 * 
 	 */
-	Graph.prototype.pasteCellStyles = function(cells, vertexStyle, edgeStyle, force, pasteEdgeStyle)
+	Graph.prototype.pasteCellStyles = function(cells, vertexStyle, edgeStyle, force, pasteEdgeStyle, pasteStylesToText)
 	{
 		vertexStyle = (vertexStyle != null) ? vertexStyle : this.currentVertexStyle;
 		edgeStyle = (edgeStyle != null) ? edgeStyle : this.currentEdgeStyle;
 		pasteEdgeStyle = (pasteEdgeStyle != null) ? pasteEdgeStyle : this.pasteEdgeStyle;
+		pasteStylesToText = (pasteStylesToText != null) ? pasteStylesToText : this.pasteStylesToText;
 
 		this.model.beginUpdate();
 		try
@@ -4653,11 +6274,19 @@ Graph.prototype.destroy = function()
 					pairs = cell.style.split(';');
 					isText = isText || mxUtils.indexOf(pairs, 'text') >= 0;
 				}
-				
-				if (isText)
+
+				// Edge labels (vertex children of edges) only receive text styles and
+				// take them from the edge style so they match the edge's own label
+				var isEdgeLabel = this.model.isVertex(cell) &&
+					this.model.isEdge(this.model.getParent(cell));
+
+				if (isText || isEdgeLabel)
 				{
-					// Applies only basic text styles
-					appliedStyles = Graph.textStyles;
+					// Applies only basic text styles unless the default style was
+					// set from a text cell (edge labels always use basic text
+					// styles so they stay consistent with the edge's own label)
+					appliedStyles = (isText && !isEdgeLabel && pasteStylesToText) ?
+						Graph.cellStyles : Graph.textStyles;
 				}
 				else
 				{
@@ -4708,7 +6337,7 @@ Graph.prototype.destroy = function()
 				
 				// Applies the current style to the cell
 				var edge = this.model.isEdge(cell);
-				var current = (edge) ? edgeStyle : vertexStyle;
+				var current = (edge || isEdgeLabel) ? edgeStyle : vertexStyle;
 
 				for (var j = 0; j < appliedStyles.length; j++)
 				{
@@ -5067,6 +6696,43 @@ Graph.prototype.destroy = function()
 	};
 	
 	/**
+	 * Overridden to change the order of the enclosing table for selected
+	 * table cells and rows, whose child order defines their column and row
+	 * position rather than the paint order. Cells passed in explicitly are
+	 * ordered in-place like before.
+	 */
+	Graph.prototype.orderCells = function(back, cells, increment)
+	{
+		if (cells == null)
+		{
+			cells = mxUtils.sortCells(this.getEditableCells(
+				this.getSelectionCells()), true);
+			var lookup = new mxDictionary();
+			var temp = [];
+
+			for (var i = 0; i < cells.length; i++)
+			{
+				var cell = cells[i];
+
+				while (this.isTableCell(cell) || this.isTableRow(cell))
+				{
+					cell = this.model.getParent(cell);
+				}
+
+				if (!lookup.get(cell))
+				{
+					lookup.put(cell, true);
+					temp.push(cell);
+				}
+			}
+
+			cells = temp;
+		}
+
+		return mxGraph.prototype.orderCells.call(this, back, cells, increment);
+	};
+	
+	/**
 	 * Returns the selection cells where the given function returns false.
 	 */
 	Graph.prototype.filterSelectionCells = function(ignoreFn)
@@ -5266,9 +6932,26 @@ Graph.prototype.destroy = function()
 				var s = Math.round(this.currentScale * 100) / 100;
 				var dx = Math.round(this.currentTranslate.x * 100) / 100;
 				var dy = Math.round(this.currentTranslate.y * 100) / 100;
+
+				// A smooth animation step (viewbox with smooth:true) arms a
+				// `transition: transform` on this node and sets
+				// armTransformTransition so the change below animates. Every
+				// other transform update (toolbar zoom/fit, wheel zoom,
+				// programmatic fit) finds the flag unset and strips the
+				// transition first, so the viewport snaps instantly instead
+				// of inheriting the animation's easing.
+				if (this.armTransformTransition)
+				{
+					this.armTransformTransition = false;
+				}
+				else if (g.style.transition != '')
+				{
+					g.style.transition = '';
+				}
+
 				g.setAttribute('transform', 'scale(' + s + ',' + s + ')' +
 					'translate(' + dx + ',' + dy + ')');
-	
+
 				// Applies workarounds only if translate has changed
 				if (prev != g.getAttribute('transform'))
 				{
@@ -5402,12 +7085,12 @@ Graph.prototype.openLink = function(href, target, allowOpener)
 					
 					window.location.hash = hash;
 				}
-				else
+				else if (!Editor.suppressNewWindows)
 				{
 					result = window.open(href, (target != null) ?
 						target : '_blank', (!allowOpener) ?
 						'noopener,noreferrer' : null);
-					
+
 					if (result != null && !allowOpener)
 					{
 						result.opener = null;
@@ -5527,14 +7210,21 @@ Graph.prototype.initLayoutManager = function()
 			this.hasLayout(parent, eventName)))
 		{
 			var style = this.graph.getCellStyle(cell);
-			
+
+			// transparentBounds parents derive their size from their children and
+			// must keep geometry pinned at (0,0,0,0); disable any fill or parent
+			// resize below so the layout still positions children but never reads
+			// or writes the (0,0,0,0) parent geometry (which would collapse the
+			// children and corrupt the pin).
+			var transparentParent = this.graph.isTransparentBounds(cell);
+
 			if (style['childLayout'] == 'stackLayout')
 			{
 				var stackLayout = new mxStackLayout(this.graph, true);
-				stackLayout.resizeParentMax = mxUtils.getValue(style, 'resizeParentMax', '1') == '1';
+				stackLayout.resizeParentMax = !transparentParent && mxUtils.getValue(style, 'resizeParentMax', '1') == '1';
 				stackLayout.horizontal = mxUtils.getValue(style, 'horizontalStack', '1') == '1';
-				stackLayout.resizeParent = mxUtils.getValue(style, 'resizeParent', '1') == '1';
-				stackLayout.resizeLast = mxUtils.getValue(style, 'resizeLast', '0') == '1';
+				stackLayout.resizeParent = !transparentParent && mxUtils.getValue(style, 'resizeParent', '1') == '1';
+				stackLayout.resizeLast = !transparentParent && mxUtils.getValue(style, 'resizeLast', '0') == '1';
 				stackLayout.spacing = style['stackSpacing'] || stackLayout.spacing;
 				stackLayout.border = style['stackBorder'] || stackLayout.border;
 				stackLayout.marginLeft = style['marginLeft'] || 0;
@@ -5542,7 +7232,7 @@ Graph.prototype.initLayoutManager = function()
 				stackLayout.marginTop = style['marginTop'] || 0;
 				stackLayout.marginBottom = style['marginBottom'] || 0;
 				stackLayout.allowGaps = style['allowGaps'] || 0;
-				stackLayout.fill = true;
+				stackLayout.fill = !transparentParent;
 				
 				if (stackLayout.allowGaps)
 				{
@@ -5555,7 +7245,7 @@ Graph.prototype.initLayoutManager = function()
 			{
 				var treeLayout = new mxCompactTreeLayout(this.graph);
 				treeLayout.horizontal = mxUtils.getValue(style, 'horizontalTree', '1') == '1';
-				treeLayout.resizeParent = mxUtils.getValue(style, 'resizeParent', '1') == '1';
+				treeLayout.resizeParent = !transparentParent && mxUtils.getValue(style, 'resizeParent', '1') == '1';
 				treeLayout.sortEdges = mxUtils.getValue(style, 'sortEdges', '0') == '1';
 				treeLayout.groupPadding = mxUtils.getValue(style, 'parentPadding', 20);
 				treeLayout.levelDistance = mxUtils.getValue(style, 'treeLevelDistance', 30);
@@ -5569,7 +7259,7 @@ Graph.prototype.initLayoutManager = function()
 			{
 				var flowLayout = new mxHierarchicalLayout(this.graph, mxUtils.getValue(style,
 					'flowOrientation', mxConstants.DIRECTION_EAST));
-				flowLayout.resizeParent = mxUtils.getValue(style, 'resizeParent', '1') == '1';
+				flowLayout.resizeParent = !transparentParent && mxUtils.getValue(style, 'resizeParent', '1') == '1';
 				flowLayout.parentBorder = mxUtils.getValue(style, 'parentPadding', 20);
 				flowLayout.maintainParentLocation = true;
 				
@@ -5587,7 +7277,119 @@ Graph.prototype.initLayoutManager = function()
 			}
 			else if (style['childLayout'] == 'circleLayout')
 			{
-				return new mxCircleLayout(this.graph);
+				var circleLayout = new mxCircleLayout(this.graph);
+				circleLayout.resizeParent = !transparentParent &&
+					mxUtils.getValue(style, 'resizeParent', '1') == '1';
+
+				// Anchors the circle below the title bar (or right of it for
+				// sideways swimlane titles) instead of at the parent origin.
+				var startSize = parseFloat(mxUtils.getValue(style,
+					mxConstants.STYLE_STARTSIZE, mxConstants.DEFAULT_STARTSIZE));
+				startSize = (isNaN(startSize)) ? mxConstants.DEFAULT_STARTSIZE : startSize;
+				var sideTitle = mxUtils.getValue(style,
+					mxConstants.STYLE_HORIZONTAL, '1') == '0';
+				circleLayout.moveCircle = true;
+				circleLayout.x0 = (sideTitle) ? startSize + 20 : 20;
+				circleLayout.y0 = (sideTitle) ? 20 : startSize + 20;
+
+				// mxCircleLayout has no parent resize — fit the container to
+				// the laid-out circle (position untouched) so the circle can't
+				// outgrow it, mirroring the other layout containers. The write
+				// is skipped when the size is unchanged so repeated manager
+				// passes converge.
+				var layoutGraph = this.graph;
+				var circleExecute = circleLayout.execute;
+
+				circleLayout.execute = function(parent)
+				{
+					var model = layoutGraph.getModel();
+
+					// Top-left of the parent's current content. For a
+					// transparentBounds parent the children carry the absolute
+					// position, so the parent-relative x0/y0 frame above would
+					// re-plant the ring near the page origin on every run —
+					// anchor the result at the content's pre-run top-left
+					// instead, like the ELK bridge does for transparent roots.
+					var contentMin = function()
+					{
+						var min = null;
+						var count = model.getChildCount(parent);
+
+						for (var i = 0; i < count; i++)
+						{
+							var child = model.getChildAt(parent, i);
+							var geo = (model.isVertex(child)) ?
+								model.getGeometry(child) : null;
+
+							if (geo != null && !geo.relative)
+							{
+								min = (min == null) ? new mxPoint(geo.x, geo.y) :
+									new mxPoint(Math.min(min.x, geo.x),
+										Math.min(min.y, geo.y));
+							}
+						}
+
+						return min;
+					};
+
+					var pre = (transparentParent) ? contentMin() : null;
+
+					circleExecute.apply(this, arguments);
+
+					if (pre != null)
+					{
+						var post = contentMin();
+
+						if (post != null && (pre.x != post.x || pre.y != post.y))
+						{
+							var count = model.getChildCount(parent);
+
+							for (var i = 0; i < count; i++)
+							{
+								var child = model.getChildAt(parent, i);
+								var geo = (model.isVertex(child)) ?
+									model.getGeometry(child) : null;
+
+								if (geo != null && !geo.relative)
+								{
+									layoutGraph.translateCell(child,
+										pre.x - post.x, pre.y - post.y);
+								}
+							}
+						}
+					}
+
+					var pgeo = model.getGeometry(parent);
+
+					if (this.resizeParent && pgeo != null)
+					{
+						var w = 0;
+						var h = 0;
+						var childCount = model.getChildCount(parent);
+
+						for (var i = 0; i < childCount; i++)
+						{
+							var geo = model.getGeometry(model.getChildAt(parent, i));
+
+							if (geo != null && !geo.relative)
+							{
+								w = Math.max(w, geo.x + geo.width);
+								h = Math.max(h, geo.y + geo.height);
+							}
+						}
+
+						if (w > 0 && h > 0 && (pgeo.width != w + 20 ||
+							pgeo.height != h + 20))
+						{
+							pgeo = pgeo.clone();
+							pgeo.width = w + 20;
+							pgeo.height = h + 20;
+							model.setGeometry(parent, pgeo);
+						}
+					}
+				};
+
+				return circleLayout;
 			}
 			else if (style['childLayout'] == 'organicLayout')
 			{
@@ -5597,14 +7399,28 @@ Graph.prototype.initLayoutManager = function()
 			{
 				return new TableLayout(this.graph);
 			}
-			else if (style['childLayout'] != null &&
-				String(style['childLayout']).charAt(0) == '[')
+			else if (style['childLayout'] != null)
 			{
+				// JSON custom-layout array form, URL-encoded when written
+				// (raw '[' JSON from older files still decodes) — see
+				// Graph.encodeChildLayout / decodeChildLayout. Unknown
+				// plain-string values decode to null and fall through.
 				try
 				{
-					return new mxCompositeLayout(this.graph,
-						this.graph.createLayouts(JSON.parse(
-							style['childLayout'])));
+					var list = Graph.decodeChildLayout(style['childLayout']);
+
+					if (list != null)
+					{
+						// Manager re-runs treat the spec's corners as a default
+						// for edges that never had an explicit rounded/curved
+						// choice — a user's sharp/rounded/curved pick on an edge
+						// survives ordinary edits instead of being re-stamped on
+						// every change. Explicit gestures re-theme all edges via
+						// ElkLayout.applyCorners in setContainerChildLayout.
+						return new mxCompositeLayout(this.graph,
+							this.graph.createLayouts(list,
+								{enforceCorners: false}));
+					}
 				}
 				catch (e)
 				{
@@ -5615,37 +7431,507 @@ Graph.prototype.initLayoutManager = function()
 				}
 			}
 		}
-		
+
 		return null;
 	};
+
+	// Prepare-based layouts (ELK, libavoid) don't fit the manager's
+	// synchronous pass as-is. When every such member offers executeSync
+	// (ELK on the native port), run it here inside the triggering edit —
+	// the manager fires from the model's BEFORE_UNDO hook, so the layout
+	// writes fold into the same undoable edit like the legacy layouts
+	// (single undo step, exactly one run per outermost transaction, no
+	// re-trigger thanks to mxGraphModel's endingUpdate latch). Otherwise
+	// (engine without a sync API, libavoid's WASM still loading) queue the
+	// layout on the async scheduler; see Graph.prototype.scheduleAsyncLayout
+	// for the guards that keep change-triggered re-runs from looping.
+	this.layoutManager.executeLayout = function(cell, bubble)
+	{
+		// A change on a cell that is not (or no longer) in the model must not
+		// run its layout: pasteCellStyles records style changes on clones
+		// BEFORE they are inserted (e.g. the sidebar tooltip preview), so a
+		// childLayout container reaches this as a half-constructed, id-less
+		// cell tree (ELK's JSON converter throws on the null ids). The insert
+		// that follows re-triggers the layout with the cells in the model —
+		// same guard the async path has (scheduleAsyncLayout/runAsyncLayout).
+		if (!this.graph.model.contains(cell))
+		{
+			return;
+		}
+
+		var layout = this.getLayout(cell, (bubble) ?
+			mxEvent.BEGIN_UPDATE : mxEvent.END_UPDATE);
+
+		if (layout != null)
+		{
+			if (this.graph.isAsyncLayout(layout))
+			{
+				if (this.graph.canExecuteLayoutSync(layout))
+				{
+					this.graph.executeLayoutSync(layout, cell);
+				}
+				else
+				{
+					this.graph.scheduleAsyncLayout(cell);
+				}
+			}
+			else
+			{
+				layout.execute(cell);
+			}
+		}
+	};
+};
+
+/**
+ * Returns true if every prepare-based member of the given (possibly
+ * composite) layout can run synchronously right now via executeSync.
+ */
+Graph.prototype.canExecuteLayoutSync = function(layout)
+{
+	var layouts = (layout.constructor === mxCompositeLayout &&
+		layout.layouts != null) ? layout.layouts : [layout];
+
+	for (var i = 0; i < layouts.length; i++)
+	{
+		if (typeof layouts[i].prepare === 'function' &&
+			(typeof layouts[i].executeSync !== 'function' ||
+			(typeof layouts[i].canExecuteSync === 'function' &&
+			!layouts[i].canExecuteSync())))
+		{
+			return false;
+		}
+	}
+
+	return true;
+};
+
+/**
+ * Runs the given (possibly composite) layout synchronously, using
+ * executeSync for the prepare-based members. Errors are contained per
+ * member: this runs inside the model's BEFORE_UNDO dispatch, where a
+ * throwing layout would otherwise abort the user's own edit.
+ */
+Graph.prototype.executeLayoutSync = function(layout, cell)
+{
+	var layouts = (layout.constructor === mxCompositeLayout &&
+		layout.layouts != null) ? layout.layouts : [layout];
+
+	for (var i = 0; i < layouts.length; i++)
+	{
+		try
+		{
+			if (typeof layouts[i].prepare === 'function' &&
+				typeof layouts[i].executeSync === 'function')
+			{
+				layouts[i].executeSync(cell);
+			}
+			else
+			{
+				layouts[i].execute(cell);
+			}
+		}
+		catch (e)
+		{
+			if (window.console != null)
+			{
+				console.error(e);
+			}
+		}
+	}
+};
+
+/**
+ * Returns true if the given layout (or any member of a composite layout)
+ * runs asynchronously via a prepare(parent, callback) contract instead of
+ * a synchronous execute (ELK layouts, the libavoid routing adapter).
+ */
+Graph.prototype.isAsyncLayout = function(layout)
+{
+	if (layout == null)
+	{
+		return false;
+	}
+
+	if (typeof layout.prepare === 'function')
+	{
+		return true;
+	}
+
+	if (layout.constructor === mxCompositeLayout && layout.layouts != null)
+	{
+		for (var i = 0; i < layout.layouts.length; i++)
+		{
+			if (typeof layout.layouts[i].prepare === 'function')
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+};
+
+/**
+ * Queues an asynchronous childLayout run for the given container — the
+ * fallback path for prepare-based layouts that cannot run synchronously
+ * inside the triggering edit (see canExecuteLayoutSync): engines without a
+ * sync API and libavoid while its WASM loads. Runs are deduplicated per
+ * cell, started on the next tick and chained sequentially, children before
+ * parents. While a run is in flight further changes to the container mark
+ * it dirty and trigger exactly one follow-up run.
+ *
+ * Loop protection: the container's own apply writes are ignored via
+ * asyncLayoutsApplying, so a run cannot re-trigger itself directly. Indirect
+ * cycles (e.g. nested async containers re-triggering each other) terminate
+ * because the async layouts skip value-equal writes — an unchanged result
+ * produces an empty model edit, which the layout manager never sees.
+ */
+Graph.prototype.scheduleAsyncLayout = function(cell)
+{
+	if (cell == null || this.destroyed)
+	{
+		return;
+	}
+
+	if (this.asyncLayoutsApplying != null &&
+		this.asyncLayoutsApplying[cell.id])
+	{
+		return;
+	}
+
+	if (this.asyncLayoutsRunning != null &&
+		this.asyncLayoutsRunning[cell.id] != null)
+	{
+		this.asyncLayoutsRunning[cell.id] = 'dirty';
+
+		return;
+	}
+
+	this.pendingAsyncLayouts = this.pendingAsyncLayouts || [];
+
+	if (mxUtils.indexOf(this.pendingAsyncLayouts, cell) < 0)
+	{
+		this.pendingAsyncLayouts.push(cell);
+	}
+
+	if (!this.asyncLayoutsScheduled)
+	{
+		this.asyncLayoutsScheduled = true;
+
+		window.setTimeout(mxUtils.bind(this, function()
+		{
+			this.asyncLayoutsScheduled = false;
+			var pending = this.pendingAsyncLayouts;
+			this.pendingAsyncLayouts = [];
+
+			// Children before parents so an outer container's layout sees
+			// the final size of the inner containers it lays out.
+			var depth = function(cell)
+			{
+				var d = 0;
+
+				while (cell != null)
+				{
+					d++;
+					cell = cell.parent;
+				}
+
+				return d;
+			};
+
+			pending.sort(function(a, b)
+			{
+				return depth(b) - depth(a);
+			});
+
+			var idx = 0;
+
+			var next = mxUtils.bind(this, function()
+			{
+				if (idx < pending.length)
+				{
+					this.runAsyncLayout(pending[idx++], next);
+				}
+			});
+
+			next();
+		}), 0);
+	}
+};
+
+/**
+ * Runs the async childLayout of the given container and invokes done when
+ * finished. Composite layouts run their members sequentially; synchronous
+ * members execute inline between the async ones. Skips containers that were
+ * removed from the model, collapsed, or whose style no longer resolves to
+ * an async layout while queued.
+ */
+Graph.prototype.runAsyncLayout = function(cell, done)
+{
+	var model = this.getModel();
+	done = (done != null) ? done : function() { };
+
+	if (this.destroyed || this.layoutManager == null ||
+		!model.contains(cell) || this.isCellCollapsed(cell))
+	{
+		done();
+
+		return;
+	}
+
+	var layout = this.layoutManager.getLayout(cell, mxEvent.END_UPDATE);
+
+	if (layout == null || !this.isAsyncLayout(layout))
+	{
+		done();
+
+		return;
+	}
+
+	var layouts = (layout.constructor === mxCompositeLayout &&
+		layout.layouts != null) ? layout.layouts : [layout];
+
+	this.asyncLayoutsRunning = this.asyncLayoutsRunning || {};
+	this.asyncLayoutsRunning[cell.id] = 'running';
+	this.asyncLayoutsApplying = this.asyncLayoutsApplying || {};
+
+	var graph = this;
+	var i = 0;
+
+	// Marks the container so its own writes don't re-schedule it (the
+	// layout manager reacts to the apply transaction like to any other
+	// change), then folds the changes into a single undoable edit.
+	var applyGuarded = function(fn)
+	{
+		graph.asyncLayoutsApplying[cell.id] = true;
+		model.beginUpdate();
+		try
+		{
+			fn();
+		}
+		finally
+		{
+			model.endUpdate();
+			delete graph.asyncLayoutsApplying[cell.id];
+		}
+	};
+
+	var finish = function()
+	{
+		var rerun = graph.asyncLayoutsRunning[cell.id] == 'dirty';
+		delete graph.asyncLayoutsRunning[cell.id];
+
+		if (rerun)
+		{
+			graph.scheduleAsyncLayout(cell);
+		}
+
+		done();
+	};
+
+	var next = function()
+	{
+		if (i >= layouts.length || graph.destroyed || !model.contains(cell))
+		{
+			finish();
+
+			return;
+		}
+
+		var current = layouts[i++];
+
+		try
+		{
+			if (typeof current.prepare === 'function')
+			{
+				current.prepare(cell, function(err, apply)
+				{
+					if (err == null && apply != null &&
+						!graph.destroyed && model.contains(cell))
+					{
+						try
+						{
+							applyGuarded(apply);
+						}
+						catch (e)
+						{
+							if (window.console != null)
+							{
+								console.error(e);
+							}
+						}
+					}
+					else if (err != null && window.console != null)
+					{
+						console.error(err);
+					}
+
+					next();
+				});
+			}
+			else
+			{
+				applyGuarded(function()
+				{
+					current.execute(cell);
+				});
+
+				next();
+			}
+		}
+		catch (e)
+		{
+			if (window.console != null)
+			{
+				console.error(e);
+			}
+
+			next();
+		}
+	};
+
+	next();
+};
+
+/**
+ * Serializes a custom-layout array (see createLayouts) into the childLayout
+ * style value. URL-encoded (like fontSource) so that no ';' or '=' from the
+ * JSON can corrupt the key=value; parsing of the cell style — a ';' inside
+ * the raw JSON would terminate the childLayout key.
+ */
+Graph.encodeChildLayout = function(list)
+{
+	return encodeURIComponent(JSON.stringify(list));
+};
+
+/**
+ * Returns the custom-layout array for a childLayout style value in the JSON
+ * form, or null for the legacy string values (stackLayout, circleLayout, …).
+ * Accepts the URL-encoded form written by encodeChildLayout as well as the
+ * raw '[' JSON written before the encoding existed (files saved by older
+ * versions must keep their live layouts). Throws on malformed input like
+ * JSON.parse — callers handle it like any invalid childLayout.
+ */
+Graph.decodeChildLayout = function(value)
+{
+	if (value != null)
+	{
+		value = String(value);
+
+		if (value.charAt(0) == '%')
+		{
+			value = decodeURIComponent(value);
+		}
+
+		if (value.charAt(0) == '[')
+		{
+			return JSON.parse(value);
+		}
+	}
+
+	return null;
+};
+
+/**
+ * Returns the style object for a newEdgeStyle style value, or null for a
+ * null value. Accepts the URL-encoded form (like childLayout/fontSource, so
+ * that no ';' or '=' from the JSON can corrupt the key=value; parsing of the
+ * cell style) as well as the raw '{' JSON. Throws on malformed input like
+ * JSON.parse — callers handle it like any invalid newEdgeStyle.
+ */
+Graph.decodeNewEdgeStyle = function(value)
+{
+	if (value != null)
+	{
+		value = String(value);
+
+		if (value.charAt(0) == '%')
+		{
+			value = decodeURIComponent(value);
+		}
+
+		return JSON.parse(value);
+	}
+
+	return null;
 };
 
 /**
  * Creates an array of graph layouts from the given array of the form [{layout: name, config: obj}, ...]
  * where name is the layout constructor name and config contains the properties of the layout instance.
+ *
+ * For ELK layouts (elkLayered / elkTree / elkRadial / elkOrganic / elkStress /
+ * elkDisco / elkBox) the config is split: keys starting with `elk.` are
+ * forwarded as ELK layout options; bare keys (edgeStyle, corners, resizeNodes,
+ * preserveOrigin, rootCellIds, useViewStateSizing, respectFixedPosition,
+ * mermaidPolicy, sharedStems, nonTreeEdges) are mapped to the ElkLayout constructor's
+ * `options` argument. The optional elkOptions argument overrides those
+ * options per call site (the layout manager passes enforceCorners=false so
+ * childLayout re-runs don't clobber per-edge corner choices) — it never
+ * touches non-ELK layouts.
  */
-Graph.prototype.createLayouts = function(list)
+Graph.prototype.createLayouts = function(list, elkOptions)
 {
 	var layouts = [];
 
 	for (var i = 0; i < list.length; i++)
 	{
-		if (mxUtils.indexOf(Graph.layoutNames, list[i].layout) >= 0)
+		var layoutName = list[i].layout;
+		var config = list[i].config;
+
+		if (Graph.elkLayoutAlgorithms[layoutName] != null)
+		{
+			if (typeof ElkLayout === 'undefined')
+			{
+				throw Error(mxResources.get('invalidCallFnNotFound', [layoutName]));
+			}
+
+			var split = Graph.elkConfigToOptions(config);
+
+			if (elkOptions != null)
+			{
+				for (var key in elkOptions)
+				{
+					split.options[key] = elkOptions[key];
+				}
+			}
+
+			layouts.push(new ElkLayout(this,
+				Graph.elkLayoutAlgorithms[layoutName],
+				split.layoutOptions, split.options));
+		}
+		else if (typeof LibavoidRouting !== 'undefined' &&
+			layoutName === LibavoidRouting.LAYOUT_NAME)
+		{
+			// libavoid orthogonal edge routing — not an mxGraphLayout; an async
+			// prepare() adapter (the WASM router may still be loading), like ELK.
+			layouts.push(LibavoidRouting.createLayout(this, config));
+		}
+		else if (mxUtils.indexOf(Graph.layoutNames, layoutName) >= 0)
 		{
 			// Handles special case of branch optimizer in orgchart
-			var layout = (list[i].layout == 'mxOrgChartLayout' && list[i].config != null) ?
-				new window[list[i].layout](this, list[i].config['branchOptimizer']) :
-				new window[list[i].layout](this);
+			var layout = (layoutName == 'mxOrgChartLayout' && config != null) ?
+				new window[layoutName](this, config['branchOptimizer']) :
+				new window[layoutName](this);
 
-			if (list[i].config != null)
+			if (config != null)
 			{
-				for (var key in list[i].config)
+				for (var key in config)
 				{
-					// Ignores branch optimizer in orgchart (handled above)
-					if (list[i].layout != 'mxOrgChartLayout' ||
-						key != 'branchOptimizer')
+					// Never overwrite a layout METHOD (execute, moveCell,
+					// resizeCell, …): config values are scalar tuning
+					// parameters, so a key whose current value is a function
+					// can only be a spec author clobbering the layout — and a
+					// broken execute would then throw out of the manager's
+					// BEFORE_UNDO dispatch on every edit, silently killing the
+					// container's undo history. Also skips the orgchart branch
+					// optimizer (handled above).
+					if (typeof layout[key] !== 'function' &&
+						(layoutName != 'mxOrgChartLayout' ||
+						key != 'branchOptimizer'))
 					{
-						layout[key] = list[i].config[key];
+						layout[key] = config[key];
 					}
 				}
 			}
@@ -5654,11 +7940,154 @@ Graph.prototype.createLayouts = function(list)
 		}
 		else
 		{
-			throw Error(mxResources.get('invalidCallFnNotFound', [list[i].layout]));
+			throw Error(mxResources.get('invalidCallFnNotFound', [layoutName]));
 		}
 	}
 
 	return layouts;
+};
+
+/**
+ * Splits a JSON `config` object for an ELK layout into the two argument
+ * shapes the ElkLayout constructor expects:
+ *
+ *   layoutOptions — every key starting with `elk.` (forwarded verbatim to ELK)
+ *   options       — bare keys recognized by the bridge:
+ *       edgeStyle    → edgeStyleMode
+ *       corners      → corners
+ *       resizeNodes  → applierOptions.resizeParent
+ *       preserveOrigin / rootCellIds / useViewStateSizing /
+ *       respectFixedPosition / mermaidPolicy / sharedStems
+ *       (mrtree stem collapse, default true) / nonTreeEdges
+ *       (mrtree non-tree edges: 'route' overlays them via libavoid or
+ *       orthogonalEdgeStyle, 'elk' keeps mrtree's own routing) / groupPadding
+ *       (container padding base, number or CSS-style string) → passed through
+ *
+ * Unknown bare keys are ignored. The function is exported on Graph so the
+ * custom layout dialog's Add dropdown can use the inverse mapping when it
+ * captures a dialog config and writes it to JSON.
+ */
+Graph.elkConfigToOptions = function(config)
+{
+	var layoutOptions = {};
+	var options = {};
+
+	if (config != null)
+	{
+		for (var key in config)
+		{
+			if (key.indexOf('elk.') === 0)
+			{
+				layoutOptions[key] = config[key];
+			}
+			else if (key === 'edgeStyle')
+			{
+				options.edgeStyleMode = config[key];
+			}
+			else if (key === 'corners')
+			{
+				options.corners = config[key];
+			}
+			else if (key === 'resizeNodes')
+			{
+				options.applierOptions = options.applierOptions || {};
+				options.applierOptions.resizeParent = !!config[key];
+			}
+			else if (key === 'preserveOrigin' || key === 'useViewStateSizing' ||
+				key === 'respectFixedPosition' || key === 'mermaidPolicy' ||
+				key === 'includeEdgeLabels' || key === 'includeVertexLabels' ||
+				key === 'portSpread' || key === 'resizeLayoutRoot' ||
+				key === 'extractIsolated' || key === 'sharedStems' ||
+				key === 'nonTreeEdges' || key === 'groupPadding')
+			{
+				options[key] = config[key];
+			}
+			else if (key === 'rootCellIds')
+			{
+				options.rootCellIds = config[key];
+			}
+		}
+	}
+
+	return {layoutOptions: layoutOptions, options: options};
+};
+
+/**
+ * Inverse of elkConfigToOptions: takes the (layoutOptions, runOptions) pair
+ * built by the ELK config dialog and produces a flat `config` object suitable
+ * for the custom-layout JSON. Only fields that actually deviate from defaults
+ * are written, so saved JSON stays compact.
+ */
+Graph.elkOptionsToConfig = function(layoutOptions, runOptions)
+{
+	var config = {};
+
+	if (layoutOptions != null)
+	{
+		for (var key in layoutOptions)
+		{
+			config[key] = layoutOptions[key];
+		}
+	}
+
+	if (runOptions != null)
+	{
+		if (runOptions.edgeStyleMode != null && runOptions.edgeStyleMode !== 'auto')
+		{
+			config.edgeStyle = runOptions.edgeStyleMode;
+		}
+
+		if (runOptions.corners != null && runOptions.corners !== 'keep')
+		{
+			config.corners = runOptions.corners;
+		}
+
+		// An explicit resizeParent must be preserved in both states: the
+		// applier default (no applierOptions) is resize-ON, so omitting an
+		// explicit false would flip the replayed behavior (and with it the
+		// includeVertexLabels coupling — see the ElkLayout constructor).
+		if (runOptions.applierOptions != null && runOptions.applierOptions.resizeParent != null)
+		{
+			config.resizeNodes = runOptions.applierOptions.resizeParent === true;
+		}
+
+		// Preserve-origin is OFF by default in the bridge (headless callers
+		// get raw ELK coordinates), so the explicit opt-in is the deviation
+		// that must be recorded — omitting it would flip a replayed run
+		// (Run Last Layout) back to drifting to the origin.
+		if (runOptions.preserveOrigin === true)
+		{
+			config.preserveOrigin = true;
+		}
+
+		// Default true (mrtree collapses sibling stems onto the parent's
+		// side center) — only the opt-out deviates and needs persisting.
+		if (runOptions.sharedStems === false)
+		{
+			config.sharedStems = false;
+		}
+
+		// Default 'route' (mrtree extracts non-tree edges and routes them
+		// as overlays) — only the legacy opt-out deviates.
+		if (runOptions.nonTreeEdges === 'elk')
+		{
+			config.nonTreeEdges = 'elk';
+		}
+
+		// Container padding base (number or CSS-style 'top right bottom
+		// left' string) — null means the bridge's built-in defaults.
+		if (runOptions.groupPadding != null)
+		{
+			config.groupPadding = runOptions.groupPadding;
+		}
+
+		if (runOptions.rootCellIds != null && runOptions.rootCellIds.length > 0)
+		{
+			config.rootCellIds = runOptions.rootCellIds.slice();
+		}
+	}
+
+	return config;
 };
 
 /**
@@ -6761,12 +9190,48 @@ Graph.prototype.isLockedGroup = function(cell)
 
 /**
  * Returns true if the cell has the lockedGroup style key (either '0' or '1').
- * Used to decide whether the lock-toggle handle should be rendered and
- * whether double-clicks inside the group should route to the mermaid editor.
+ * Used to decide whether double-clicks inside the group should route to the
+ * mermaid editor.
  */
 Graph.prototype.hasLockedGroupStyle = function(cell)
 {
 	return cell != null && this.getCurrentCellStyle(cell)['lockedGroup'] != null;
+};
+
+/**
+ * Returns true if the lock-toggle handle should be rendered for the cell.
+ * lockedGroupIcon=0 hides the icon, lockedGroupIcon=1 forces it to show, and
+ * undefined falls back to the lockedGroup style being defined.
+ */
+Graph.prototype.isLockedGroupIconVisible = function(cell)
+{
+	if (cell == null)
+	{
+		return false;
+	}
+
+	var override = this.getCurrentCellStyle(cell)['lockedGroupIcon'];
+
+	if (override == '0')
+	{
+		return false;
+	}
+
+	if (override == '1')
+	{
+		return true;
+	}
+
+	return this.hasLockedGroupStyle(cell);
+};
+
+/**
+ * Returns true if the edit-icon handle should be rendered for the cell.
+ */
+Graph.prototype.isEditIconVisible = function(cell)
+{
+	return cell != null && mxUtils.getValue(
+		this.getCurrentCellStyle(cell), 'editIcon', '0') == '1';
 };
 
 /**
@@ -6817,6 +9282,43 @@ Graph.prototype.selectCellForEvent = function(cell, evt)
 	if (anc != null)
 	{
 		cell = anc;
+	}
+
+	// Click cycle through a transparentBounds chain. isPropagateSelectionCell
+	// stops the upward walk at a transparentBounds boundary, so for a child in
+	// a regular group in a transparentBounds group the cycle is:
+	//   1. group (first non-transparentBounds ancestor of the click)
+	//   2. child (propagation now stops at child because group is selected)
+	//   3. outer transparentBounds parent (propagation walks up past child)
+	// The drill-down step (selected is a strict ancestor of cell) keeps cell
+	// as-is; the escalate step (cell is at-or-above selected with a
+	// transparentBounds parent above it) walks one level out.
+	//
+	// Edges escalate on this step too, so a single click on an already-selected
+	// edge walks out to its transparentBounds parent, consistent with a shape.
+	// The escalate also fires on the second click of a double-click, but that no
+	// longer drops the edge-label insert (the reason the earlier !isEdge guard
+	// existed): selecting the parent is a selection-only change, so the view
+	// keeps the edge's cached state and shape node (only handlers are rebuilt,
+	// cell states are not). firstClickState/firstClickSource (recorded in
+	// Graph.click from the cached hit-test, not the live selection) therefore
+	// still match in insertTextForEvent, and addText positions the label from
+	// the same cached state, so the label is inserted on the native dblclick.
+	if (cell != null &&
+		!this.isToggleEvent(evt) && this.getSelectionCount() == 1)
+	{
+		var selected = this.getSelectionCell();
+
+		if (selected != null &&
+			(selected == cell || this.model.isAncestor(cell, selected)))
+		{
+			var parent = this.model.getParent(cell);
+
+			if (parent != null && this.isTransparentBounds(parent))
+			{
+				cell = parent;
+			}
+		}
 	}
 
 	if (!mxEvent.isShiftDown(evt) || this.isSelectionEmpty() ||
@@ -7017,6 +9519,105 @@ Graph.prototype.updateShapes = function(source, targets, replaceStyles)
 };
 
 /**
+ * Replaces the style of the given edge label with the one of the given
+ * source cell and adapts its size to the label text with the given padding
+ * (default is 3), keeping its text, text styles and position on the edge.
+ * If an edge is given, its label is moved to a new child cell. Returns the
+ * label cell.
+ */
+Graph.prototype.updateEdgeLabelShape = function(source, cell, padding)
+{
+	padding = (padding != null) ? padding : 3;
+	var textStyle = this.copyStyle(cell);
+	var label = cell;
+
+	this.model.beginUpdate();
+	try
+	{
+		// Moves the label of the edge to a new child cell
+		if (this.model.isEdge(cell))
+		{
+			var value = this.model.getValue(cell);
+			var text = value;
+
+			// Keeps other data on the edge and moves the label text
+			if (value != null && typeof value == 'object')
+			{
+				text = this.convertValueToString(cell);
+				value = value.cloneNode(true);
+
+				if (Graph.translateDiagram && Graph.diagramLanguage != null &&
+					value.hasAttribute('label_' + Graph.diagramLanguage))
+				{
+					value.setAttribute('label_' + Graph.diagramLanguage, '');
+				}
+				else
+				{
+					value.setAttribute('label', '');
+				}
+			}
+			else
+			{
+				value = '';
+			}
+
+			var edgeGeo = this.getCellGeometry(cell);
+			label = new mxCell(text, new mxGeometry(0, 0, 0, 0), '');
+			label.geometry.relative = true;
+			label.vertex = true;
+
+			if (edgeGeo != null)
+			{
+				label.geometry.x = edgeGeo.x;
+				label.geometry.y = edgeGeo.y;
+
+				if (edgeGeo.offset != null)
+				{
+					label.geometry.offset = edgeGeo.offset.clone();
+				}
+			}
+
+			label = this.addCell(label, cell);
+			this.model.setValue(cell, value);
+		}
+
+		this.updateShapes(source, [label], true);
+
+		// Maintains the text styles of the original label, which are
+		// replaced by updateShapes and must be applied before the
+		// preferred size for the cell is computed below
+		this.pasteStyle(textStyle, [label], ['fontFamily', 'fontSource',
+			'fontSize', 'fontColor', 'fontStyle', 'textOpacity',
+			'horizontal', 'textDirection']);
+		this.setCellStyles('resizable', null, [label]);
+
+		// Adapts the size to the label text with padding and keeps the
+		// label centered at its position on the edge
+		var geo = this.getCellGeometry(label);
+		var size = this.getPreferredSizeForCell(label, null, false);
+
+		if (geo != null && size != null)
+		{
+			var width = size.width + 2 * padding;
+			var height = size.height + 2 * padding;
+			geo = geo.clone();
+			var offset = (geo.offset != null) ? geo.offset : new mxPoint(0, 0);
+			geo.offset = new mxPoint(Math.round(offset.x + (geo.width - width) / 2),
+				Math.round(offset.y + (geo.height - height) / 2));
+			geo.width = width;
+			geo.height = height;
+			this.model.setGeometry(label, geo);
+		}
+	}
+	finally
+	{
+		this.model.endUpdate();
+	}
+
+	return label;
+};
+
+/**
  * Selects cells for connect vertex return value.
  */
 Graph.prototype.selectCellsForConnectVertex = function(cells, evt, hoverIcons)
@@ -7085,10 +9686,11 @@ Graph.prototype.insertEdgeBeforeCell = function(edge, cell)
 
 /**
  * Adds a connection to the given vertex or clones the vertex in special layout
- * containers without creating a connection.
+ * containers without creating a connection. If targetCell is given then it is
+ * used as the new target instead of asking createTarget or cloning the source.
  */
-Graph.prototype.connectVertex = function(source, direction, length, evt, forceClone, ignoreCellAt, createTarget, done)
-{	
+Graph.prototype.connectVertex = function(source, direction, length, evt, forceClone, ignoreCellAt, createTarget, done, targetCell)
+{
 	ignoreCellAt = (ignoreCellAt) ? ignoreCellAt : false;
 	
 	// Ignores relative edge labels
@@ -7327,10 +9929,17 @@ Graph.prototype.connectVertex = function(source, direction, length, evt, forceCl
 		}
 	});
 	
-	if (createTarget != null && realTarget == null && duplicate &&
-		(target != null || !cloneSource))
+	if ((createTarget != null || targetCell != null) && realTarget == null &&
+		duplicate && (target != null || !cloneSource))
 	{
-		createTarget(dx + pt.x * s, dy + pt.y * s, execute);
+		if (targetCell != null)
+		{
+			return execute(targetCell);
+		}
+		else
+		{
+			createTarget(dx + pt.x * s, dy + pt.y * s, execute);
+		}
 	}
 	else
 	{
@@ -7841,7 +10450,7 @@ Graph.prototype.resizeParentStacks = function(parent, layout, dx, dy)
 Graph.prototype.isContainer = function(cell)
 {
 	var style = this.getCurrentCellStyle(cell);
-	
+
 	if (this.isSwimlane(cell))
 	{
 		return style['container'] != '0';
@@ -7850,6 +10459,719 @@ Graph.prototype.isContainer = function(cell)
 	{
 		return style['container'] == '1';
 	}
+};
+
+/**
+ * Width in pixels of the band along a container's border in which
+ * connections are targeted at the container even if a child overlaps
+ * the border. 0 disables the border band.
+ */
+Graph.prototype.borderBandSize = 8;
+
+/**
+ * Returns the nearest connectable container ancestor of the given cell if
+ * the given point (in view coordinates) is within <borderBandSize> pixels
+ * of that container's border, so that connections can be made to a
+ * container where children overlap its border. Small children (up to three
+ * times the band size, eg. ports) keep priority at borders, as do children
+ * in the interior of an ancestor. Tables, rows and cells are ignored as
+ * their children are flush with their borders by construction.
+ */
+Graph.prototype.getBorderContainer = function(cell, x, y)
+{
+	var band = this.borderBandSize;
+	var result = null;
+
+	if (band > 0 && cell != null && this.model.isVertex(cell))
+	{
+		// Small children at borders (eg. ports) keep priority
+		var geo = this.getCellGeometry(cell);
+
+		if (geo == null || Math.min(geo.width, geo.height) > 3 * band)
+		{
+			var parent = this.model.getParent(cell);
+
+			while (result == null && this.model.isVertex(parent))
+			{
+				var state = this.view.getState(parent);
+
+				if (state != null)
+				{
+					var pt = new mxPoint(x, y);
+					var rot = mxUtils.getValue(state.style,
+						mxConstants.STYLE_ROTATION, 0);
+
+					if (rot != 0)
+					{
+						var rad = mxUtils.toRadians(-rot);
+						pt = mxUtils.getRotatedPoint(pt, Math.cos(rad),
+							Math.sin(rad), new mxPoint(state.getCenterX(),
+								state.getCenterY()));
+					}
+
+					// Children in the interior of an ancestor keep priority
+					if (pt.x >= state.x + band && pt.x <= state.x + state.width - band &&
+						pt.y >= state.y + band && pt.y <= state.y + state.height - band)
+					{
+						break;
+					}
+
+					if (pt.x >= state.x - band && pt.x <= state.x + state.width + band &&
+						pt.y >= state.y - band && pt.y <= state.y + state.height + band &&
+						this.isContainer(parent) && !this.isTable(parent) &&
+						!this.isTableRow(parent) && !this.isTableCell(parent) &&
+						!this.isCellLocked(parent) && this.isCellConnectable(parent))
+					{
+						result = parent;
+					}
+				}
+
+				parent = this.model.getParent(parent);
+			}
+		}
+	}
+
+	return result;
+};
+
+/**
+ * Returns true for cells with transparentBounds=1. A transparentBounds has its
+ * stored geometry pinned at (0,0,0,0); its visible bounds are derived from
+ * the union of its children, and dragging the group translates the children
+ * rather than the group itself.
+ */
+Graph.prototype.isTransparentBounds = function(cell)
+{
+	var style = this.getCurrentCellStyle(cell);
+
+	return style['transparentBounds'] == '1';
+};
+
+/**
+ * Returns true when the cell should show a draggable move handle icon at the
+ * top-left of its bounds. Controlled by the moveIcon style key; defaults to
+ * true for transparentBounds cells, false otherwise.
+ */
+Graph.prototype.isMoveIconVisible = function(cell)
+{
+	var style = this.getCurrentCellStyle(cell);
+	var value = style['moveIcon'];
+
+	if (value != null)
+	{
+		return value == '1';
+	}
+
+	return this.isTransparentBounds(cell);
+};
+
+/**
+ * Returns the cells to be dragged when a drag is started on the move icon
+ * of the given cell (see isMoveIconVisible), or null to let mxGraphHandler
+ * derive the drag set from the cell itself. Overridden in Trees.js to drag
+ * the whole subtree of a tree cell.
+ */
+Graph.prototype.getMoveIconDragCells = function(cell)
+{
+	return null;
+};
+
+/**
+ * Returns the diagonal offset (in screen pixels) to push a corner icon
+ * outward by, so it doesn't overlap the corresponding corner icon of a
+ * descendant cell (in the active handler set) that shares this cell's
+ * corner. cornerX, cornerY identify which corner of the cell is being
+ * decorated (in screen coordinates). predicate(cell) is called on each
+ * candidate descendant and must return true only when that descendant
+ * actually renders the same icon type — so a cell with no overlapping
+ * icon below doesn't get shifted needlessly.
+ *
+ * The outermost cell (with the most matching descendants) gets the
+ * largest offset; the innermost gets zero so its icon sits at the
+ * corner closest to the content. The caller adds the returned value in
+ * its corner's outward direction.
+ *
+ * The handler set is derived from the current selection rather than
+ * read out of selectionCellsHandler.handlers, because the dict is
+ * populated incrementally during refresh — when an existing parent
+ * handler is reused and redraws itself, the new child handler may not
+ * be in the dict yet.
+ */
+Graph.prototype.getNestedCornerIconOffset = function(cell, cornerX, cornerY, predicate)
+{
+	var model = this.model;
+	var view = this.view;
+	var selCells = this.getSelectionCells();
+	var seen = new mxDictionary();
+	var count = 0;
+
+	for (var i = 0; i < selCells.length; i++)
+	{
+		var sel = selCells[i];
+
+		if (sel == cell)
+		{
+			continue;
+		}
+
+		// Walk from sel up toward cell, collecting path cells. If cell
+		// is never reached, sel is not a descendant of cell.
+		var pathCells = [sel];
+		var p = model.getParent(sel);
+
+		while (p != null && p != cell)
+		{
+			pathCells.push(p);
+			p = model.getParent(p);
+		}
+
+		if (p != cell)
+		{
+			continue;
+		}
+
+		for (var j = 0; j < pathCells.length; j++)
+		{
+			var pc = pathCells[j];
+
+			if (seen.get(pc) != null)
+			{
+				continue;
+			}
+
+			seen.put(pc, true);
+
+			// Cells with a vertex handler in this view:
+			//   - the selected cell (sel), always
+			//   - transparentBounds ancestors of selected cells (added
+			//     by the getHandledSelectionCells override above)
+			if (pc != sel && !this.isTransparentBounds(pc))
+			{
+				continue;
+			}
+
+			if (!predicate(pc))
+			{
+				continue;
+			}
+
+			var dState = view.getState(pc);
+
+			if (dState == null)
+			{
+				continue;
+			}
+
+			var corners = [
+				[dState.x, dState.y],
+				[dState.x + dState.width, dState.y],
+				[dState.x, dState.y + dState.height],
+				[dState.x + dState.width, dState.y + dState.height]
+			];
+
+			for (var k = 0; k < corners.length; k++)
+			{
+				if (Math.abs(corners[k][0] - cornerX) < 16 &&
+					Math.abs(corners[k][1] - cornerY) < 16)
+				{
+					count++;
+					break;
+				}
+			}
+		}
+	}
+
+	// 16 px per level matches the icon size, so adjacent levels' icons
+	// touch corner-to-corner without overlap and without a wasted gap.
+	return count * 16;
+};
+
+/**
+ * Returns the number of transparentBounds cells nested anywhere below
+ * cell in the model tree. Used to scale outward selection-border padding
+ * for transparentBounds groups: the outermost group has the most nested
+ * descendants, so it gets the widest border wrapping the inner cells'
+ * borders.
+ *
+ * Returns 0 for cells that aren't transparentBounds — only
+ * transparentBounds=1 groups participate. The count is a static property
+ * of the model tree, not the current selection, so the outward padding
+ * remains stable regardless of which descendant happens to be selected.
+ */
+Graph.prototype.getNestedTransparentBoundsCount = function(cell)
+{
+	if (!this.isTransparentBounds(cell))
+	{
+		return 0;
+	}
+
+	var model = this.model;
+	var graph = this;
+	var count = 0;
+
+	var visit = function(c)
+	{
+		var n = model.getChildCount(c);
+
+		for (var i = 0; i < n; i++)
+		{
+			var child = model.getChildAt(c, i);
+
+			if (graph.isTransparentBounds(child))
+			{
+				count++;
+			}
+
+			visit(child);
+		}
+	};
+
+	visit(cell);
+
+	return count;
+};
+
+/**
+ * Returns true when the cell should show the connect handle (the arrow that
+ * starts a new edge). The connectIcon style overrides the global default
+ * Editor.showConnectHandle on a per-cell basis.
+ */
+Graph.prototype.isConnectIconVisible = function(cell)
+{
+	var style = this.getCurrentCellStyle(cell);
+	var value = style['connectIcon'];
+
+	if (value != null)
+	{
+		return value == '1';
+	}
+
+	return Editor.showConnectHandle;
+};
+
+/**
+ * Returns true for a transparentBounds cell that should be selected before
+ * its children on click (the standard transparentBounds behaviour selects
+ * children directly and escalates to the group on a repeated click).
+ * Controlled by selectParentFirst=1 in the style; defaults to false.
+ */
+Graph.prototype.isSelectParentFirst = function(cell)
+{
+	var style = this.getCurrentCellStyle(cell);
+
+	return style['selectParentFirst'] == '1';
+};
+
+/**
+ * Parses a CSS-style padding string into {n, e, s, w}. The parser lives in
+ * mxUtils.parsePadding so the core consumers (extendParent/contractParent)
+ * can share it; kept on the prototype for existing callers.
+ */
+Graph.prototype.parsePadding = function(value)
+{
+	return mxUtils.parsePadding(value);
+};
+
+/**
+ * Returns the per-side padding (in graph units) between a transparentBounds
+ * cell and the union of its children as {n, e, s, w}. Reads the standard
+ * groupPadding style key (CSS-style 1/2/3/4 values, space-separated) with a
+ * default of 0 (used only in the transparentBounds branch of updateCellState).
+ */
+Graph.prototype.getTransparentBoundsPadding = function(cell)
+{
+	var style = this.getCurrentCellStyle(cell);
+
+	return this.parsePadding(mxUtils.getValue(style,
+		mxConstants.STYLE_GROUP_PADDING, 0));
+};
+
+/**
+ * Invalidates the cached state of every transparentBounds ancestor of the
+ * given cell so the next view validation re-derives the group bounds from
+ * the current child geometries. When includeSelf is true the search starts
+ * at the cell itself rather than at its parent (used for the previous
+ * parent of a mxChildChange, which may itself be the transparentBounds that
+ * just lost a child).
+ */
+Graph.prototype.invalidateTransparentBoundsAncestors = function(cell, includeSelf)
+{
+	var c = (includeSelf && cell != null) ? cell :
+		(cell != null) ? this.model.getParent(cell) : null;
+
+	while (c != null)
+	{
+		if (this.isTransparentBounds(c))
+		{
+			// includeEdges=true: the group's own model geometry never changes
+			// (only its child-derived state does), so the base change handling
+			// never invalidates edges connected to the group. Without this they
+			// keep their stale terminal points and visibly detach from the group
+			// until an unrelated re-validate (zoom/resize/refresh). This runs from
+			// processChange (model-commit time), not during the live drag preview,
+			// so it does not reintroduce the mid-drag churn noted on processChange.
+			this.view.invalidate(c, false, true);
+		}
+
+		c = this.model.getParent(c);
+	}
+};
+
+/**
+ * Hooks model changes so transparentBounds ancestors are invalidated on
+ * geometry/parent changes only. The previous approach overrode view.invalidate
+ * unconditionally, which also fired during mxVertexHandler.updateLivePreview
+ * (called to re-route connected edges) and caused the resized child's live
+ * preview to shift as the group was repeatedly re-validated mid-drag.
+ */
+var graphProcessChange = Graph.prototype.processChange;
+Graph.prototype.processChange = function(change)
+{
+	graphProcessChange.apply(this, arguments);
+
+	if (change instanceof mxChildChange)
+	{
+		this.invalidateTransparentBoundsAncestors(change.child);
+		this.invalidateTransparentBoundsAncestors(change.previous, true);
+	}
+	else if (change instanceof mxGeometryChange ||
+		change instanceof mxTerminalChange)
+	{
+		this.invalidateTransparentBoundsAncestors(change.cell);
+	}
+};
+
+/**
+ * Returns the bounding box of the children of a transparentBounds in the
+ * cell's own local coordinate space, or null if the group has no children
+ * with geometry. Nested transparentBoundss contribute their own padded
+ * bounds via getTransparentBounds (which is itself in the nested cell's
+ * local space) translated by the nested cell's geo.x/y into this cell's
+ * local space, so each level's padding accumulates outward and non-zero
+ * nested geometry is handled correctly.
+ */
+Graph.prototype.getTransparentChildBounds = function(cell)
+{
+	var result = null;
+	var count = this.model.getChildCount(cell);
+
+	for (var i = 0; i < count; i++)
+	{
+		var child = this.model.getChildAt(cell, i);
+		var rect = null;
+
+		if (this.model.isVertex(child))
+		{
+			var geo = this.getCellGeometry(child);
+
+			if (geo != null && !geo.relative)
+			{
+				if (this.isTransparentBounds(child))
+				{
+					var local = this.getTransparentBounds(child);
+
+					if (local != null)
+					{
+						rect = new mxRectangle(geo.x + local.x,
+							geo.y + local.y, local.width, local.height);
+					}
+				}
+				else
+				{
+					rect = new mxRectangle(geo.x, geo.y,
+						geo.width, geo.height);
+				}
+			}
+		}
+		else if (this.model.isEdge(child))
+		{
+			// Edge children contribute their waypoints and any disconnected
+			// terminal points (stored relative to the group — the same local
+			// space as vertex geometry) so an edge that bows outside the vertex
+			// union, or a group whose only children are edges, still expands the
+			// derived bounds instead of being ignored.
+			var geo = this.getCellGeometry(child);
+
+			if (geo != null)
+			{
+				var pts = [];
+
+				if (this.model.getTerminal(child, true) == null &&
+					geo.getTerminalPoint(true) != null)
+				{
+					pts.push(geo.getTerminalPoint(true));
+				}
+
+				if (this.model.getTerminal(child, false) == null &&
+					geo.getTerminalPoint(false) != null)
+				{
+					pts.push(geo.getTerminalPoint(false));
+				}
+
+				if (geo.points != null)
+				{
+					pts = pts.concat(geo.points);
+				}
+
+				for (var j = 0; j < pts.length; j++)
+				{
+					if (pts[j] != null)
+					{
+						if (rect == null)
+						{
+							rect = new mxRectangle(pts[j].x, pts[j].y, 0, 0);
+						}
+						else
+						{
+							rect.add(new mxRectangle(pts[j].x, pts[j].y, 0, 0));
+						}
+					}
+				}
+			}
+		}
+
+		if (rect != null)
+		{
+			if (result == null)
+			{
+				result = mxRectangle.fromRectangle(rect);
+			}
+			else
+			{
+				result.add(rect);
+			}
+		}
+	}
+
+	return result;
+};
+
+/**
+ * Returns the bounding box of a transparentBounds cell — the union of its
+ * children expanded by the group's padding, (for swimlanes) the title-
+ * bar start size and the footer region (opposite the title for swimlanes,
+ * at the bottom otherwise) — in the cell's own local coordinate space
+ * (child geometries are read directly without the cell's geo.x/y offset).
+ * Returns null when the group has no children with geometry.
+ */
+Graph.prototype.getTransparentBounds = function(cell)
+{
+	var bounds = this.getTransparentChildBounds(cell);
+
+	if (bounds == null)
+	{
+		return null;
+	}
+
+	var pad = this.getTransparentBoundsPadding(cell);
+	var start = this.isSwimlane(cell) ?
+		this.getActualStartSize(cell) : new mxRectangle();
+	var footer = this.getActualFooterSize(cell);
+
+	return new mxRectangle(
+		bounds.x - pad.w - start.x - footer.x,
+		bounds.y - pad.n - start.y - footer.y,
+		bounds.width + pad.w + pad.e + start.x + start.width + footer.x + footer.width,
+		bounds.height + pad.n + pad.s + start.y + start.height + footer.y + footer.height);
+};
+
+/**
+ * Overrides the group-bounds computation so transparentBounds children
+ * contribute their actual visible bounds (derived from their own children)
+ * rather than their stored geometry. Without this, grouping two
+ * transparentBounds cells whose stored geometry doesn't track their visible
+ * content would size the outer group to the union of the stored boxes
+ * (typically just one of the children's visible regions) instead of the
+ * true bounding box of all rendered content.
+ */
+Graph.prototype.getBoundsForGroup = function(group, children, border)
+{
+	var result = null;
+
+	if (children != null)
+	{
+		for (var i = 0; i < children.length; i++)
+		{
+			var rect = null;
+
+			if (this.model.isEdge(children[i]))
+			{
+				// Edges contribute their terminal points and waypoints (as in the
+				// base mxGraph.getBoundsForGroup) so a group of only edges is sized
+				// correctly instead of yielding no bounds (and thus no group).
+				rect = this.getBoundingBoxFromGeometry([children[i]], true);
+			}
+			else if (this.model.isVertex(children[i]))
+			{
+				var geo = this.getCellGeometry(children[i]);
+
+				if (geo == null || geo.relative)
+				{
+					continue;
+				}
+
+				if (this.isTransparentBounds(children[i]))
+				{
+					var local = this.getTransparentBounds(children[i]);
+
+					if (local != null)
+					{
+						rect = new mxRectangle(geo.x + local.x, geo.y + local.y,
+							local.width, local.height);
+					}
+				}
+				else
+				{
+					rect = new mxRectangle(geo.x, geo.y, geo.width, geo.height);
+				}
+			}
+
+			if (rect != null)
+			{
+				if (result == null)
+				{
+					result = rect;
+				}
+				else
+				{
+					result.add(rect);
+				}
+			}
+		}
+	}
+
+	if (result != null)
+	{
+		if (this.isSwimlane(group))
+		{
+			var size = this.getStartSize(group);
+
+			result.x -= size.width;
+			result.y -= size.height;
+			result.width += size.width;
+			result.height += size.height;
+		}
+
+		if (border != null)
+		{
+			result.x -= border;
+			result.y -= border;
+			result.width += 2 * border;
+			result.height += 2 * border;
+		}
+	}
+
+	return result;
+};
+
+/**
+ * Skips transparentBounds groups when recomputing group bounds. Their visible
+ * box is already derived from their children at render time and their stored
+ * geometry must stay pinned at (0,0,0,0). The base implementation writes a
+ * non-zero geometry onto the group and shifts its children to match — double-
+ * counting the bounds offset so the group no longer hugs its content, and
+ * persisting the corrupted geometry to file. Reached from Edit > Autosize, the
+ * Arrange > Layout menu actions, and the tree/flow childLayout resizeParent
+ * path. Non-transparentBounds cells fall through to the base unchanged.
+ */
+Graph.prototype.updateGroupBounds = function(cells, border, moveGroup, topBorder, rightBorder, bottomBorder, leftBorder)
+{
+	if (cells != null)
+	{
+		var filtered = [];
+
+		for (var i = 0; i < cells.length; i++)
+		{
+			if (!this.isTransparentBounds(cells[i]))
+			{
+				filtered.push(cells[i]);
+			}
+		}
+
+		if (filtered.length < cells.length)
+		{
+			mxGraph.prototype.updateGroupBounds.call(this, filtered, border, moveGroup,
+				topBorder, rightBorder, bottomBorder, leftBorder);
+
+			// Preserve the base contract of returning the originally passed cells.
+			return cells;
+		}
+	}
+
+	return mxGraph.prototype.updateGroupBounds.apply(this, arguments);
+};
+
+/**
+ * Substitutes the visible (child-derived) bounds for transparentBounds cells,
+ * whose stored geometry is pinned at (0,0,0,0). The base implementation reads
+ * each cell's stored geometry directly with no child recursion, so without this
+ * a transparentBounds group contributes a zero-size box at its parent origin —
+ * breaking every positioning path that derives an offset from this method
+ * (paste-at-point, crop on import, getCenterInsertPoint, initial page translate).
+ *
+ * transparentBounds cells are pulled out and replaced by their getTransparentBounds
+ * box (translated by the cell's geo.x/y into parent coords, which is a no-op while
+ * the geometry is pinned but stays correct if that ever changes); everything else
+ * falls through to the base. The original cells array is passed as `ancestors` so
+ * the base still resolves parent offsets for edge/relative children whose parent
+ * is one of the extracted transparentBounds cells.
+ */
+Graph.prototype.getBoundingBoxFromGeometry = function(cells, includeEdges, ancestors, includeStrokeWidth)
+{
+	var result = null;
+	var rest = null;
+
+	if (cells != null)
+	{
+		rest = [];
+
+		for (var i = 0; i < cells.length; i++)
+		{
+			var geo = (this.model.isVertex(cells[i])) ?
+				this.getCellGeometry(cells[i]) : null;
+
+			if (geo != null && !geo.relative && this.isTransparentBounds(cells[i]))
+			{
+				var local = this.getTransparentBounds(cells[i]);
+
+				if (local != null)
+				{
+					var bbox = new mxRectangle(geo.x + local.x, geo.y + local.y,
+						local.width, local.height);
+
+					if (result == null)
+					{
+						result = bbox;
+					}
+					else
+					{
+						result.add(bbox);
+					}
+				}
+			}
+			else
+			{
+				rest.push(cells[i]);
+			}
+		}
+	}
+
+	var base = mxGraph.prototype.getBoundingBoxFromGeometry.call(this, rest,
+		includeEdges, (ancestors != null) ? ancestors : cells, includeStrokeWidth);
+
+	if (base != null)
+	{
+		if (result == null)
+		{
+			result = base;
+		}
+		else
+		{
+			result.add(base);
+		}
+	}
+
+	return result;
 };
 
 /**
@@ -7954,7 +11276,13 @@ Graph.prototype.isCellFoldable = function(cell)
 {
 	var style = this.getCurrentCellStyle(cell);
 	
-	return this.foldingEnabled && mxUtils.getValue(style,
+	// transparentBounds groups have geometry pinned at (0,0,0,0) with their box
+	// derived from children. Collapsing swaps geometry with the preferred-size
+	// alternateBounds (mxGraph.swapBounds), writing a non-zero geometry onto the
+	// group, corrupting the pin and rendering an empty box. They are not
+	// foldable until proper collapse support exists for derived bounds.
+	return this.foldingEnabled && !this.isTransparentBounds(cell) &&
+		mxUtils.getValue(style,
 		mxConstants.STYLE_RESIZABLE, '1') != '0' &&
 		(style['treeFolding'] == '1' ||
 		(!this.isCellLocked(cell) &&
@@ -8128,6 +11456,31 @@ Graph.prototype.fitWindow = function(bounds, border, maxScale, zoomOutOnly, cent
 };
 
 /**
+ * Function: getCurrentViewBox
+ *
+ * Returns the visible canvas window in graph coordinates plus the current
+ * scale as {x, y, width, height, scale}. Used to snapshot a page's initial
+ * view (see PageSetupDialog) and restored via EditorUi.fitInitialView. The
+ * scale is kept so the authored zoom can be reproduced independently of the
+ * window size at restore time.
+ */
+Graph.prototype.getCurrentViewBox = function()
+{
+	var view = this.view;
+	var container = this.container;
+	var scale = view.scale;
+	var t = view.translate;
+
+	return {
+		x: Math.round(container.scrollLeft / scale - t.x),
+		y: Math.round(container.scrollTop / scale - t.y),
+		width: Math.round(container.clientWidth / scale),
+		height: Math.round(container.clientHeight / scale),
+		scale: Math.round(scale * 1e4) / 1e4
+	};
+};
+
+/**
  * Overrides tooltips to show custom tooltip or metadata.
  */
 Graph.prototype.convertValueToTooltip = function(cell)
@@ -8166,6 +11519,14 @@ Graph.prototype.convertValueToTooltip = function(cell)
  */
 Graph.prototype.getTooltipForCell = function(cell)
 {
+	// Suppress cell tooltips entirely when disabled via the tooltips=0 URL param
+	// (embed/inline/viewer hosts that don't want the link/property hint). Gated
+	// at the content level so it holds regardless of the tooltip handler state.
+	if (window.urlParams != null && urlParams['tooltips'] == '0')
+	{
+		return null;
+	}
+
 	var lockedAncestor = this.getLockedGroupAncestor(cell);
 
 	if (lockedAncestor != null)
@@ -8573,8 +11934,9 @@ HoverIcons.prototype.init = function()
 	    	}
 	    	else if (!this.isActive())
 	    	{
-	    		var state = this.getState(me.getState());
-	    		
+	    		var state = this.getState(me.getState(),
+	    			me.getGraphX(), me.getGraphY());
+
 	    		if (state != null || !mxEvent.isTouchEvent(evt))
 	    		{
 	    			this.update(state);
@@ -8593,7 +11955,8 @@ HoverIcons.prototype.init = function()
 	    	}
 	    	else if (!this.graph.isMouseDown && !mxEvent.isTouchEvent(evt))
 	    	{
-	    		this.update(this.getState(me.getState()),
+	    		this.update(this.getState(me.getState(),
+	    			me.getGraphX(), me.getGraphY()),
 	    			me.getGraphX(), me.getGraphY());
 	    	}
 	    	
@@ -8625,7 +11988,8 @@ HoverIcons.prototype.init = function()
 	    			this.graph.getSelectionCell()))
 	    		{
 	    			this.update(this.getState(this.graph.view.getState(
-	    				this.graph.getCellAt(me.getGraphX(), me.getGraphY()))));
+	    				this.graph.getCellAt(me.getGraphX(), me.getGraphY())),
+	    				me.getGraphX(), me.getGraphY()));
 	    		}
 	    		else
 	    		{
@@ -9129,12 +12493,12 @@ HoverIcons.prototype.computeBoundingBox = function()
 /**
  * 
  */
-HoverIcons.prototype.getState = function(state)
+HoverIcons.prototype.getState = function(state, x, y)
 {
 	if (state != null)
 	{
 		var cell = state.cell;
-		
+
 		if (!this.graph.getModel().contains(cell))
 		{
 			state = null;
@@ -9145,13 +12509,27 @@ HoverIcons.prototype.getState = function(state)
 			if (this.graph.getModel().isVertex(cell) && !this.graph.isCellConnectable(cell))
 			{
 				var parent = this.graph.getModel().getParent(cell);
-				
+
 				if (this.graph.getModel().isVertex(parent) && this.graph.isCellConnectable(parent))
 				{
 					cell = parent;
 				}
 			}
-			
+
+			// Uses container if the event is on its border band, unless the
+			// cell already has the hover focus, so that its own connection
+			// points on a shared border stay reachable from inside
+			if (x != null && y != null && (this.currentState == null ||
+				this.currentState.cell != cell))
+			{
+				var container = this.graph.getBorderContainer(cell, x, y);
+
+				if (container != null)
+				{
+					cell = container;
+				}
+			}
+
 			// Ignores locked cells and edges
 			if (this.graph.isCellLocked(cell) || this.graph.model.isEdge(cell))
 			{
@@ -9576,6 +12954,102 @@ Graph.prototype.getTableLines = function(cell, horizontal, vertical)
 	}
 
 	return hl.concat(vl);
+};
+
+/**
+ * Re-strokes the internal table grid lines that run along the edges of the
+ * given table cell or row, on top of the cell's own fill. The grid lines are
+ * drawn once by the parent table shape (see getTableLines), centered on the
+ * cell boundaries and below the child cells in z-order, so a filled cell's
+ * fill paints over its half of those lines: the line looks thin next to an
+ * unfilled neighbour and disappears between two filled cells. The table shape
+ * cannot paint above its own children (in the editor or in any re-rendered
+ * export), so each filled cell repaints the bordering lines here, after its
+ * fill. Which edges carry a line is derived from the cell's row/column index
+ * the same way getTableLines decides, so rowspan/colspan and the rowLines /
+ * columnLines styles stay consistent. No-op for non-table cells.
+ */
+Graph.prototype.paintTableCellLines = function(c, cell, x, y, w, h, stroke, strokeWidth)
+{
+	if (stroke == null || stroke == mxConstants.NONE)
+	{
+		return;
+	}
+
+	var model = this.model;
+	var top = false, bottom = false, left = false, right = false;
+
+	if (this.isTableRow(cell))
+	{
+		var rows = model.getChildCells(model.getParent(cell), true);
+		var index = mxUtils.indexOf(rows, cell);
+		var rowLines = mxUtils.getValue(this.getCurrentCellStyle(
+			model.getParent(cell)), 'rowLines', '1') != '0';
+
+		top = rowLines && index > 0;
+		bottom = rowLines && index < rows.length - 1;
+	}
+	else if (this.isTableCell(cell))
+	{
+		var row = model.getParent(cell);
+		var table = model.getParent(row);
+		var rows = model.getChildCells(table, true);
+		var cols = model.getChildCells(row, true);
+		var style = this.getCurrentCellStyle(table);
+		var rowLines = mxUtils.getValue(style, 'rowLines', '1') != '0';
+		var columnLines = mxUtils.getValue(style, 'columnLines', '1') != '0';
+		var rowIndex = mxUtils.indexOf(rows, row);
+		var colIndex = mxUtils.indexOf(cols, cell);
+
+		top = rowLines && rowIndex > 0;
+		bottom = rowLines && rowIndex < rows.length - 1;
+		left = columnLines && colIndex > 0;
+		right = columnLines && colIndex < cols.length - 1;
+	}
+	else
+	{
+		return;
+	}
+
+	if (top || bottom || left || right)
+	{
+		c.setStrokeColor(stroke);
+		c.setStrokeWidth(strokeWidth);
+		c.setDashed(false);
+		c.setShadow(false);
+
+		if (top)
+		{
+			c.begin();
+			c.moveTo(x, y);
+			c.lineTo(x + w, y);
+			c.stroke();
+		}
+
+		if (bottom)
+		{
+			c.begin();
+			c.moveTo(x, y + h);
+			c.lineTo(x + w, y + h);
+			c.stroke();
+		}
+
+		if (left)
+		{
+			c.begin();
+			c.moveTo(x, y);
+			c.lineTo(x, y + h);
+			c.stroke();
+		}
+
+		if (right)
+		{
+			c.begin();
+			c.moveTo(x + w, y);
+			c.lineTo(x + w, y + h);
+			c.stroke();
+		}
+	}
 };
 
 /**
@@ -10516,25 +13990,56 @@ TableLayout.prototype.execute = function(parent)
 	{
 		var paths = (this.node != null) ? this.node.
 			getElementsByTagName('path') : null;
-		
+
 		if (paths != null)
 		{
 			var d = null;
+			var matched = false;
 
-			// Returns the first visible path
+			// Returns the first (or index-th) visible line stroke
 			for (var i = 0; i < paths.length; i++)
 			{
-				if (paths[i].getAttribute('visibility') != 'hidden')
+				var path = paths[i];
+
+				if (path.getAttribute('visibility') == 'hidden')
 				{
-					if ((d == null || d == paths[i].getAttribute('d')) &&
-						(index == null || --index == 0))
+					// Tracks the hit tolerance clone that precedes each
+					// stroked path: for sketch=1 the rough.js stroke only
+					// matches its own clone's d, never the plain hit path's.
+					// Frozen once a counted match locked the line geometry,
+					// so a marker's clone cannot re-seed an indexed walk
+					// (PipeShape uses index=2 to reach the inner stroke).
+					if (!matched)
 					{
-						return paths[i];
+						d = path.getAttribute('d');
 					}
 				}
-				else if (d == null)
+				else if (path.getAttribute('stroke') == 'none')
 				{
-					d = paths[i].getAttribute('d');
+					// Event-only path: the sketch=1 double paint emits the
+					// plain geometry as an invisible hit path (no visibility
+					// attribute) before the rough.js paths. It consumes its
+					// own tolerance clone, so the next stroked path is
+					// accepted even without a clone of its own (the sketch
+					// paint bypasses addTolerance for filled shapes).
+					if (!matched && d == path.getAttribute('d'))
+					{
+						d = null;
+					}
+				}
+				else if (path.getAttribute('data-rough-fill') == null &&
+					(d == null || d == path.getAttribute('d')))
+				{
+					// Skips rough.js hachure fill paths (data-rough-fill),
+					// which are stroked in the fill color.
+					if (index == null || --index == 0)
+					{
+						return path;
+					}
+
+					// Locks the line geometry for indexed walks
+					d = path.getAttribute('d');
+					matched = true;
 				}
 			}
 		}
@@ -10603,6 +14108,38 @@ TableLayout.prototype.execute = function(parent)
 	{
 		mxGraphViewUpdateCellState.apply(this, arguments);
 
+		// Derives the visible bounds of a transparentBounds cell from
+		// getTransparentBounds (children union expanded by padding and, for
+		// swimlanes, the title-bar start size — encoded so it lands on the
+		// correct edge: x for left, y for top, width for right, height for
+		// bottom). The stored geometry stays at (0,0,0,0), so state.origin
+		// still points at the group's parent origin and is left untouched
+		// (children compute their state.x from it).
+		if (this.graph.model.isVertex(state.cell) &&
+			this.graph.isTransparentBounds(state.cell))
+		{
+			var bounds = this.graph.getTransparentBounds(state.cell);
+
+			if (bounds != null)
+			{
+				state.x = this.scale * (this.translate.x + state.origin.x +
+					bounds.x);
+				state.y = this.scale * (this.translate.y + state.origin.y +
+					bounds.y);
+				state.width = this.scale * bounds.width;
+				state.height = this.scale * bounds.height;
+				state.unscaledWidth = bounds.width;
+				state.unscaledHeight = bounds.height;
+			}
+			else
+			{
+				state.width = 0;
+				state.height = 0;
+				state.unscaledWidth = 0;
+				state.unscaledHeight = 0;
+			}
+		}
+
 		// Updates jumps on invalid edge before repaint
 		if (this.graph.model.isEdge(state.cell) &&
 			state.style[mxConstants.STYLE_CURVED] != 1)
@@ -10610,7 +14147,39 @@ TableLayout.prototype.execute = function(parent)
 			this.updateLineJumps(state);
 		}
 	};
-	
+
+	/**
+	 * mxMorphing animates each cell from its pre-update visual position to its
+	 * post-update model position by computing delta = origin - state.x where
+	 * `origin` comes from getOriginForCell (geometry-only) and `state.x` is
+	 * the rendered position. For a transparentBounds cell, the updateCellState
+	 * override above adds the child-derived `bounds.x` to state.x so the
+	 * visible box hugs the children — but origin doesn't include that offset,
+	 * so the morph reads a constant non-zero delta even when nothing changed
+	 * and animates the group outward; the preview offset isn't fully unwound
+	 * when the animation ends, leaving the group visually displaced until the
+	 * next re-validate (e.g. window resize).
+	 *
+	 * Forcing delta = 0 for transparentBounds cells fixes this without side
+	 * effects: the group's stored geometry is pinned (drags translate the
+	 * children, not the group itself), so its model-position never actually
+	 * moves and there is nothing to animate. Children of the group still get
+	 * their own delta computed normally — if a layout moves a child, that
+	 * child still animates from pre to post position.
+	 */
+	var mxMorphingGetDelta = mxMorphing.prototype.getDelta;
+	mxMorphing.prototype.getDelta = function(state)
+	{
+		if (state != null && state.cell != null &&
+			this.graph.isTransparentBounds != null &&
+			this.graph.isTransparentBounds(state.cell))
+		{
+			return new mxPoint(0, 0);
+		}
+
+		return mxMorphingGetDelta.apply(this, arguments);
+	};
+
 	/**
 	 * Updates the jumps between given state and processed edges.
 	 */
@@ -10707,25 +14276,28 @@ TableLayout.prototype.execute = function(parent)
 									var dx = pt.x - p0.x;
 									var dy = pt.y - p0.y;
 									var temp = {distSq: dx * dx + dy * dy, x: pt.x, y: pt.y};
-								
+
 									// Intersections must be ordered by distance from start of segment
+									var idx = list.length;
+
 									for (var t = 0; t < list.length; t++)
 									{
 										if (list[t].distSq > temp.distSq)
 										{
-											list.splice(t, 0, temp);
-											temp = null;
-											
+											idx = t;
+
 											break;
 										}
 									}
-									
-									// Ignores multiple intersections at segment joint
-									if (temp != null && (list.length == 0 ||
-										list[list.length - 1].x !== temp.x ||
-										list[list.length - 1].y !== temp.y))
+
+									// Ignores multiple intersections at segment joints and
+									// where overlapping edges cross the current segment
+									if ((idx == 0 || Math.abs(list[idx - 1].x - temp.x) > thresh ||
+										Math.abs(list[idx - 1].y - temp.y) > thresh) &&
+										(idx == list.length || Math.abs(list[idx].x - temp.x) > thresh ||
+										Math.abs(list[idx].y - temp.y) > thresh))
 									{
-										list.push(temp);
+										list.splice(idx, 0, temp);
 									}
 								}
 
@@ -11456,8 +15028,8 @@ if (typeof mxVertexHandler !== 'undefined')
 				{
 					try
 					{
-						var styles = JSON.parse(temp);
-						
+						var styles = Graph.decodeNewEdgeStyle(temp);
+
 						for (var key in styles)
 						{
 							state.style[key] = styles[key];
@@ -11530,7 +15102,7 @@ if (typeof mxVertexHandler !== 'undefined')
 			var style = 'edgeStyle=' + (this.currentEdgeStyle['edgeStyle'] || 'none') + ';';
 			var keys = ['shape', 'curved', 'rounded', 'comic', 'sketch', 'fillWeight', 'hachureGap',
 				'hachureAngle', 'jiggle', 'disableMultiStroke', 'disableMultiStrokeFill', 'fillStyle',
-				'curveFitting', 'simplification', 'comicStyle', 'jumpStyle', 'jumpSize'];
+				'curveFitting', 'simplification', 'comicStyle', 'jumpStyle', 'jumpSize', 'libavoidRouting'];
 			
 			for (var i = 0; i < keys.length; i++)
 			{
@@ -12451,6 +16023,292 @@ if (typeof mxVertexHandler !== 'undefined')
 		};
 
 		/**
+		 * Overrides resetEdge to also clear innerLoopWaypoints style.
+		 */
+		var graphResetEdge = Graph.prototype.resetEdge;
+
+		Graph.prototype.resetEdge = function(edge)
+		{
+			if (edge != null)
+			{
+				this.setCellStyles('innerLoopWaypoints', null, [edge]);
+			}
+
+			return graphResetEdge.apply(this, arguments);
+		};
+
+		/**
+		 * Uses the segment handler for self-loops so they always get one handle
+		 * per segment (outgoing, middle/distance and incoming). This works even
+		 * for legacy loops that are still routed via mxEdgeStyle.Loop (no stored
+		 * waypoints), because the segment handler derives its handles from the
+		 * absolute points. Dragging a segment handle converts the loop to an
+		 * orthogonal routing with inner waypoints so it keeps its 3-segment
+		 * shape; existing loops are not modified until edited.
+		 */
+		var graphCreateEdgeHandler = Graph.prototype.createEdgeHandler;
+
+		Graph.prototype.createEdgeHandler = function(state, edgeStyle)
+		{
+			if (state != null)
+			{
+				var source = state.getVisibleTerminalState(true);
+				var target = state.getVisibleTerminalState(false);
+
+				if (source != null && source == target)
+				{
+					var handler = this.createEdgeSegmentHandler(state);
+					var changePoints = handler.changePoints;
+					var getPreviewPoints = handler.getPreviewPoints;
+					var updatePreviewState = handler.updatePreviewState;
+					var clonePreviewState = handler.clonePreviewState;
+
+					// Keeps the dragged handle under the mouse and the loop the
+					// simplest two-corner loop so a segment drag (e.g. across the
+					// shape) cannot collapse it into a zero-size spike
+					handler.getPreviewPoints = function(point)
+					{
+						if (!this.isSource && !this.isTarget)
+						{
+							// The dashed preview is routed with the same style that
+							// changePoints commits (orthogonalEdgeStyle + inner
+							// waypoints) so it matches the final result and dragging a
+							// segment past the shape adds new segments instead of
+							// collapsing the loop. That style is applied to the preview
+							// clone in clonePreviewState below, NOT to the live edge
+							// state, so an aborted (Escape) drag cannot leave a legacy
+							// loop's cached style dirty. The segment dragging itself is
+							// the standard orthogonal behaviour (each segment moves on
+							// one axis, new segments are added as needed).
+
+							// The middle handle of a simple loop (3 segments => 4 current
+							// points) moves the whole loop around the shape; the arms
+							// use the standard per-axis segment dragging. Works even
+							// before any waypoint is committed (the loop is still
+							// routed by the default Loop style with faded handles).
+							var cur = this.getCurrentPoints();
+
+							if (cur != null && cur.length == 4 &&
+								this.index > 1 && this.index < cur.length - 1)
+							{
+								var loop = this.graph.getLoopAroundPoints(this.state, point);
+
+								if (loop != null)
+								{
+									return this.graph.keepLoopOutsideShape(this.state, loop);
+								}
+							}
+
+							// Keeps the loop outside the shape so the terminals stay
+							// on the perimeter (lower edge) instead of collapsing to
+							// the shape center when a segment is dragged inside
+							return this.graph.keepLoopOutsideShape(this.state,
+								getPreviewPoints.apply(this, arguments));
+						}
+
+						return getPreviewPoints.apply(this, arguments);
+					};
+
+					// Routes the dashed preview orthogonally with inner waypoints by
+					// applying the converted style to the throwaway preview clone
+					// (created per mouse-move) rather than mutating the live edge
+					// state. This keeps the preview matching the committed result
+					// while leaving the real loop's cached style untouched if the drag
+					// is aborted (mxEdgeHandler.mouseMove clones before routing it).
+					handler.clonePreviewState = function(point, terminal)
+					{
+						var clone = clonePreviewState.apply(this, arguments);
+
+						if (!this.isSource && !this.isTarget &&
+							clone != null && clone.style != null)
+						{
+							clone.style[mxConstants.STYLE_EDGE] = 'orthogonalEdgeStyle';
+							clone.style['innerLoopWaypoints'] = '1';
+						}
+
+						return clone;
+					};
+
+					handler.changePoints = function(edge, points, clone)
+					{
+						points = this.graph.keepLoopOutsideShape(this.state, points);
+
+						var model = this.graph.getModel();
+
+						model.beginUpdate();
+						try
+						{
+							edge = changePoints.call(this, edge, points, clone);
+
+							// Persists the orthogonal routing and keeps the inner
+							// waypoints so the converted loop retains its shape
+							if (edge != null && points != null && points.length >= 2)
+							{
+								this.graph.setCellStyles(mxConstants.STYLE_EDGE,
+									'orthogonalEdgeStyle', [edge]);
+								this.graph.setCellStyles('innerLoopWaypoints', '1', [edge]);
+							}
+						}
+						finally
+						{
+							model.endUpdate();
+						}
+
+						return edge;
+					};
+
+					// Resets the last-known-good loop at the start of each drag so the
+					// spike fallback can revert to the loop's pre-drag shape.
+					var handlerStart = handler.start;
+
+					handler.start = function(x, y, index)
+					{
+						this.validLoopPoints = null;
+						handlerStart.apply(this, arguments);
+					};
+
+					// Re-routes the preview clone from this.points (used after a
+					// fallback replaces them).
+					handler.rerouteLoopPreview = function(edge)
+					{
+						var source = this.state.getVisibleTerminalState(true);
+						var target = this.state.getVisibleTerminalState(false);
+
+						edge.view.updateFixedTerminalPoints(edge, source, target);
+						edge.view.updatePoints(edge, this.points, source, target);
+						edge.view.updateFloatingTerminalPoints(edge, source, target);
+					};
+
+					// The current committed loop's inner waypoints in model space (from
+					// the stored points, or derived from the routed loop), used as the
+					// fallback when a drag would otherwise spike.
+					handler.getCommittedLoopPoints = function()
+					{
+						var geo = this.graph.getCellGeometry(this.state.cell);
+
+						if (geo != null && geo.points != null && geo.points.length >= 2)
+						{
+							return geo.points.map(function(p)
+							{
+								return new mxPoint(p.x, p.y);
+							});
+						}
+
+						var pts = this.state.absolutePoints;
+
+						if (pts != null && pts.length >= 4)
+						{
+							var s = this.state.view.scale;
+							var tr = this.state.view.translate;
+							var o = this.state.origin;
+							var res = [];
+
+							for (var i = 1; i < pts.length - 1; i++)
+							{
+								if (pts[i] != null)
+								{
+									res.push(new mxPoint(pts[i].x / s - tr.x - o.x,
+										pts[i].y / s - tr.y - o.y));
+								}
+							}
+
+							if (res.length >= 2)
+							{
+								return res;
+							}
+						}
+
+						return null;
+					};
+
+					// True when the routed loop's two terminal points have collapsed
+					// onto (nearly) the same perimeter point.
+					handler.isLoopSpike = function(edge)
+					{
+						var pts = edge.absolutePoints;
+
+						if (pts == null || pts.length < 2 || pts[0] == null ||
+							pts[pts.length - 1] == null)
+						{
+							return true;
+						}
+
+						var thr = this.graph.gridSize * this.state.view.scale / 2;
+
+						return Math.abs(pts[0].x - pts[pts.length - 1].x) < thr &&
+							Math.abs(pts[0].y - pts[pts.length - 1].y) < thr;
+					};
+
+					// The inherited segment handler has a "this is really a straight
+					// line" special case that replaces the whole edge with two
+					// identical points at the cursor when the merged preview is empty
+					// and the two terminals share an axis. A self-loop is never a
+					// straight line, but its source and target always share an axis
+					// (and for a fixed-anchor perimeter, e.g. a lifeline spine, the
+					// same x), so dragging an arm handle far enough to flatten the
+					// loop trips that case and collapses it to a single point. Rebuild
+					// a valid minimum-size loop under the cursor instead of letting it
+					// collapse (the middle handle already avoids this via
+					// getLoopAroundPoints; this covers the arm handles).
+					handler.updatePreviewState = function(edge, point, terminalState, me, outline)
+					{
+						if (!this.isSource && !this.isTarget && this.validLoopPoints == null)
+						{
+							this.validLoopPoints = this.getCommittedLoopPoints();
+						}
+
+						updatePreviewState.apply(this, arguments);
+
+						if (!this.isSource && !this.isTarget)
+						{
+							if (this.points != null && this.points.length == 2 &&
+								Math.round(this.points[0].x - this.points[1].x) == 0 &&
+								Math.round(this.points[0].y - this.points[1].y) == 0)
+							{
+								var loop = this.graph.getLoopAroundPoints(this.state, point);
+
+								if (loop != null)
+								{
+									this.points = this.graph.keepLoopOutsideShape(this.state, loop);
+									this.rerouteLoopPreview(edge);
+								}
+							}
+
+							// Post-route spike guard: placement guesses the terminal with
+							// a perimeter probe, but the router (getFloatingTerminalPoint)
+							// can still collapse both arms onto one point on a slanted or
+							// concave edge. Detect that from the actually-routed terminals
+							// and fall back to the last valid loop, so the handle stops at
+							// the edge of the valid region instead of spiking.
+							if (this.isLoopSpike(edge))
+							{
+								if (this.validLoopPoints != null)
+								{
+									this.points = this.validLoopPoints.map(function(p)
+									{
+										return new mxPoint(p.x, p.y);
+									});
+									this.rerouteLoopPreview(edge);
+								}
+							}
+							else if (this.points != null && this.points.length >= 2)
+							{
+								this.validLoopPoints = this.points.map(function(p)
+								{
+									return new mxPoint(p.x, p.y);
+								});
+							}
+						}
+					};
+
+					return handler;
+				}
+			}
+
+			return graphCreateEdgeHandler.apply(this, arguments);
+		};
+
+		/**
 		 * Disables drill-down for non-swimlanes.
 		 */
 		Graph.prototype.isValidRoot = function(cell)
@@ -12485,14 +16343,16 @@ if (typeof mxVertexHandler !== 'undefined')
 			var style = this.getCurrentCellStyle(cell);
 			var tables = true;
 			var rows = true;
-			
+
 			for (var i = 0; i < cells.length && rows; i++)
 			{
 				tables = tables && this.isTable(cells[i]);
 				rows = rows && this.isTableRow(cells[i]);
 			}
 
-			return !this.isCellLocked(cell) && (this.isTargetShape(cell, cells, evt) ||
+			return !this.isCellLocked(cell) &&
+				this.getLockedGroupAncestor(cell) == null &&
+				(this.isTargetShape(cell, cells, evt) ||
 				((mxUtils.getValue(style, 'part', '0') != '1' || this.isContainer(cell)) &&
 				mxUtils.getValue(style, 'dropTarget', '1') != '0' && (mxGraph.prototype.
 				isValidDropTarget.apply(this, arguments) || this.isContainer(cell)) &&
@@ -12506,8 +16366,87 @@ if (typeof mxVertexHandler !== 'undefined')
 		{
 			var group = mxGraph.prototype.createGroupCell.apply(this, arguments);
 			group.setStyle('group');
-			
+
 			return group;
+		};
+
+		/**
+		 * Dragging a transparentBounds translates its children instead of moving
+		 * the group itself. The group's stored geometry stays pinned at (0,0,0,0)
+		 * and its visible bounds are derived from the new child positions.
+		 */
+		var graphTranslateCell = Graph.prototype.translateCell;
+		Graph.prototype.translateCell = function(cell, dx, dy)
+		{
+			if (this.isTransparentBounds(cell))
+			{
+				var count = this.model.getChildCount(cell);
+
+				for (var i = 0; i < count; i++)
+				{
+					this.translateCell(this.model.getChildAt(cell, i), dx, dy);
+				}
+			}
+			else
+			{
+				graphTranslateCell.apply(this, arguments);
+			}
+		};
+
+		/**
+		 * Creates a transparentBounds with stored geometry pinned at (0,0,0,0) so
+		 * its bounds derive from its children. The standard groupCells path resizes
+		 * the group to the children bounding box and translates children to be
+		 * relative to that origin; both steps are skipped here.
+		 */
+		var graphGroupCells = Graph.prototype.groupCells;
+		Graph.prototype.groupCells = function(group, border, cells)
+		{
+			if (group != null && this.isTransparentBounds(group))
+			{
+				if (cells == null)
+				{
+					cells = mxUtils.sortCells(this.getSelectionCells(), true);
+				}
+
+				cells = this.getCellsForGroup(cells);
+
+				if (cells.length > 0)
+				{
+					var parent = this.model.getParent(group);
+
+					if (parent == null)
+					{
+						parent = this.model.getParent(cells[0]);
+					}
+
+					this.model.beginUpdate();
+					try
+					{
+						this.model.setGeometry(group,
+							new mxGeometry(0, 0, 0, 0));
+
+						var index = this.model.getChildCount(parent);
+						this.cellsAdded([group], parent, index, null, null,
+							false, false, false);
+
+						index = this.model.getChildCount(group);
+						this.cellsAdded(cells, group, index, null, null,
+							false, false, false);
+
+						this.fireEvent(new mxEventObject(mxEvent.GROUP_CELLS,
+							'group', group, 'border', border, 'cells', cells));
+					}
+					finally
+					{
+						this.model.endUpdate();
+					}
+				}
+
+				return group;
+			}
+
+			return graphGroupCells.apply(this, arguments);
 		};
 		
 		/**
@@ -12759,6 +16698,284 @@ if (typeof mxVertexHandler !== 'undefined')
 		};
 
 		/**
+		 * Returns true if the given cell is a group whose rotation must be
+		 * applied by rotating its children as a rigid body (via rotateCell)
+		 * rather than by spinning the group's own shape. Tables, table rows,
+		 * table cells and swimlanes keep the plain per-shape rotation.
+		 */
+		Graph.prototype.isRotatableGroup = function(cell)
+		{
+			var model = this.getModel();
+
+			return model.isVertex(cell) && model.getChildCount(cell) > 0 &&
+				!this.isTable(cell) && !this.isTableRow(cell) &&
+				!this.isTableCell(cell) && !this.isSwimlane(cell);
+		};
+
+		/**
+		 * Sets the absolute rotation of the given cell. Rotatable groups are
+		 * routed through rotateCell with the delta to their current rotation
+		 * so the children rotate as a rigid body like the rotation handle;
+		 * all other cells (and non-numeric values) get the plain style write.
+		 */
+		Graph.prototype.setCellRotation = function(cell, value)
+		{
+			var angle = parseFloat(value);
+
+			if (!isNaN(angle) && this.isRotatableGroup(cell))
+			{
+				this.rotateCell(cell, angle - (parseFloat(this.getCurrentCellStyle(
+					cell)[mxConstants.STYLE_ROTATION]) || 0));
+			}
+			else
+			{
+				this.setCellStyles(mxConstants.STYLE_ROTATION, value, [cell]);
+			}
+		};
+
+		/**
+		 * Rotates the given cell and its non-relative children by the given angle
+		 * (in degrees) about the cell's center, baking the rotation into the child
+		 * geometries so a group rotates as a rigid body. This mirrors the algorithm
+		 * mxVertexHandler.rotateCell uses for the rotation handle, exposed on the
+		 * graph so the angle field, single-click rotate and the 90 degree turn can
+		 * produce the same result for groups. The angle is a signed delta.
+		 */
+		Graph.prototype.rotateCell = function(cell, angle, parent)
+		{
+			if (angle != 0)
+			{
+				var model = this.getModel();
+
+				if (model.isVertex(cell) || model.isEdge(cell))
+				{
+					model.beginUpdate();
+					try
+					{
+						if (!model.isEdge(cell))
+						{
+							var total = (this.getCurrentCellStyle(cell)[mxConstants.STYLE_ROTATION] || 0) + angle;
+							this.setCellStyles(mxConstants.STYLE_ROTATION, total, [cell]);
+						}
+
+						var geo = this.getCellGeometry(cell);
+
+						if (geo != null)
+						{
+							var pgeo = this.getCellGeometry(parent);
+
+							if (pgeo != null && !model.isEdge(parent))
+							{
+								geo = geo.clone();
+								geo.rotate(angle, new mxPoint(pgeo.width / 2, pgeo.height / 2));
+								model.setGeometry(cell, geo);
+							}
+
+							if ((model.isVertex(cell) && !geo.relative) || model.isEdge(cell))
+							{
+								var childCount = model.getChildCount(cell);
+
+								for (var i = 0; i < childCount; i++)
+								{
+									this.rotateCell(model.getChildAt(cell, i), angle, cell);
+								}
+							}
+						}
+					}
+					finally
+					{
+						model.endUpdate();
+					}
+				}
+			}
+		};
+
+		/**
+		 * Returns true if a recursive resize of the given group must transform
+		 * the children in rotated group coordinates (see resizeChildCells):
+		 * the cell is a rotatable group (see isRotatableGroup) with a
+		 * non-zero rotation.
+		 */
+		Graph.prototype.isRotatedGroupResize = function(cell)
+		{
+			return this.isRotatableGroup(cell) && mxUtils.mod(parseFloat(
+				this.getCurrentCellStyle(cell)[mxConstants.STYLE_ROTATION]) || 0, 360) != 0;
+		};
+
+		/**
+		 * Scales the children of rotated groups in rotated group coordinates.
+		 * The base implementation scales each child geometry along the
+		 * unrotated axes relative to the group origin, but the children of a
+		 * rotated group are themselves rotated with baked geometries (see
+		 * rotateCell), so the resize gesture scales them along the group's
+		 * rotated axes and the base scaling slides them off the group border.
+		 * [jgraph/drawio#4890]
+		 */
+		var graphResizeChildCells = Graph.prototype.resizeChildCells;
+		Graph.prototype.resizeChildCells = function(cell, newGeo)
+		{
+			if (this.isRotatedGroupResize(cell))
+			{
+				var alpha = parseFloat(this.getCurrentCellStyle(cell)[
+					mxConstants.STYLE_ROTATION]) || 0;
+				this.resizeRotatedGroupChildren(cell, this.model.getGeometry(cell),
+					newGeo, alpha, alpha);
+			}
+			else
+			{
+				graphResizeChildCells.apply(this, arguments);
+			}
+		};
+
+		/**
+		 * Transforms the children of a group for a resize from oldGeo to
+		 * newGeo, where the resize scales the group along axes rotated by its
+		 * rotation angle. oldAngle and newAngle are the group's rotation
+		 * before and after the resize; they only differ for the recursive
+		 * calls into nested groups whose own angle changes as part of a
+		 * non-uniform resize.
+		 *
+		 * Since children do not inherit the parent rotation in rendering,
+		 * each child center is mapped with rotate(newAngle) o scale o
+		 * rotate(-oldAngle) about the group center, and the child box is
+		 * scaled along its own axes as seen from the rotated frame. This is
+		 * exact for children whose angle relative to the group is a multiple
+		 * of 90 degrees (the common case, since rotateCell keeps group and
+		 * children in lockstep) and for uniform scaling; other combinations
+		 * shear, which a rotated rectangle cannot represent, and get the
+		 * closest rotated box.
+		 */
+		Graph.prototype.resizeRotatedGroupChildren = function(cell, oldGeo, newGeo, oldAngle, newAngle)
+		{
+			var model = this.getModel();
+			var sx = (oldGeo.width != 0) ? newGeo.width / oldGeo.width : 1;
+			var sy = (oldGeo.height != 0) ? newGeo.height / oldGeo.height : 1;
+			var rad = mxUtils.toRadians(oldAngle);
+			var cos = Math.cos(-rad);
+			var sin = Math.sin(-rad);
+			var rad2 = mxUtils.toRadians(newAngle);
+			var cos2 = Math.cos(rad2);
+			var sin2 = Math.sin(rad2);
+			var cx = oldGeo.width / 2;
+			var cy = oldGeo.height / 2;
+			var cx2 = newGeo.width / 2;
+			var cy2 = newGeo.height / 2;
+
+			// Maps a point in the old to the new group coordinates
+			var map = function(x, y)
+			{
+				var tx = cos * (x - cx) - sin * (y - cy);
+				var ty = sin * (x - cx) + cos * (y - cy);
+				tx *= sx;
+				ty *= sy;
+
+				return new mxPoint(cx2 + cos2 * tx - sin2 * ty,
+					cy2 + sin2 * tx + cos2 * ty);
+			};
+
+			var mapPoints = function(pts)
+			{
+				if (pts != null)
+				{
+					for (var i = 0; i < pts.length; i++)
+					{
+						if (pts[i] != null)
+						{
+							var pt = map(pts[i].x, pts[i].y);
+							pts[i].x = pt.x;
+							pts[i].y = pt.y;
+						}
+					}
+				}
+			};
+
+			var childCount = model.getChildCount(cell);
+
+			for (var i = 0; i < childCount; i++)
+			{
+				var child = model.getChildAt(cell, i);
+				var geo = this.getCellGeometry(child);
+
+				if (geo != null)
+				{
+					if (model.isEdge(child))
+					{
+						geo = geo.clone();
+						mapPoints([geo.sourcePoint, geo.targetPoint]);
+						mapPoints(geo.points);
+						model.setGeometry(child, geo);
+					}
+					else if (model.isVertex(child) && !geo.relative)
+					{
+						var style = this.getCurrentCellStyle(child);
+						var theta = parseFloat(style[mxConstants.STYLE_ROTATION]) || 0;
+						var phi = mxUtils.toRadians(theta - oldAngle);
+
+						// Scales of the child's width and height axes as seen
+						// from the frame the group scaling operates in
+						var ux = sx * Math.cos(phi);
+						var uy = sy * Math.sin(phi);
+						var ex = Math.sqrt(ux * ux + uy * uy);
+						var ey = Math.sqrt(sx * sx * Math.sin(phi) * Math.sin(phi) +
+							sy * sy * Math.cos(phi) * Math.cos(phi));
+
+						if (style[mxConstants.STYLE_ASPECT] == 'fixed')
+						{
+							ex = ey = Math.min(ex, ey);
+						}
+
+						var pt = map(geo.getCenterX(), geo.getCenterY());
+						var prev = geo;
+						geo = geo.clone();
+						var theta2 = theta;
+
+						if (this.isCellResizable(child))
+						{
+							if (style[mxConstants.STYLE_RESIZE_WIDTH] != '0')
+							{
+								geo.width = prev.width * ex;
+							}
+
+							if (style[mxConstants.STYLE_RESIZE_HEIGHT] != '0')
+							{
+								geo.height = prev.height * ey;
+							}
+
+							theta2 = Math.round((newAngle + mxUtils.toDegree(
+								Math.atan2(uy, ux))) * 100) / 100;
+						}
+
+						if (this.isCellMovable(child))
+						{
+							geo.x = pt.x - geo.width / 2;
+							geo.y = pt.y - geo.height / 2;
+						}
+
+						model.setGeometry(child, geo);
+
+						if (Math.abs(mxUtils.mod(theta2, 360) -
+							mxUtils.mod(theta, 360)) > 0.01)
+						{
+							this.setCellStyles(mxConstants.STYLE_ROTATION,
+								mxUtils.mod(theta2, 360), [child]);
+						}
+						else
+						{
+							theta2 = theta;
+						}
+
+						this.resizeRotatedGroupChildren(child, prev, geo, theta, theta2);
+					}
+					else
+					{
+						// Keeps the base behavior for relative children
+						this.scaleCell(child, sx, sy, true);
+					}
+				}
+			}
+		};
+
+		/**
 		 * Turns the given cells and returns the changed cells.
 		 */
 		Graph.prototype.turnShapes = function(cells, backwards)
@@ -12777,7 +16994,51 @@ if (typeof mxVertexHandler !== 'undefined')
 					{
 						var src = model.getTerminal(cell, true);
 						var trg = model.getTerminal(cell, false);
-						
+
+						// A self-loop routed by the direction-based loop style has no
+						// stored waypoints or fixed connection points to reverse. To
+						// invert it, materialize its current routing as inner loop
+						// waypoints (keeping its position and matching the loop handle's
+						// orthogonal form); the waypoint reversal below then flips the
+						// loop direction. Already-edited loops keep their waypoints.
+						if (src != null && src == trg)
+						{
+							var loopState = this.view.getState(cell);
+							var loopGeo = model.getGeometry(cell);
+
+							if (loopState != null && loopGeo != null &&
+								loopState.absolutePoints != null &&
+								loopState.absolutePoints.length >= 4 &&
+								(loopGeo.points == null || loopGeo.points.length < 2) &&
+								loopState.style[mxConstants.STYLE_EXIT_X] == null &&
+								loopState.style[mxConstants.STYLE_ENTRY_X] == null)
+							{
+								var lscale = this.view.scale;
+								var ltrans = this.view.translate;
+								var lorigin = loopState.origin;
+								var abs = loopState.absolutePoints;
+								var wp = [];
+
+								for (var j = 1; j < abs.length - 1; j++)
+								{
+									if (abs[j] != null)
+									{
+										wp.push(new mxPoint(abs[j].x / lscale - ltrans.x - lorigin.x,
+											abs[j].y / lscale - ltrans.y - lorigin.y));
+									}
+								}
+
+								if (wp.length >= 2)
+								{
+									loopGeo = loopGeo.clone();
+									loopGeo.points = wp;
+									model.setGeometry(cell, loopGeo);
+									this.setCellStyles(mxConstants.STYLE_EDGE, 'orthogonalEdgeStyle', [cell]);
+									this.setCellStyles('innerLoopWaypoints', '1', [cell]);
+								}
+							}
+						}
+
 						model.setTerminal(cell, trg, true);
 						model.setTerminal(cell, src, false);
 						
@@ -12824,6 +17085,16 @@ if (typeof mxVertexHandler !== 'undefined')
 					}
 					else if (model.isVertex(cell))
 					{
+						// Groups rotate as a rigid body (children baked) like the rotation
+						// handle, instead of the leaf-shape size/direction swap below
+						if (this.isRotatableGroup(cell))
+						{
+							this.rotateCell(cell, (backwards) ? -90 : 90);
+							select.push(cell);
+
+							continue;
+						}
+
 						var geo = this.getCellGeometry(cell);
 			
 						if (geo != null)
@@ -12865,6 +17136,77 @@ if (typeof mxVertexHandler !== 'undefined')
 				model.endUpdate();
 			}
 			
+			return select;
+		};
+		
+		/**
+		 * Rotates the given fully unconnected edges by 90 degrees around their
+		 * center. Edges with at least one connected terminal are ignored as their
+		 * endpoints are fixed to the connected cell (see issue #5076).
+		 */
+		Graph.prototype.rotateEdges = function(cells, backwards)
+		{
+			var model = this.getModel();
+			var select = [];
+
+			model.beginUpdate();
+			try
+			{
+				for (var i = 0; i < cells.length; i++)
+				{
+					var cell = cells[i];
+
+					if (model.isEdge(cell) && !this.isCellLocked(cell) &&
+						model.getTerminal(cell, true) == null &&
+						model.getTerminal(cell, false) == null)
+					{
+						var geo = model.getGeometry(cell);
+
+						if (geo != null && geo.getTerminalPoint(true) != null &&
+							geo.getTerminalPoint(false) != null)
+						{
+							geo = geo.clone();
+							var pts = [geo.getTerminalPoint(true), geo.getTerminalPoint(false)];
+
+							if (geo.points != null)
+							{
+								pts = pts.concat(geo.points);
+							}
+
+							var minX = pts[0].x, minY = pts[0].y, maxX = pts[0].x, maxY = pts[0].y;
+
+							for (var j = 1; j < pts.length; j++)
+							{
+								minX = Math.min(minX, pts[j].x);
+								minY = Math.min(minY, pts[j].y);
+								maxX = Math.max(maxX, pts[j].x);
+								maxY = Math.max(maxY, pts[j].y);
+							}
+
+							var cx = (minX + maxX) / 2;
+							var cy = (minY + maxY) / 2;
+
+							for (var j = 0; j < pts.length; j++)
+							{
+								var dx = pts[j].x - cx;
+								var dy = pts[j].y - cy;
+
+								// Rotates clockwise, or counter-clockwise if backwards
+								pts[j].x = (backwards) ? cx + dy : cx - dy;
+								pts[j].y = (backwards) ? cy - dx : cy + dx;
+							}
+
+							model.setGeometry(cell, geo);
+							select.push(cell);
+						}
+					}
+				}
+			}
+			finally
+			{
+				model.endUpdate();
+			}
+
 			return select;
 		};
 		
@@ -13099,21 +17441,23 @@ if (typeof mxVertexHandler !== 'undefined')
 
 		/**
 		 * Removes transparent empty groups if all children are removed.
+		 * Also collapses a transparentBounds parent whose remaining child
+		 * is a single transparentBounds wrapper.
 		 */
 		Graph.prototype.cellsRemoved = function(cells)
 		{
 			if (cells != null)
 			{
 				var dict = new mxDictionary();
-				
+
 				for (var i = 0; i < cells.length; i++)
 				{
 					dict.put(cells[i], true);
 				}
-				
+
 				// LATER: Recurse up the cell hierarchy
 				var parents = [];
-				
+
 				for (var i = 0; i < cells.length; i++)
 				{
 					var parent = this.model.getParent(cells[i]);
@@ -13124,18 +17468,19 @@ if (typeof mxVertexHandler !== 'undefined')
 						parents.push(parent);
 					}
 				}
-				
+
 				for (var i = 0; i < parents.length; i++)
 				{
 					var state = this.view.getState(parents[i]);
-					
+
 					if (state != null && (this.model.isEdge(state.cell) ||
 						this.model.isVertex(state.cell)) &&
 						this.isCellDeletable(state.cell) &&
-						this.isTransparentState(state))
+						(this.isTransparentState(state) ||
+							this.isTransparentBounds(state.cell)))
 					{
 						var allChildren = true;
-						
+
 						for (var j = 0; j < this.model.getChildCount(state.cell) && allChildren; j++)
 						{
 							if (!dict.get(this.model.getChildAt(state.cell, j)))
@@ -13143,15 +17488,83 @@ if (typeof mxVertexHandler !== 'undefined')
 								allChildren = false;
 							}
 						}
-						
+
 						if (allChildren)
 						{
 							cells.push(state.cell);
 						}
 					}
 				}
+
+				// Collapses redundant nested transparentBounds: if removal
+				// leaves a transparentBounds parent with a single remaining
+				// child that is itself transparentBounds, the inner wrapper
+				// adds no visible structure — lift its children up and drop
+				// the wrapper. Loops per parent so a chain of single-tb-child
+				// wrappers collapses in one pass.
+				//
+				// Uses a fresh removedDict instead of dict because dict is
+				// overloaded to also mark parent cells (for dedup in the
+				// parent-collection loop above), and those parents are NOT
+				// being removed unless the all-children loop added them.
+				var removedDict = new mxDictionary();
+
+				for (var i = 0; i < cells.length; i++)
+				{
+					removedDict.put(cells[i], true);
+				}
+
+				for (var i = 0; i < parents.length; i++)
+				{
+					var parent = parents[i];
+
+					while (!removedDict.get(parent) && this.isTransparentBounds(parent))
+					{
+						var remaining = null;
+						var multiple = false;
+						var count = this.model.getChildCount(parent);
+
+						for (var j = 0; j < count; j++)
+						{
+							var child = this.model.getChildAt(parent, j);
+
+							if (!removedDict.get(child))
+							{
+								if (remaining != null)
+								{
+									multiple = true;
+									break;
+								}
+
+								remaining = child;
+							}
+						}
+
+						if (multiple || remaining == null ||
+							!this.isTransparentBounds(remaining) ||
+							!this.isCellDeletable(remaining))
+						{
+							break;
+						}
+
+						var grandchildren = this.model.getChildren(remaining);
+
+						if (grandchildren != null && grandchildren.length > 0)
+						{
+							// absolute=true so cellsAdded translates each
+							// grandchild's local geometry by (remainingOrigin -
+							// parentOrigin), keeping them at the same visual
+							// position after the reparent.
+							this.cellsAdded(grandchildren.slice(), parent,
+								this.model.getChildCount(parent), null, null, true);
+						}
+
+						removedDict.put(remaining, true);
+						cells.push(remaining);
+					}
+				}
 			}
-			
+
 			mxGraph.prototype.cellsRemoved.apply(this, arguments);
 		};
 		
@@ -14085,14 +18498,265 @@ if (typeof mxVertexHandler !== 'undefined')
 		 * @param cell
 		 * @returns {Boolean}
 		 */
+		/**
+		 * Includes cells that isCellResizable rejects (so they show no sizers)
+		 * but the turn action can still rotate by advancing the direction style:
+		 * transparentBounds swimlanes, and swimlane-shaped table cells (the lanes
+		 * of a cross-functional flowchart, which isCellResizable filters out as
+		 * table cells). Plain table rows/cells stay excluded as they are not
+		 * swimlane shapes.
+		 */
+		var graphGetResizableCells = Graph.prototype.getResizableCells;
+		Graph.prototype.getResizableCells = function(cells)
+		{
+			var result = graphGetResizableCells.apply(this, arguments);
+
+			if (cells != null)
+			{
+				for (var i = 0; i < cells.length; i++)
+				{
+					if ((this.isTransparentBounds(cells[i]) ||
+						this.getCurrentCellStyle(cells[i])[mxConstants.STYLE_SHAPE] ==
+						mxConstants.SHAPE_SWIMLANE) &&
+						mxUtils.indexOf(result, cells[i]) < 0)
+					{
+						result.push(cells[i]);
+					}
+				}
+			}
+
+			return result;
+		};
+
 		Graph.prototype.isCellResizable = function(cell)
 		{
+			if (this.isTransparentBounds(cell))
+			{
+				return false;
+			}
+
 			var result = mxGraph.prototype.isCellResizable.apply(this, arguments);
 			var style = this.getCurrentCellStyle(cell);
-				
+
 			return !this.isTableCell(cell) && !this.isTableRow(cell) && (result ||
 				(mxUtils.getValue(style, mxConstants.STYLE_RESIZABLE, '1') != '0' &&
 				style[mxConstants.STYLE_WHITE_SPACE] == 'wrap'));
+		};
+
+		/**
+		 * Aligns a selection that includes one or more transparentBounds groups.
+		 * The base reads each cell's stored geometry and writes it via resizeCell,
+		 * but a transparentBounds group's geometry is pinned at (0,0,0,0) and its
+		 * visible box is derived from its children — so the base aligns to (and
+		 * "moves") a zero-size box at the group's parent origin, leaving the group
+		 * visually unmoved while corrupting the pinned geometry. With no
+		 * transparentBounds cell in the selection this delegates verbatim to the
+		 * base. Otherwise the alignment coordinate is taken from each cell's visible
+		 * bounds, transparentBounds groups are moved with translateCell (which
+		 * translates their children) and every other cell is moved exactly as the
+		 * base does (identical resulting geometry).
+		 */
+		Graph.prototype.alignCells = function(align, cells, param)
+		{
+			if (cells == null)
+			{
+				cells = this.getMovableCells(this.getSelectionCells());
+			}
+
+			var hasTransparent = false;
+
+			if (cells != null)
+			{
+				for (var i = 0; i < cells.length; i++)
+				{
+					if (this.isTransparentBounds(cells[i]))
+					{
+						hasTransparent = true;
+						break;
+					}
+				}
+			}
+
+			if (!hasTransparent)
+			{
+				return mxGraph.prototype.alignCells.apply(this, arguments);
+			}
+
+			var graph = this;
+
+			// Visible model-space bounds of a cell (excluding the view translate):
+			// the child-derived box for a transparentBounds group, the stored
+			// geometry otherwise. Returns null for edges and relative cells, which
+			// the base alignment also skips.
+			var boundsOf = function(cell)
+			{
+				if (graph.model.isEdge(cell))
+				{
+					return null;
+				}
+
+				var geo = graph.getCellGeometry(cell);
+
+				if (geo == null || geo.relative)
+				{
+					return null;
+				}
+
+				var origin = graph.getOriginForCell(cell);
+
+				if (graph.isTransparentBounds(cell))
+				{
+					var local = graph.getTransparentBounds(cell);
+
+					if (local == null)
+					{
+						return null;
+					}
+
+					return new mxRectangle(origin.x + geo.x + local.x,
+						origin.y + geo.y + local.y, local.width, local.height);
+				}
+
+				return new mxRectangle(origin.x + geo.x, origin.y + geo.y,
+					geo.width, geo.height);
+			};
+
+			if (cells != null && cells.length > 1)
+			{
+				if (param == null)
+				{
+					for (var i = 0; i < cells.length; i++)
+					{
+						var b = boundsOf(cells[i]);
+
+						if (b == null)
+						{
+							continue;
+						}
+
+						if (param == null)
+						{
+							if (align == mxConstants.ALIGN_CENTER)
+							{
+								param = b.x + b.width / 2;
+								break;
+							}
+							else if (align == mxConstants.ALIGN_RIGHT)
+							{
+								param = b.x + b.width;
+							}
+							else if (align == mxConstants.ALIGN_TOP)
+							{
+								param = b.y;
+							}
+							else if (align == mxConstants.ALIGN_MIDDLE)
+							{
+								param = b.y + b.height / 2;
+								break;
+							}
+							else if (align == mxConstants.ALIGN_BOTTOM)
+							{
+								param = b.y + b.height;
+							}
+							else
+							{
+								param = b.x;
+							}
+						}
+						else
+						{
+							if (align == mxConstants.ALIGN_RIGHT)
+							{
+								param = Math.max(param, b.x + b.width);
+							}
+							else if (align == mxConstants.ALIGN_TOP)
+							{
+								param = Math.min(param, b.y);
+							}
+							else if (align == mxConstants.ALIGN_BOTTOM)
+							{
+								param = Math.max(param, b.y + b.height);
+							}
+							else
+							{
+								param = Math.min(param, b.x);
+							}
+						}
+					}
+				}
+
+				if (param != null)
+				{
+					// Processes from parent to child
+					cells = mxUtils.sortCells(cells);
+
+					this.model.beginUpdate();
+					try
+					{
+						for (var i = 0; i < cells.length; i++)
+						{
+							var b = boundsOf(cells[i]);
+
+							if (b == null)
+							{
+								continue;
+							}
+
+							var dx = 0;
+							var dy = 0;
+
+							if (align == mxConstants.ALIGN_CENTER)
+							{
+								dx = param - (b.x + b.width / 2);
+							}
+							else if (align == mxConstants.ALIGN_RIGHT)
+							{
+								dx = param - (b.x + b.width);
+							}
+							else if (align == mxConstants.ALIGN_TOP)
+							{
+								dy = param - b.y;
+							}
+							else if (align == mxConstants.ALIGN_MIDDLE)
+							{
+								dy = param - (b.y + b.height / 2);
+							}
+							else if (align == mxConstants.ALIGN_BOTTOM)
+							{
+								dy = param - (b.y + b.height);
+							}
+							else
+							{
+								dx = param - b.x;
+							}
+
+							if (dx != 0 || dy != 0)
+							{
+								if (this.isTransparentBounds(cells[i]))
+								{
+									this.translateCell(cells[i], dx, dy);
+								}
+								else
+								{
+									var geo = this.getCellGeometry(cells[i]).clone();
+									geo.x += dx;
+									geo.y += dy;
+									this.resizeCell(cells[i], geo);
+								}
+							}
+						}
+
+						this.fireEvent(new mxEventObject(mxEvent.ALIGN_CELLS,
+							'align', align, 'cells', cells));
+					}
+					finally
+					{
+						this.model.endUpdate();
+					}
+				}
+			}
+
+			return cells;
 		};
 		
 		/**
@@ -14175,18 +18839,42 @@ if (typeof mxVertexHandler !== 'undefined')
 							
 							if (geo != null && pstate != null)
 							{
-								geo = geo.clone();
-								
-								if (horizontal)
+								if (this.isTransparentBounds(vertices[i].cell))
 								{
-									geo.x = Math.round(t0 - (spacing? 0 : geo.width / 2)) - pstate.origin.x;
+									// Geometry is pinned at (0,0,0,0) and ignored by
+									// rendering, so writing it leaves the group in place.
+									// Move the group (its children) by the delta from its
+									// current visible position to the distributed target.
+									var cur = (horizontal) ?
+										((spacing) ? vertices[i].x / s - t.x :
+											vertices[i].getCenterX() / s - t.x) :
+										((spacing) ? vertices[i].y / s - t.y :
+											vertices[i].getCenterY() / s - t.y);
+
+									if (horizontal)
+									{
+										this.translateCell(vertices[i].cell, t0 - cur, 0);
+									}
+									else
+									{
+										this.translateCell(vertices[i].cell, 0, t0 - cur);
+									}
 								}
 								else
 								{
-									geo.y = Math.round(t0 - (spacing? 0 : geo.height / 2)) - pstate.origin.y;
+									geo = geo.clone();
+
+									if (horizontal)
+									{
+										geo.x = Math.round(t0 - (spacing? 0 : geo.width / 2)) - pstate.origin.x;
+									}
+									else
+									{
+										geo.y = Math.round(t0 - (spacing? 0 : geo.height / 2)) - pstate.origin.y;
+									}
+
+									this.getModel().setGeometry(vertices[i].cell, geo);
 								}
-								
-								this.getModel().setGeometry(vertices[i].cell, geo);
 							}
 
 							if (spacing)
@@ -14221,10 +18909,10 @@ if (typeof mxVertexHandler !== 'undefined')
 		 * @param {number} dx X-coordinate of the translation.
 		 * @param {number} dy Y-coordinate of the translation.
 		 */
-		Graph.prototype.createSvgImageExport = function(includeCellId)
+		Graph.prototype.createSvgImageExport = function(includeCellId, addSvgData)
 		{
 			var exp = new mxImageExport();
-			
+
 			// Adds cell IDs and cell heirarchy
 			exp.addCellData = function(cell, group, includeValue)
 			{
@@ -14253,9 +18941,22 @@ if (typeof mxVertexHandler !== 'undefined')
 					}
 				}
 
+				// Mirrors the cell value's XML attributes as data-meta-{attr} on the
+				// wrapper group. The data-meta- prefix is reserved for user-defined
+				// metadata so it cannot collide with internal attributes such as
+				// data-cell-id even when a property is literally named "cell-id".
+				if (addSvgData && mxUtils.isNode(cell.value))
+				{
+					for (var i = 0; i < cell.value.attributes.length; i++)
+					{
+						var attrib = cell.value.attributes[i];
+						group.setAttribute('data-meta-' + attrib.name, attrib.value);
+					}
+				}
+
 				return group;
 			};
-			
+
 			// Maps cell hierarchy to SVG group structure
 			var visitStatesRecursive = exp.visitStatesRecursive;
 			exp.visitStatesRecursive = function(state, canvas, visitor)
@@ -14321,7 +19022,7 @@ if (typeof mxVertexHandler !== 'undefined')
 		 */
 		Graph.prototype.getSvg = function(background, scale, border, nocrop, crisp,
 			ignoreSelection, showText, imgExport, linkTarget, hasShadow, incExtFonts,
-			theme, exportType, cells, noCssClass, disableLinks)
+			theme, exportType, cells, noCssClass, disableLinks, grid)
 		{
 			var lookup = null;
 			
@@ -14381,6 +19082,58 @@ if (typeof mxVertexHandler !== 'undefined')
 
 				// Prepares SVG document that holds the output
 				var s = scale / vs;
+				// Extends the bounds by the painted extent of shapes with the
+				// half pixel screen offset of odd stroke widths (see
+				// mxImageExport.getSvgShapeOffset) so that they are not
+				// clipped at the right and bottom edge of the crop, except
+				// for fixed size page output [jgraph/drawio#4938]
+				if (exportType != 'page')
+				{
+					imgExport = (imgExport != null) ? imgExport :
+						this.createSvgImageExport();
+					var offsetCanvas = {state: {scale: s}};
+					var extended = null;
+
+					this.view.states.visit(mxUtils.bind(this, function(id, state)
+					{
+						if (state.shape != null && state.shape.boundingBox != null)
+						{
+							var off = imgExport.getSvgShapeOffset(state.shape, offsetCanvas);
+
+							if (off != 0)
+							{
+								var painted = (ignoreSelection && lookup == null);
+								var cell = state.cell;
+
+								// Checks if cell or ancestor is exported
+								while (!painted && cell != null)
+								{
+									painted = (lookup != null) ? lookup.get(cell) :
+										this.isCellSelected(cell);
+									cell = this.model.getParent(cell);
+								}
+
+								if (painted)
+								{
+									var dt = off * vs / scale;
+									extended = (extended != null) ? extended :
+										mxRectangle.fromRectangle(bounds);
+									extended.add(new mxRectangle(
+										state.shape.boundingBox.x + dt,
+										state.shape.boundingBox.y + dt,
+										state.shape.boundingBox.width,
+										state.shape.boundingBox.height));
+								}
+							}
+						}
+					}));
+
+					if (extended != null)
+					{
+						bounds = extended;
+					}
+				}
+
 				var w = Math.max(1, Math.ceil(bounds.width * s) + 2 * border) +
 					((hasShadow && border == 0) ? 5 : 0);
 				var h = Math.max(1, Math.ceil(bounds.height * s) + 2 * border) +
@@ -14406,26 +19159,90 @@ if (typeof mxVertexHandler !== 'undefined')
 					root.appendChild(rect);
 				}
 
-			    // Renders graph. Offset will be multiplied with state's scale when painting state.
-				// TextOffset only seems to affect FF output but used everywhere for consistency.
+			    // Renders graph
 				var group = mxUtils.createElementNs(
 					svgDoc, mxConstants.NS_SVG, 'g');
 			    root.appendChild(group);
 
 				var svgCanvas = this.createSvgCanvas(group);
-				svgCanvas.translate(Math.floor(border / scale - bounds.x / vs),
-					Math.floor(border / scale - bounds.y / vs));
+				// Floors the translate at the output scale so that content
+				// moves by whole output pixels, keeping strokes crisp, and
+				// so that a fractional crop origin clips less than one pixel
+				// at the top and left at all export scales, instead of up to
+				// one pixel per unit of the scale [jgraph/drawio#4938]
+				var dx = Math.floor((border / scale - bounds.x / vs) * s) / s;
+				var dy = Math.floor((border / scale - bounds.y / vs) * s) / s;
+				svgCanvas.translate(dx, dy);
 				svgCanvas.idPrefix = 'drawio-svg-' + Editor.guid();
+
+				// Paints the grid as a pattern between the background color and the
+				// cells, aligned to the diagram origin. Model coordinates map to
+				// (value + translate + dx) * scale in the output as the shapes
+				// rescale the canvas by the view scale when painting.
+				if (grid)
+				{
+					var minorDist = this.gridSize * scale;
+					var phase = this.view.gridSteps * minorDist;
+					var d = [];
+
+					for (var i = 1; i < this.view.gridSteps; i++)
+					{
+						var pos = i * minorDist;
+						d.push('M 0 ' + pos + ' L ' + phase + ' ' + pos +
+							' M ' + pos + ' 0 L ' + pos + ' ' + phase);
+					}
+
+					var gridColor = mxUtils.getLightDarkColor(this.view.gridColor);
+					var pattern = mxUtils.createElementNs(
+						svgDoc, mxConstants.NS_SVG, 'pattern');
+					pattern.setAttribute('id', svgCanvas.idPrefix + '-grid');
+					pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+					pattern.setAttribute('width', phase);
+					pattern.setAttribute('height', phase);
+					pattern.setAttribute('x', mxUtils.mod((tr.x + dx) * scale, phase));
+					pattern.setAttribute('y', mxUtils.mod((tr.y + dy) * scale, phase));
+
+					if (d.length > 0)
+					{
+						var minorPath = mxUtils.createElementNs(
+							svgDoc, mxConstants.NS_SVG, 'path');
+						minorPath.setAttribute('d', d.join(' '));
+						minorPath.setAttribute('fill', 'none');
+						minorPath.setAttribute('stroke', gridColor.light);
+						minorPath.style.stroke = gridColor.cssText;
+						minorPath.setAttribute('opacity', '0.2');
+						minorPath.setAttribute('stroke-width', scale);
+						pattern.appendChild(minorPath);
+					}
+
+					var majorPath = mxUtils.createElementNs(
+						svgDoc, mxConstants.NS_SVG, 'path');
+					majorPath.setAttribute('d', 'M ' + phase + ' 0 L 0 0 0 ' + phase);
+					majorPath.setAttribute('fill', 'none');
+					majorPath.setAttribute('stroke', gridColor.light);
+					majorPath.style.stroke = gridColor.cssText;
+					majorPath.setAttribute('stroke-width', scale);
+					pattern.appendChild(majorPath);
+					svgCanvas.defs.appendChild(pattern);
+
+					var gridRect = mxUtils.createElementNs(
+						svgDoc, mxConstants.NS_SVG, 'rect');
+					gridRect.setAttribute('width', '100%');
+					gridRect.setAttribute('height', '100%');
+					gridRect.setAttribute('fill', 'url(#' +
+						pattern.getAttribute('id') + ')');
+					root.insertBefore(gridRect, group);
+				}
 				
 				// Convert HTML entities
 				var htmlConverter = document.createElement('div');
 				
 				// Adds simple text fallback for viewers with no support for foreignObjects
+				// (line wrapping and clipping is applied in createAlternateContent)
 				var getAlternateText = svgCanvas.getAlternateText;
 				svgCanvas.getAlternateText = function(fo, x, y, w, h, str,
 					align, valign, wrap, format, overflow, clip, rotation)
 				{
-					// Assumes a max character width of 0.5em
 					if (str != null && this.state.fontSize > 0)
 					{
 						try
@@ -14439,43 +19256,7 @@ if (typeof mxVertexHandler !== 'undefined')
 								htmlConverter.innerHTML = str;
 								str = mxUtils.extractTextWithWhitespace(htmlConverter.childNodes);
 							}
-							
-							// Workaround for substring breaking double byte UTF
-							var exp = Math.ceil(2 * w / this.state.fontSize);
-							var result = [];
-							var length = 0;
-							var index = 0;
-							
-							while ((exp == 0 || length < exp) && index < str.length)
-							{
-								var char = str.charCodeAt(index);
-								
-								if (char == 10 || char == 13)
-								{
-									if (length > 0)
-									{
-										break;
-									}
-								}
-								else
-								{
-									result.push(str.charAt(index));
 
-									if (char < 255)
-									{
-										length++;
-									}
-								}
-								
-								index++;
-							}
-							
-							// Uses result and adds ellipsis if more than 1 char remains
-							if (result.length < str.length && str.length - result.length > 1)
-							{
-								str = mxUtils.trim(result.join('')) + '...';
-							}
-							
 							return str;
 						}
 						catch (e)
@@ -14599,6 +19380,18 @@ if (typeof mxVertexHandler !== 'undefined')
 					this.view.currentRoot : this.model.root;
 				imgExport.drawState(this.getView().getState(viewRoot), svgCanvas);
 				this.addForeignObjectWarning(svgCanvas, root);
+
+				// Inlines image definitions that are referenced only once
+				Graph.inlineSingleUseImages(root);
+
+				// Replaces deprecated font elements in labels with spans
+				// to keep the HTML in the output valid [jgraph/drawio#5679]
+				Graph.replaceFontElements(root);
+
+				// Routes light-dark() colors that contain a var() through a
+				// custom property so they degrade to the light color in browsers
+				// without light-dark() support (e.g. Firefox ESR 115).
+				Graph.addAdaptiveColors(root, this.shapeBackgroundColor);
 
 				// Disables links
 				if (disableLinks)
@@ -14736,7 +19529,18 @@ if (typeof mxVertexHandler !== 'undefined')
 			canvas.minStrokeWidth = this.cellRenderer.minSvgStrokeWidth;
 			canvas.adaptiveColors = this.getAdaptiveColors();
 			canvas.pointerEvents = true;
-			
+			canvas.dedupImages = true;
+
+			// Inlines themed SVG images as shared symbols
+			canvas.createImageSymbol = function(src, aspect)
+			{
+				this.imageSymbols = (this.imageSymbols != null) ?
+					this.imageSymbols : {};
+
+				return Graph.createSvgImageSymbol(this.defs,
+					this.imageSymbols, src, aspect);
+			};
+
 			return canvas;
 		};
 		
@@ -16320,7 +21124,13 @@ if (typeof mxVertexHandler !== 'undefined')
 					{
 						txtDecor.push('line-through');
 					}
-					
+
+					if (txtDecor.length > 0 && (mxUtils.getValue(state.style, mxConstants.STYLE_FONTSTYLE, 0) &
+							mxConstants.FONT_UNDERLINE_DOTTED) == mxConstants.FONT_UNDERLINE_DOTTED)
+					{
+						txtDecor.push('dotted');
+					}
+
 					this.textarea.style.lineHeight = (mxConstants.ABSOLUTE_LINE_HEIGHT) ? Math.round(size * mxConstants.LINE_HEIGHT) + 'px' : mxConstants.LINE_HEIGHT;
 					this.textarea.style.fontSize = Math.round(size) + 'px';
 					this.textarea.style.textDecoration = txtDecor.join(' ');
@@ -16717,6 +21527,163 @@ if (typeof mxVertexHandler !== 'undefined')
 		};
 
 		/**
+		 * Redirects the initial cell for click-and-drag to the locked group
+		 * ancestor so descendants of a locked group cannot be dragged out.
+		 */
+		var mxGraphHandlerGetInitialCellForEvent = mxGraphHandler.prototype.getInitialCellForEvent;
+		mxGraphHandler.prototype.getInitialCellForEvent = function(me)
+		{
+			var cell = mxGraphHandlerGetInitialCellForEvent.apply(this, arguments);
+
+			if (cell != null)
+			{
+				var anc = this.graph.getLockedGroupAncestor(
+					this.graph.model.getParent(cell));
+
+				if (anc != null)
+				{
+					cell = anc;
+				}
+			}
+
+			return cell;
+		};
+
+		/**
+		 * Selection propagation rules for groups and swimlanes:
+		 *   - selectParentFirst=1 on the parent: walk up unless the parent is
+		 *     already selected, then stop on the child. Produces a parent ↔
+		 *     child click cycle starting at parent. Works on any vertex parent
+		 *     (groups, swimlanes, transparentBounds).
+		 *   - transparentBounds=1 (without selectParentFirst): stop at the
+		 *     group boundary so children are selectable directly, like
+		 *     children of a swimlane.
+		 *   - Otherwise: fall through to base propagation (groups propagate
+		 *     up to parent first; swimlanes stop on the clicked child).
+		 */
+		var mxGraphHandlerIsPropagateSelectionCell = mxGraphHandler.prototype.isPropagateSelectionCell;
+		mxGraphHandler.prototype.isPropagateSelectionCell = function(cell, immediate, me)
+		{
+			var parent = this.graph.model.getParent(cell);
+
+			if (parent != null)
+			{
+				if (this.graph.isSelectParentFirst(parent))
+				{
+					// Walk up to the parent unless it (or a sibling of the
+					// clicked child) is already selected — keeping a sibling
+					// selection live in the same group means the user wants
+					// to switch between children rather than escalate.
+					return !this.graph.isCellSelected(parent) &&
+						!this.graph.isSiblingSelected(cell);
+				}
+
+				if (this.graph.isTransparentBounds(parent))
+				{
+					return false;
+				}
+			}
+
+			return mxGraphHandlerIsPropagateSelectionCell.apply(this, arguments);
+		};
+
+		/**
+		 * Makes edges transparent for fixed points, using the topmost vertex
+		 * beneath the event instead (or none), so that a connection point
+		 * occupied by an edge endpoint stays reachable for more connections.
+		 * Shows the connection points of a container instead of an overlapping
+		 * child if the event is on the container's border band. A cell that
+		 * already has the focus keeps it, so that its own connection points
+		 * on a shared border stay reachable when approached from inside.
+		 */
+		var mxConstraintHandlerGetCellForEvent = mxConstraintHandler.prototype.getCellForEvent;
+		mxConstraintHandler.prototype.getCellForEvent = function(me, point)
+		{
+			var cell = mxConstraintHandlerGetCellForEvent.apply(this, arguments);
+			var x = (point != null) ? point.x : me.getGraphX();
+			var y = (point != null) ? point.y : me.getGraphY();
+
+			if (cell != null && this.graph.model.isEdge(cell))
+			{
+				var model = this.graph.model;
+				var temp = this.graph.getCellAt(x, y, null, true, false, function(state)
+				{
+					// Ignores labels of edges
+					return model.isEdge(model.getParent(state.cell));
+				});
+
+				// Applies the connectable parent rule of the base function
+				if (temp != null && !this.graph.isCellConnectable(temp))
+				{
+					var parent = model.getParent(temp);
+
+					if (model.isVertex(parent) && this.graph.isCellConnectable(parent))
+					{
+						temp = parent;
+					}
+				}
+
+				cell = (this.graph.isCellLocked(temp)) ? null : temp;
+			}
+
+			if (cell != null && (this.currentFocus == null ||
+				this.currentFocus.cell != cell))
+			{
+				var container = this.graph.getBorderContainer(cell, x, y);
+
+				if (container != null)
+				{
+					cell = container;
+				}
+			}
+
+			return cell;
+		};
+
+		/**
+		 * Includes transparentBounds ancestors of selected cells in the handler
+		 * list so that the group's own vertex handler is created (drawing the
+		 * dashed bounds and the move handle) even when only descendants are
+		 * formally selected. These ancestor cells do not enter the selection,
+		 * so delete/copy/format-panel still operate on the user's actual choice.
+		 */
+		var mxSelectionCellsHandlerGetHandledSelectionCells = mxSelectionCellsHandler.prototype.getHandledSelectionCells;
+		mxSelectionCellsHandler.prototype.getHandledSelectionCells = function()
+		{
+			var cells = mxSelectionCellsHandlerGetHandledSelectionCells.apply(this, arguments);
+			var graph = this.graph;
+			var dict = new mxDictionary();
+			var result = [];
+
+			for (var i = 0; i < cells.length; i++)
+			{
+				if (dict.get(cells[i]) == null)
+				{
+					dict.put(cells[i], true);
+					result.push(cells[i]);
+				}
+			}
+
+			for (var i = 0; i < cells.length; i++)
+			{
+				var parent = graph.model.getParent(cells[i]);
+
+				while (parent != null && graph.isTransparentBounds(parent))
+				{
+					if (dict.get(parent) == null)
+					{
+						dict.put(parent, true);
+						result.push(parent);
+					}
+
+					parent = graph.model.getParent(parent);
+				}
+			}
+
+			return result;
+		};
+
+		/**
 		 * Hints on handlers
 		 */
 		function createHint()
@@ -16739,7 +21706,8 @@ if (typeof mxVertexHandler !== 'undefined')
 		        case mxConstants.POINTS:
 		            return pixels;
 		        case mxConstants.MILLIMETERS:
-		            return (pixels / mxConstants.PIXELS_PER_MM).toFixed(1);
+		            // Up to 3 decimals without trailing zeros
+		            return Math.round(pixels * 1000 / mxConstants.PIXELS_PER_MM) / 1000;
 				case mxConstants.METERS:
             		return (pixels / (mxConstants.PIXELS_PER_MM * 1000)).toFixed(4);
 		        case mxConstants.INCHES:
@@ -16907,11 +21875,77 @@ if (typeof mxVertexHandler !== 'undefined')
 		mxVertexHandler.prototype.createParentHighlightShape = function(bounds)
 		{
 			var shape = vertexHandlerCreateParentHighlightShape.apply(this, arguments);
-			
+
 			shape.stroke = '#C0C0C0';
 			shape.strokewidth = 1;
-			
+
+			// Dashed outline for transparentBounds ancestors so the group bounds
+			// are visually distinguishable from the standard parent highlight.
+			var parent = this.graph.model.getParent(this.state.cell);
+
+			if (parent != null && this.graph.isTransparentBounds(parent))
+			{
+				shape.isDashed = true;
+			}
+
 			return shape;
+		};
+
+		/**
+		 * The transparentBounds's own selection border is drawn dashed so the
+		 * derived-bounds outline keeps the same visual language whether the
+		 * group or a descendant is selected.
+		 */
+		var vertexHandlerIsSelectionDashed = mxVertexHandler.prototype.isSelectionDashed;
+		mxVertexHandler.prototype.isSelectionDashed = function()
+		{
+			if (this.graph.isTransparentBounds(this.state.cell))
+			{
+				return true;
+			}
+
+			return vertexHandlerIsSelectionDashed.apply(this, arguments);
+		};
+
+		/**
+		 * A transparentBounds vertex handler can be present for two reasons:
+		 * the user selected the group itself (draw the standard blue
+		 * selection border) or only a descendant is selected and the group
+		 * is shown via the ancestor-injection in getHandledSelectionCells
+		 * (draw a gray border that matches the parent-highlight color).
+		 */
+		var vertexHandlerGetSelectionColor = mxVertexHandler.prototype.getSelectionColor;
+		mxVertexHandler.prototype.getSelectionColor = function()
+		{
+			if (this.graph.isTransparentBounds(this.state.cell) &&
+				!this.graph.isCellSelected(this.state.cell))
+			{
+				return '#C0C0C0';
+			}
+
+			return vertexHandlerGetSelectionColor.apply(this, arguments);
+		};
+
+		/**
+		 * The selection-cells handler reuses an existing vertex handler when
+		 * the same cell stays in the handled set across a selection change,
+		 * which is exactly the transition between ancestor-only and directly
+		 * selected for a transparentBounds group. Reuse only calls redraw(),
+		 * not refresh(), so the selectionBorder stroke is never re-read.
+		 * Pull the current color through updateParentHighlight, which IS
+		 * called on every reused handler at the end of refresh.
+		 */
+		var vertexHandlerUpdateParentHighlight = mxVertexHandler.prototype.updateParentHighlight;
+		mxVertexHandler.prototype.updateParentHighlight = function()
+		{
+			vertexHandlerUpdateParentHighlight.apply(this, arguments);
+
+			if (this.selectionBorder != null &&
+				this.graph.isTransparentBounds(this.state.cell))
+			{
+				this.selectionBorder.stroke = this.getSelectionColor();
+				this.selectionBorder.redraw();
+			}
 		};
 		
 		/**
@@ -16948,7 +21982,25 @@ if (typeof mxVertexHandler !== 'undefined')
 			return this.graph.isRecursiveVertexResize(state) &&
 				!mxEvent.isAltDown(me.getEvent());
 		};
-		
+
+		/**
+		 * Graph.resizeChildCells computes the children of rotated groups from
+		 * the old and new group geometry directly, so the child offset that
+		 * compensates the recentered group origin for the base axis-aligned
+		 * child scaling must not be applied on top of it.
+		 */
+		var vertexHandlerResizeCell = mxVertexHandler.prototype.resizeCell;
+		mxVertexHandler.prototype.resizeCell = function(cell, dx, dy, index, gridEnabled, constrained, recurse)
+		{
+			if (recurse && this.graph.isRotatedGroupResize(cell))
+			{
+				this.childOffsetX = 0;
+				this.childOffsetY = 0;
+			}
+
+			vertexHandlerResizeCell.apply(this, arguments);
+		};
+
 		/**
 		 * Enables centered resize events.
 		 */
@@ -16967,7 +22019,10 @@ if (typeof mxVertexHandler !== 'undefined')
 			return vertexHandlerIsRotationHandleVisible.apply(this, arguments)  &&
 				!this.graph.isTableCell(this.state.cell) &&
 				!this.graph.isTableRow(this.state.cell) &&
-				!this.graph.isTable(this.state.cell);
+				!this.graph.isTable(this.state.cell) &&
+				!this.graph.isTransparentBounds(this.state.cell) &&
+				// Manual rotation is overridden by labelAutoRotate
+				mxUtils.getValue(this.state.style, 'labelAutoRotate', '0') != '1';
 		};
 
 		/**
@@ -16975,7 +22030,8 @@ if (typeof mxVertexHandler !== 'undefined')
 		 */
 		mxVertexHandler.prototype.isConnectHandleVisible = function()
 		{
-			return Editor.showConnectHandle && this.graph.isEnabled() &&
+			return this.graph.isConnectIconVisible(this.state.cell) &&
+				this.graph.isEnabled() &&
 				this.graph.isCellConnectable(this.state.cell) &&
 				!this.graph.isTableCell(this.state.cell) &&
 				!this.graph.isTableRow(this.state.cell) &&
@@ -16989,9 +22045,24 @@ if (typeof mxVertexHandler !== 'undefined')
 		mxVertexHandler.prototype.getConnectHandlePosition = function()
 		{
 			var padding = this.getHandlePadding();
+			var graph = this.graph;
+			var offset = graph.getNestedCornerIconOffset(this.state.cell,
+				this.bounds.x + this.bounds.width, this.bounds.y + this.bounds.height,
+				function(c)
+				{
+					// Mirrors mxVertexHandler.isConnectHandleVisible so a
+					// descendant only contributes if it would actually render
+					// the connect handle.
+					return graph.isConnectIconVisible(c) &&
+						graph.isEnabled() &&
+						graph.isCellConnectable(c) &&
+						!graph.isTableCell(c) &&
+						!graph.isTableRow(c) &&
+						!graph.isTable(c);
+				});
 
-			return new mxPoint(this.bounds.x + this.bounds.width - this.connectHandleVSpacing + padding.x / 2,
-				this.bounds.y + this.bounds.height - this.connectHandleVSpacing + padding.y / 2);
+			return new mxPoint(this.bounds.x + this.bounds.width - this.connectHandleVSpacing + padding.x / 2 + offset,
+				this.bounds.y + this.bounds.height - this.connectHandleVSpacing + padding.y / 2 + offset);
 		};
 
 		/**
@@ -17015,6 +22086,16 @@ if (typeof mxVertexHandler !== 'undefined')
 		var vertexHandlerIsParentHighlightVisible = mxVertexHandler.prototype.isParentHighlightVisible;
 		mxVertexHandler.prototype.isParentHighlightVisible = function()
 		{
+			var parent = this.graph.model.getParent(this.state.cell);
+
+			// transparentBounds ancestors get their own vertex handler via
+			// getHandledSelectionCells, which already draws the dashed bounds.
+			// Suppress the parent highlight here to avoid a duplicate outline.
+			if (parent != null && this.graph.isTransparentBounds(parent))
+			{
+				return false;
+			}
+
 			return vertexHandlerIsParentHighlightVisible.apply(this, arguments) &&
 				!this.graph.isTableCell(this.state.cell) &&
 				!this.graph.isTableRow(this.state.cell);
@@ -17026,7 +22107,8 @@ if (typeof mxVertexHandler !== 'undefined')
 		var vertexHandlerIsCustomHandleVisible = mxVertexHandler.prototype.isCustomHandleVisible;
 		mxVertexHandler.prototype.isCustomHandleVisible = function(handle)
 		{
-			return handle.tableHandle || handle.lockHandle ||
+			return handle.tableHandle || handle.lockHandle || handle.editIconHandle ||
+				handle.moveGroupHandle ||
 				(vertexHandlerIsCustomHandleVisible.apply(this, arguments) &&
 				(!this.graph.isTable(this.state.cell) ||
 				this.graph.isCellSelected(this.state.cell)));
@@ -17038,8 +22120,17 @@ if (typeof mxVertexHandler !== 'undefined')
 		mxVertexHandler.prototype.getSelectionBorderInset = function()
 		{
 			var result = 0;
-			
-			if (this.graph.isTableRow(this.state.cell))
+
+			// Negative inset = outward pad via .grow(-inset). The outermost
+			// transparentBounds in a nested chain has the most nested
+			// transparentBounds descendants in the handler set, so its
+			// border (and corner handles) sit furthest from the shared
+			// corner, wrapping the inner cells' borders.
+			if (this.graph.isTransparentBounds(this.state.cell))
+			{
+				result = -this.graph.getNestedTransparentBoundsCount(this.state.cell);
+			}
+			else if (this.graph.isTableRow(this.state.cell))
 			{
 				result = 1;
 			}
@@ -17346,9 +22437,9 @@ if (typeof mxVertexHandler !== 'undefined')
 				}
 			}
 			
-			// Adds lock-toggle handle whenever the lockedGroup style key is
-			// present (renders a lock icon when locked, unlock icon when not).
-			if (this.graph.hasLockedGroupStyle(this.state.cell) &&
+			// Adds lock-toggle handle when the lockedGroupIcon visibility
+			// rule says so (renders a lock icon when locked, unlock when not).
+			if (this.graph.isLockedGroupIconVisible(this.state.cell) &&
 				this.graph.isCellMovable(this.state.cell))
 			{
 				if (handles == null)
@@ -17379,13 +22470,31 @@ if (typeof mxVertexHandler !== 'undefined')
 				{
 					if (this.shape != null)
 					{
-						// Top-left corner 12px outside / 12px above, mirroring the
-						// rotate handle's offset. Rotated around the cell center by
-						// the cell's current rotation so the icon tracks the rotated
-						// corner, and the icon shape itself rotates to match.
+						// Top-left corner. Mirrors the rotate handle: pads outward
+						// for small bounds via getHandlePadding so the icon stays
+						// clear of the resize sizers. Rotated around the cell center
+						// so the icon tracks the rotated corner. Nested cells
+						// sharing this corner stack diagonally up-and-left via
+						// getNestedCornerIconOffset.
+						var padding = self.getHandlePadding();
+						var offset = graph.getNestedCornerIconOffset(cell,
+							self.bounds.x, self.bounds.y, function(c)
+							{
+								return graph.isLockedGroupIconVisible(c) &&
+									graph.isCellMovable(c);
+							});
 						var pt = new mxPoint(
-							self.bounds.x - 12,
-							self.bounds.y - 12);
+							self.bounds.x - 12 - padding.x / 2 - offset,
+							self.bounds.y - 12 - padding.y / 2 - offset);
+
+						// Shifts below the move icon when both are present (the
+						// move icon holds the corner, the edit icon goes right).
+						if (graph.isMoveIconVisible(cell) &&
+							graph.isCellMovable(cell))
+						{
+							pt.y += 24;
+						}
+
 						var deg = Number((self.currentAlpha != null) ? self.currentAlpha :
 							(self.state.style[mxConstants.STYLE_ROTATION] || '0'));
 						var alpha = mxUtils.toRadians(deg);
@@ -17418,6 +22527,177 @@ if (typeof mxVertexHandler !== 'undefined')
 					{
 						graph.getModel().endUpdate();
 					}
+
+					// Locking makes the children unselectable — drop any
+					// currently selected descendants from the selection.
+					// If that empties the selection, select the group
+					// itself so the user keeps a selection anchor.
+					if (!isLocked)
+					{
+						var sel = graph.getSelectionCells();
+						var keep = [];
+
+						for (var i = 0; i < sel.length; i++)
+						{
+							if (sel[i] == cell ||
+								!graph.model.isAncestor(cell, sel[i]))
+							{
+								keep.push(sel[i]);
+							}
+						}
+
+						if (keep.length != sel.length)
+						{
+							graph.setSelectionCells(
+								keep.length > 0 ? keep : [cell]);
+						}
+					}
+				};
+
+				handles.push(handle);
+			}
+
+			// Adds edit-icon handle when editIcon=1 (pen icon at the top-left,
+			// to the right of the lock and/or move icon when present).
+			// Clicking it triggers editing on the cell.
+			if (this.graph.isEditIconVisible(this.state.cell))
+			{
+				if (handles == null)
+				{
+					handles = [];
+				}
+
+				var self = this;
+				var graph = this.graph;
+				var cell = this.state.cell;
+				var size = 16;
+
+				var shape = new mxImageShape(new mxRectangle(0, 0, size, size),
+					HoverIcons.prototype.editHandle.src);
+				shape.preserveImageAspect = false;
+
+				var handle = new mxHandle(this.state, 'pointer', null, shape);
+				handle.editIconHandle = true;
+
+				handle.setPosition = function() {};
+				handle.positionChanged = function() {};
+				handle.reset = function() {};
+
+				handle.redraw = function()
+				{
+					if (this.shape != null)
+					{
+						// Top-left corner. Nested cells sharing this corner
+						// stack diagonally up-and-left via
+						// getNestedCornerIconOffset.
+						var padding = self.getHandlePadding();
+						var offset = graph.getNestedCornerIconOffset(cell,
+							self.bounds.x, self.bounds.y,
+							function(c)
+							{
+								return graph.isEditIconVisible(c);
+							});
+						var pt = new mxPoint(
+							self.bounds.x - 12 - padding.x / 2 - offset,
+							self.bounds.y - 12 - padding.y / 2 - offset);
+
+						// Shifts right along the top edge when the lock and/or
+						// move icon occupies the corner (move above lock), so
+						// the icons form an L: corner column plus this one.
+						if (graph.isCellMovable(cell) &&
+							(graph.isLockedGroupIconVisible(cell) ||
+							graph.isMoveIconVisible(cell)))
+						{
+							pt.x += 24;
+						}
+
+						var deg = Number((self.currentAlpha != null) ? self.currentAlpha :
+							(self.state.style[mxConstants.STYLE_ROTATION] || '0'));
+						var alpha = mxUtils.toRadians(deg);
+
+						if (alpha != 0)
+						{
+							var ct = new mxPoint(self.state.getCenterX(),
+								self.state.getCenterY());
+							pt = mxUtils.getRotatedPoint(pt,
+								Math.cos(alpha), Math.sin(alpha), ct);
+						}
+
+						this.shape.bounds.width = size;
+						this.shape.bounds.height = size;
+						this.shape.bounds.x = pt.x - size / 2;
+						this.shape.bounds.y = pt.y - size / 2;
+						this.shape.rotation = deg;
+						this.shape.redraw();
+					}
+				};
+
+				handle.execute = function(me)
+				{
+					graph.startEditingAtCell(cell);
+				};
+
+				handles.push(handle);
+			}
+
+			// Visual move-handle icon at the top-left of the cell's bounds.
+			// The icon's DOM listeners forward mousedown to graph.fireMouseEvent
+			// with the cell's state; the mxVertexHandler.mouseDown wrapper
+			// skips start() for moveGroupHandle hits, so mxGraphHandler picks
+			// up the drag with the cell as the target — identical behaviour
+			// (live preview, grid snap, dashed preview shape) to grabbing the
+			// cell's body or dashed border directly. When getMoveIconDragCells
+			// returns a custom drag set (eg. a tree cell's subtree), the
+			// wrapper starts mxGraphHandler with that set instead.
+			if (this.graph.isMoveIconVisible(this.state.cell) &&
+				this.graph.isCellMovable(this.state.cell))
+			{
+				if (handles == null)
+				{
+					handles = [];
+				}
+
+				var self = this;
+				var graph = this.graph;
+				var cell = this.state.cell;
+				var size = 16;
+
+				var shape = new mxImageShape(new mxRectangle(0, 0, size, size),
+					HoverIcons.prototype.moveHandle.src);
+				shape.preserveImageAspect = false;
+
+				var handle = new mxHandle(this.state, 'move', null, shape);
+				handle.moveGroupHandle = true;
+
+				// No-op drag callbacks: the actual move runs through
+				// mxGraphHandler, so this handle is a visual hit-target only.
+				handle.setPosition = function() {};
+				handle.positionChanged = function() {};
+				handle.execute = function() {};
+				handle.reset = function() {};
+
+				handle.redraw = function()
+				{
+					if (this.shape != null)
+					{
+						var padding = self.getHandlePadding();
+						var offset = graph.getNestedCornerIconOffset(cell,
+							self.bounds.x, self.bounds.y, function(c)
+							{
+								return graph.isMoveIconVisible(c) &&
+									graph.isCellMovable(c);
+							});
+						var x = self.bounds.x - 12 - padding.x / 2 - offset;
+						var y = self.bounds.y - 12 - padding.y / 2 - offset;
+
+						// Holds the top-left corner; the lock icon shifts below
+						// it when both are present.
+						this.shape.bounds.width = size;
+						this.shape.bounds.height = size;
+						this.shape.bounds.x = x - size / 2;
+						this.shape.bounds.y = y - size / 2;
+						this.shape.redraw();
+					}
 				};
 
 				handles.push(handle);
@@ -17431,6 +22711,129 @@ if (typeof mxVertexHandler !== 'undefined')
 		 * Hides additional handles
 		 */
 		var vertexHandlerSetHandlesVisible = mxVertexHandler.prototype.setHandlesVisible;
+
+		/**
+		 * Hides the dashed selection borders of every transparentBounds ancestor
+		 * for the duration of a child resize/rotate. mxGraphHandler already
+		 * toggles visibility via setHandlesVisibleForCells during a move drag;
+		 * the resize path goes through mxVertexHandler.start instead, so the
+		 * ancestor outlines need a separate hook here.
+		 *
+		 * Also restores this.parentState.x/y to the origin-only screen position
+		 * for a transparentBounds parent. The updateCellState override shifts
+		 * the group's state.x/y to its derived bounds for rendering, but
+		 * resizeVertex computes bounds.x = parentState.x + unscaledBounds.x *
+		 * scale assuming parentState.x equals scale*(translate + origin), so
+		 * the bounds offset would otherwise be applied twice.
+		 */
+		var vertexHandlerStart = mxVertexHandler.prototype.start;
+		mxVertexHandler.prototype.start = function(x, y, index)
+		{
+			vertexHandlerStart.apply(this, arguments);
+
+			var graph = this.graph;
+
+			if (this.parentState != null &&
+				graph.isTransparentBounds(this.parentState.cell))
+			{
+				var scale = graph.view.scale;
+				var tr = graph.view.translate;
+				var orig = this.parentState;
+				this.parentState = orig.clone();
+				this.parentState.x = scale * (tr.x + orig.origin.x);
+				this.parentState.y = scale * (tr.y + orig.origin.y);
+			}
+
+			var parent = graph.model.getParent(this.state.cell);
+
+			while (parent != null)
+			{
+				if (graph.isTransparentBounds(parent))
+				{
+					var h = graph.selectionCellsHandler.getHandler(parent);
+
+					if (h != null && h.selectionBorder != null)
+					{
+						h.selectionBorder.node.style.visibility = 'hidden';
+					}
+				}
+
+				parent = graph.model.getParent(parent);
+			}
+
+			// For cells with children (groups, containers, tables) the base
+			// handler disables live preview, which also leaves every resize
+			// handle visible during the gesture. Hide the inactive handles
+			// here so only the dragged handle stays, matching leaf shapes
+			// (mxVertexHandler.start does this in its live preview block).
+			if (!this.livePreviewActive && this.ghostPreview == null && this.index != null &&
+				this.index != mxEvent.LABEL_HANDLE && this.sizers != null)
+			{
+				for (var i = 0; i < this.sizers.length; i++)
+				{
+					if (this.sizers[i] != null && i != this.index)
+					{
+						this.sizers[i].node.style.display = 'none';
+					}
+				}
+
+				if (this.rotationShape != null && this.index != mxEvent.ROTATION_HANDLE)
+				{
+					this.rotationShape.node.style.visibility = 'hidden';
+				}
+
+				this.resizeHandlesHidden = true;
+			}
+		};
+
+		var vertexHandlerReset = mxVertexHandler.prototype.reset;
+		mxVertexHandler.prototype.reset = function()
+		{
+			// Restores the handles hidden in start for a non-live-preview
+			// resize/rotate (cells with children). The base reset re-runs
+			// redrawHandles afterwards to re-apply the correct visibility.
+			if (this.resizeHandlesHidden)
+			{
+				if (this.sizers != null)
+				{
+					for (var i = 0; i < this.sizers.length; i++)
+					{
+						if (this.sizers[i] != null)
+						{
+							this.sizers[i].node.style.display = '';
+						}
+					}
+				}
+
+				if (this.rotationShape != null)
+				{
+					this.rotationShape.node.style.visibility = '';
+				}
+
+				this.resizeHandlesHidden = null;
+			}
+
+			var graph = this.graph;
+			var parent = (this.state != null) ?
+				graph.model.getParent(this.state.cell) : null;
+
+			while (parent != null)
+			{
+				if (graph.isTransparentBounds(parent))
+				{
+					var h = graph.selectionCellsHandler.getHandler(parent);
+
+					if (h != null && h.selectionBorder != null)
+					{
+						h.selectionBorder.node.style.visibility = '';
+					}
+				}
+
+				parent = graph.model.getParent(parent);
+			}
+
+			vertexHandlerReset.apply(this, arguments);
+		};
 
 		mxVertexHandler.prototype.setHandlesVisible = function(visible)
 		{
@@ -17446,13 +22849,23 @@ if (typeof mxVertexHandler !== 'undefined')
 					}
 				}
 			}
-			
+
 			if (this.cornerHandles != null)
 			{
 				for (var i = 0; i < this.cornerHandles.length; i++)
 				{
 					this.cornerHandles[i].node.style.visibility = (visible) ? '' : 'hidden';
 				}
+			}
+
+			// Toggles the dashed selection border for a transparentBounds so the
+			// outline disappears while a child is dragged (mxGraphHandler calls
+			// setHandlesVisibleForCells(false) on every handled cell at drag
+			// start and (true) on release).
+			if (this.graph.isTransparentBounds(this.state.cell) &&
+				this.selectionBorder != null)
+			{
+				this.selectionBorder.node.style.visibility = (visible) ? '' : 'hidden';
 			}
 		};
 
@@ -17626,11 +23039,31 @@ if (typeof mxVertexHandler !== 'undefined')
 			{
 				this.refreshMoveHandles();
 			}
-			// Draws corner rectangles for single selected table cells and rows
-			else if (this.graph.getSelectionCount() == 1 &&
-				this.graph.isCellMovable(this.state.cell) &&
+			// Draws corner rectangles for single-selected table cells,
+			// table rows, and transparentBounds groups. For transparent
+			// groups the rectangles are created up-front on every cell
+			// in the handler set (including auto-handled ancestors), but
+			// only displayed for the actually-selected cell via the
+			// visibility gate in redrawHandles. Creating up-front is
+			// necessary because mxSelectionCellsHandler reuses existing
+			// handlers without calling refresh, so a cell that wasn't
+			// selected initially wouldn't otherwise get rectangles when
+			// the user later cycles selection onto it.
+			//
+			// The transparentBounds branch must NOT gate creation on
+			// getSelectionCount() == 1: refresh() can run while the count is
+			// transiently != 1 and the rectangles would then never be created
+			// for the group, because the handler is afterwards reused with only
+			// redraw() (never refresh()). This happens on undo/redo (the
+			// model-change refresh fires before undoHandler restores the
+			// selection to the group) and when a multi-selection is narrowed
+			// down to the group. The table cell/row branches keep the count
+			// gate; they have no ancestor-only (reused) handler state.
+			else if (this.graph.isCellMovable(this.state.cell) &&
+				(this.graph.isTransparentBounds(this.state.cell) ||
+				(this.graph.getSelectionCount() == 1 &&
 				(this.graph.isTableCell(this.state.cell) ||
-				this.graph.isTableRow(this.state.cell)))
+				this.graph.isTableRow(this.state.cell)))))
 			{
 				this.cornerHandles = []; 
 
@@ -17681,7 +23114,13 @@ if (typeof mxVertexHandler !== 'undefined')
 				{
 					for (var i = 0; i < this.customHandles.length; i++)
 					{
+						// Skip lock, edit and move icon handles: they position
+						// themselves using the result of this function, so they
+						// would cause oscillating overlap detection.
 						if (this.customHandles[i] != null &&
+							!this.customHandles[i].lockHandle &&
+							!this.customHandles[i].editIconHandle &&
+							!this.customHandles[i].moveGroupHandle &&
 							this.customHandles[i].shape != null &&
 							this.customHandles[i].shape.bounds != null)
 						{
@@ -17876,21 +23315,63 @@ if (typeof mxVertexHandler !== 'undefined')
 		};
 
 		/**
+		 * Creates the expanded or collapsed folding icon for the given size.
+		 */
+		Graph.createFoldingImage = function(s, collapsed)
+		{
+			return (collapsed) ?
+				Graph.createSvgImage(s, s, '<defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">' +
+					'<stop offset="30%" style="stop-color:#f0f0f0;" /><stop offset="100%" style="stop-color:#AFB0B6;" /></linearGradient></defs>' +
+					'<rect x="0" y="0" width="9" height="9" stroke="#8A94A5" fill="url(#grad1)" stroke-width="2"/>' +
+					'<path d="M 4.5 2 L 4.5 7 M 2 4.5 L 7 4.5 z" stroke="#000"/>', 9, 9) :
+				Graph.createSvgImage(s, s, '<defs><linearGradient id="grad1" x1="50%" y1="0%" x2="50%" y2="100%">' +
+					'<stop offset="30%" style="stop-color:#f0f0f0;" /><stop offset="100%" style="stop-color:#AFB0B6;" /></linearGradient></defs>' +
+					'<rect x="0" y="0" width="9" height="9" stroke="#8A94A5" fill="url(#grad1)" stroke-width="2"/>' +
+					'<path d="M 2 4.5 L 7 4.5 z" stroke="#000"/>', 9, 9);
+		};
+
+		/**
 		 * Replaces folding icons with SVG.
 		 */
 		Graph.updateFoldingImages = function(s)
 		{
-			Graph.prototype.expandedImage = Graph.createSvgImage(s, s, '<defs><linearGradient id="grad1" x1="50%" y1="0%" x2="50%" y2="100%">' +
-				'<stop offset="30%" style="stop-color:#f0f0f0;" /><stop offset="100%" style="stop-color:#AFB0B6;" /></linearGradient></defs>' +
-				'<rect x="0" y="0" width="9" height="9" stroke="#8A94A5" fill="url(#grad1)" stroke-width="2"/>' +
-				'<path d="M 2 4.5 L 7 4.5 z" stroke="#000"/>', 9, 9);
-			Graph.prototype.collapsedImage = Graph.createSvgImage(s, s, '<defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">' +
-				'<stop offset="30%" style="stop-color:#f0f0f0;" /><stop offset="100%" style="stop-color:#AFB0B6;" /></linearGradient></defs>' +
-				'<rect x="0" y="0" width="9" height="9" stroke="#8A94A5" fill="url(#grad1)" stroke-width="2"/>' +
-				'<path d="M 4.5 2 L 4.5 7 M 2 4.5 L 7 4.5 z" stroke="#000"/>', 9, 9);
+			Graph.prototype.expandedImage = Graph.createFoldingImage(s, false);
+			Graph.prototype.collapsedImage = Graph.createFoldingImage(s, true);
 		};
 
 		Graph.updateFoldingImages(9);
+
+		/**
+		 * Cache for folding icons created for the foldingIconSize style.
+		 */
+		Graph.foldingImages = {};
+
+		/**
+		 * Overridden to honor the foldingIconSize style.
+		 */
+		Graph.prototype.getFoldingImage = function(state)
+		{
+			var image = mxGraph.prototype.getFoldingImage.apply(this, arguments);
+
+			if (image != null)
+			{
+				var size = parseInt(mxUtils.getValue(state.style, 'foldingIconSize', 0));
+
+				if (size > 0)
+				{
+					var key = size + '-' + this.isCellCollapsed(state.cell);
+					image = Graph.foldingImages[key];
+
+					if (image == null)
+					{
+						image = Graph.createFoldingImage(size, this.isCellCollapsed(state.cell));
+						Graph.foldingImages[key] = image;
+					}
+				}
+			}
+
+			return image;
+		};
 
 		/**
 		 * Updates the hint for the current operation.
@@ -17930,6 +23411,14 @@ if (typeof mxVertexHandler !== 'undefined')
 		HoverIcons.prototype.unlockHandle = Graph.createSvgImage(16, 16,
 			'<path stroke="' + HoverIcons.prototype.arrowFill + '" stroke-width="0.7" fill="' + HoverIcons.prototype.arrowFill +
 				'" d="M18 8h-1V6c0-2.76-2.24-5-5-5-2.28 0-4.27 .54-4.84 2.75-.14.54.18 1.08.72 1.22.53.14 1.08-.18 1.22-.72C9.44 3.93 10.63 3 12 3c1.65 0 3 1.35 3 3v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>',
+				24, 24);
+		HoverIcons.prototype.editHandle = Graph.createSvgImage(16, 16,
+			'<path stroke="' + HoverIcons.prototype.arrowFill + '" stroke-width="0.7" fill="' + HoverIcons.prototype.arrowFill +
+				'" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>',
+				24, 24);
+		HoverIcons.prototype.moveHandle = Graph.createSvgImage(16, 16,
+			'<path stroke="' + HoverIcons.prototype.arrowFill + '" stroke-width="0.7" fill="' + HoverIcons.prototype.arrowFill +
+				'" d="M12 2 L9 5 L11 5 L11 11 L5 11 L5 9 L2 12 L5 15 L5 13 L11 13 L11 19 L9 19 L12 22 L15 19 L13 19 L13 13 L19 13 L19 15 L22 12 L19 9 L19 11 L13 11 L13 5 L15 5 Z"/>',
 				24, 24);
 	
 		mxConstraintHandler.prototype.pointImage = Graph.createSvgImage(5, 5,
@@ -17985,7 +23474,218 @@ if (typeof mxVertexHandler !== 'undefined')
 		mxEdgeHandler.prototype.mergeRemoveEnabled = true;
 		mxEdgeHandler.prototype.manageLabelHandle = true;
 		mxEdgeHandler.prototype.outlineConnect = true;
+
+		// Double click on an unconnected straight-edge terminal handle fires an
+		// event so the shape picker can be shown (handled in EditorUi) instead of
+		// removing a point (a no-op for terminals). removePoint is only reached via
+		// the double click handler here because removeEnabled is false.
+		var edgeHandlerRemovePoint = mxEdgeHandler.prototype.removePoint;
+		mxEdgeHandler.prototype.removePoint = function(state, index)
+		{
+			var source = (index == 0);
+
+			if ((source || (this.abspoints != null && index == this.abspoints.length - 1)) &&
+				this.abspoints != null && this.abspoints[index] != null &&
+				this.graph.getModel().getTerminal(state.cell, source) == null)
+			{
+				this.graph.fireEvent(new mxEventObject('doubleClickEdgeTerminal',
+					'cell', state.cell, 'source', source,
+					'point', this.abspoints[index].clone()));
+			}
+			else
+			{
+				edgeHandlerRemovePoint.apply(this, arguments);
+			}
+		};
 		
+		// A manual waypoint edit takes the edge off libavoid auto-routing so the
+		// user's points are respected from then on (LibavoidRouting re-routes only
+		// flagged edges; clearing the flag makes the next move/reconnect leave the
+		// edge alone). Only triggers when points are actually being set, not when
+		// the handler resets to no waypoints.
+		var edgeHandlerChangePoints = mxEdgeHandler.prototype.changePoints;
+
+		mxEdgeHandler.prototype.changePoints = function(edge, points, clone)
+		{
+			if (edge != null && points != null && points.length > 0 &&
+				mxUtils.getValue(this.graph.getCellStyle(edge), 'libavoidRouting', null) == '1')
+			{
+				this.graph.setCellStyles('libavoidRouting', null, [edge]);
+			}
+
+			return edgeHandlerChangePoints.apply(this, arguments);
+		};
+
+		// Live obstacle-avoiding preview while dragging an edge endpoint. Orthogonal
+		// edges use mxEdgeSegmentHandler, whose getPreviewPoints delegates to the
+		// base only for endpoint drags (isSource/isTarget) — inject libavoid bends
+		// there for flagged edges, else fall back (null => default preview).
+		var segmentHandlerGetPreviewPoints = mxEdgeSegmentHandler.prototype.getPreviewPoints;
+
+		mxEdgeSegmentHandler.prototype.getPreviewPoints = function(point)
+		{
+			if ((this.isSource || this.isTarget) && typeof LibavoidRouting !== 'undefined' &&
+				LibavoidRouting.previewEndpointDrag != null)
+			{
+				// A per-frame WASM hiccup must never abort the drag — fall back to the
+				// default preview (the commit-time route stays authoritative).
+				var pts = null;
+
+				try
+				{
+					pts = LibavoidRouting.previewEndpointDrag(this, point);
+				}
+				catch (e)
+				{
+					// ignore
+				}
+
+				if (pts != null)
+				{
+					return pts;
+				}
+			}
+
+			return segmentHandlerGetPreviewPoints.apply(this, arguments);
+		};
+
+		// Frees the per-drag libavoid preview Router when an edge drag ends or is
+		// cancelled (segment/elbow handlers inherit this reset). NOTE: a UNIQUE
+		// capture-var name is required — another mxEdgeHandler.prototype.reset
+		// override later in this same scope also captures into a var, and a shared
+		// `var` name would alias the two bindings and recurse infinitely.
+		var libavoidEdgeHandlerReset = mxEdgeHandler.prototype.reset;
+
+		mxEdgeHandler.prototype.reset = function()
+		{
+			if (typeof LibavoidRouting !== 'undefined' && LibavoidRouting.endPreview != null)
+			{
+				LibavoidRouting.endPreview(this);
+			}
+
+			return libavoidEdgeHandlerReset.apply(this, arguments);
+		};
+
+		// Dim the inner (waypoint/segment) handles of a libavoid auto-routed edge so
+		// they read as auto-managed, not manual — like the loop-handle's faded
+		// handles. The base only dims these when the edge has NO waypoints; libavoid
+		// bakes waypoints in, so dim them regardless when the flag is set. Dragging
+		// one still clears the flag (changePoints) and restores full opacity.
+		var libavoidSetInnerBendsOpacity = mxEdgeHandler.prototype.setInnerBendsOpacity;
+
+		mxEdgeHandler.prototype.setInnerBendsOpacity = function(bends, start, end)
+		{
+			if (this.state != null && bends != null &&
+				mxUtils.getValue(this.state.style, 'libavoidRouting', null) == '1')
+			{
+				for (var i = start; i < end; i++)
+				{
+					if (bends[i] != null && bends[i].node != null)
+					{
+						mxUtils.setOpacity(bends[i].node, this.virtualBendOpacity);
+					}
+				}
+
+				return;
+			}
+
+			return libavoidSetInnerBendsOpacity.apply(this, arguments);
+		};
+
+		// Route the connection-handler NEW-EDGE preview (dragging from the hover-icon
+		// blue arrows) around obstacles when the preview edge carries
+		// libavoidRouting=1 (i.e. libavoid is the current edge style). The committed
+		// edge is then routed by the CELLS_ADDED listener. Unique capture-var names
+		// to avoid aliasing other prototype-override vars in this scope.
+		var libavoidConnUpdateEdgeState = mxConnectionHandler.prototype.updateEdgeState;
+
+		mxConnectionHandler.prototype.updateEdgeState = function(current, constraint)
+		{
+			// For a flagged new edge, feed the libavoid bends in as this.waypoints
+			// BEFORE the base routes/renders: the handler then routes the preview
+			// through them (orthogonal endpoints) and connect() bakes them into the
+			// committed edge. Only touch waypoints for flagged edges so a non-libavoid
+			// edge's user-added waypoints are left alone.
+			if (this.edgeState != null && typeof LibavoidRouting !== 'undefined' &&
+				LibavoidRouting.connectionWaypoints != null &&
+				mxUtils.getValue(this.edgeState.style, 'libavoidRouting', null) == '1')
+			{
+				// A per-frame WASM hiccup must never abort the new-edge drag — fall back
+				// to the default preview (the commit-time route stays authoritative).
+				try
+				{
+					this.waypoints = LibavoidRouting.connectionWaypoints(this);
+				}
+				catch (e)
+				{
+					this.waypoints = null;
+				}
+			}
+
+			libavoidConnUpdateEdgeState.apply(this, arguments);
+		};
+
+		// Frees the connection-handler preview Router when the new-edge drag ends.
+		var libavoidConnReset = mxConnectionHandler.prototype.reset;
+
+		mxConnectionHandler.prototype.reset = function()
+		{
+			if (typeof LibavoidRouting !== 'undefined' && LibavoidRouting.endPreview != null)
+			{
+				LibavoidRouting.endPreview(this);
+
+				// Discard any libavoid-injected preview waypoints (the commit, if any,
+				// already consumed them) so they can't leak into the next drag — the
+				// hover-icon path enters via start(), which doesn't reset them.
+				this.waypoints = null;
+			}
+
+			return libavoidConnReset.apply(this, arguments);
+		};
+
+		// Live-route connected libavoidRouting=1 edges while a shape is dragged: the
+		// base moves the cell states and re-renders connected edges (un-routed), then
+		// we re-route them transiently around obstacles at the shape's preview
+		// position. The model is untouched (reverts on cancel); CELLS_MOVED commits
+		// the final route on drop.
+		var libavoidUpdateLivePreview = mxGraphHandler.prototype.updateLivePreview;
+
+		mxGraphHandler.prototype.updateLivePreview = function(dx, dy)
+		{
+			libavoidUpdateLivePreview.apply(this, arguments);
+
+			if (typeof LibavoidRouting !== 'undefined' && LibavoidRouting.livePreviewMove != null)
+			{
+				// Never let a per-frame preview re-route break the actual drag — the
+				// commit-time CELLS_MOVED route is authoritative regardless.
+				try
+				{
+					LibavoidRouting.livePreviewMove(this, dx, dy);
+				}
+				catch (e)
+				{
+					// ignore
+				}
+			}
+		};
+
+		// End-of-drag cleanup for the transient libavoid re-routes: restore every
+		// edge state livePreviewMove touched. reset runs on both drop (mouseUp,
+		// AFTER moveCells committed) and cancel/escape — without it, an edge the
+		// drag crossed and left keeps the preview route on screen with nothing in
+		// the model (a ghost that undo cannot revert).
+		var libavoidGraphHandlerReset = mxGraphHandler.prototype.reset;
+
+		mxGraphHandler.prototype.reset = function()
+		{
+			libavoidGraphHandlerReset.apply(this, arguments);
+
+			if (typeof LibavoidRouting !== 'undefined' && LibavoidRouting.endMovePreview != null)
+			{
+				LibavoidRouting.endMovePreview(this);
+			}
+		};
+
 		// Disables adding waypoints if shift is pressed
 		mxEdgeHandler.prototype.isAddVirtualBendEvent = function(me)
 		{
@@ -18501,16 +24201,49 @@ if (typeof mxVertexHandler !== 'undefined')
 		};
 	
 		// Redirects moving of edge labels to mxGraphHandler by not starting here.
-		// This will use the move preview of mxGraphHandler (see above).
+		// Also redirects clicks on the move-group handle icon so the drag uses
+		// mxGraphHandler's live preview (with grid snap during drag) instead of
+		// our custom mxHandle path. The icon's DOM redirects events with the
+		// group's state, so mxGraphHandler picks the group as the drag target.
 		var mxVertexHandlerMouseDown = mxVertexHandler.prototype.mouseDown;
 		mxVertexHandler.prototype.mouseDown = function(sender, me)
 		{
 			var model = this.graph.getModel();
 			var parent = model.getParent(this.state.cell);
 			var geo = this.graph.getCellGeometry(this.state.cell);
-			
+
 			// Lets rotation and connect events through
 			var handle = this.getHandleForEvent(me);
+
+			// Skip start() for the move-group handle so mxGraphHandler.mouseDown
+			// can take over and run its own drag (including grid snap and the
+			// dashed preview shape, matching a click on the group's border).
+			if (handle != null && handle <= mxEvent.CUSTOM_HANDLE &&
+				this.customHandles != null)
+			{
+				var ch = this.customHandles[mxEvent.CUSTOM_HANDLE - handle];
+
+				if (ch != null && ch.moveGroupHandle)
+				{
+					// A custom drag set (eg. a tree cell's subtree) must be
+					// started explicitly, as the mxGraphHandler fall-through
+					// derives the drag set from the cell itself.
+					var cells = this.graph.getMoveIconDragCells(this.state.cell);
+
+					if (cells != null)
+					{
+						this.graph.graphHandler.start(this.state.cell,
+							mxEvent.getClientX(me.getEvent()),
+							mxEvent.getClientY(me.getEvent()), cells);
+						this.graph.graphHandler.cellWasClicked = true;
+						this.graph.isMouseTrigger = mxEvent.isMouseEvent(me.getEvent());
+						this.graph.isMouseDown = true;
+						me.consume();
+					}
+
+					return;
+				}
+			}
 
 			if (handle == mxEvent.ROTATION_HANDLE || handle == mxEvent.CONNECT_HANDLE ||
 				!model.isEdge(parent) || geo == null || !geo.relative ||
@@ -18529,8 +24262,18 @@ if (typeof mxVertexHandler !== 'undefined')
 			if (this.state.view.graph.model.isVertex(this.state.cell) &&
 				stroke == mxConstants.NONE && fill == mxConstants.NONE)
 			{
-				var angle = mxUtils.mod(mxUtils.getValue(this.state.style, mxConstants.STYLE_ROTATION, 0) + 90, 360);
-				this.state.view.graph.setCellStyles(mxConstants.STYLE_ROTATION, angle, [this.state.cell]);
+				var graph = this.state.view.graph;
+
+				// Groups rotate as a rigid body (children baked) like the rotation handle
+				if (graph.isRotatableGroup(this.state.cell))
+				{
+					graph.rotateCell(this.state.cell, 90);
+				}
+				else
+				{
+					var angle = mxUtils.mod(mxUtils.getValue(this.state.style, mxConstants.STYLE_ROTATION, 0) + 90, 360);
+					graph.setCellStyles(mxConstants.STYLE_ROTATION, angle, [this.state.cell]);
+				}
 			}
 			else
 			{
@@ -18594,6 +24337,16 @@ if (typeof mxVertexHandler !== 'undefined')
 		mxVertexHandler.prototype.mouseMove = function(sender, me)
 		{
 			vertexHandlerMouseMove.apply(this, arguments);
+
+			// Keeps the visible (active) handle aligned with the live bounds
+			// during a non-live-preview resize/rotate so it tracks the cursor
+			// like the handles on leaf shapes. The base handler only repositions
+			// handles via redrawHandles when live preview is active (childless
+			// cells); cells with children take the static preview path instead.
+			if (this.resizeHandlesHidden && this.index != null && !this.inTolerance)
+			{
+				this.redrawHandles();
+			}
 
 			if (this.graph.graphHandler.first != null)
 			{
@@ -18874,9 +24627,17 @@ if (typeof mxVertexHandler !== 'undefined')
 				ch[3].bounds.y = ch[2].bounds.y;
 				ch[3].redraw();
 				
+				// For transparentBounds groups the rectangles exist on every
+				// cell in the handler set (including auto-handled ancestors)
+				// so they're ready to show on cycle, but only the actually-
+				// selected cell displays them.
+				var visible = this.graph.getSelectionCount() == 1 &&
+					(!this.graph.isTransparentBounds(this.state.cell) ||
+						this.graph.isCellSelected(this.state.cell));
+
 				for (var i = 0; i < this.cornerHandles.length; i++)
 				{
-					this.cornerHandles[i].node.style.display = (this.graph.getSelectionCount() == 1) ? '' : 'none';
+					this.cornerHandles[i].node.style.display = visible ? '' : 'none';
 				}
 			}
 			
@@ -18891,6 +24652,27 @@ if (typeof mxVertexHandler !== 'undefined')
 
 			vertexHandlerRedrawHandles.apply(this);
 
+			// Repositions the lock and edit icon handles after the base redraw
+			// so they pick up the final handle padding. They depend on the
+			// start-size custom handle for overlap detection in getHandlePadding,
+			// but that handle is only refreshed during the base redraw and (for
+			// hover hit-testing) must stay last in the custom handle array, so it
+			// is redrawn after them. Mirrors the rotation and connect handles,
+			// which are also positioned after the base call.
+			if (this.customHandles != null)
+			{
+				for (var i = 0; i < this.customHandles.length; i++)
+				{
+					if (this.customHandles[i] != null &&
+						(this.customHandles[i].lockHandle ||
+						this.customHandles[i].editIconHandle ||
+						this.customHandles[i].moveGroupHandle))
+					{
+						this.customHandles[i].redraw();
+					}
+				}
+			}
+
 			// Rotates the rotation handle image itself so it visually matches
 			// the cell's orientation (base mxVertexHandler only translates it
 			// to the rotated corner, keeping the icon axis-aligned).
@@ -18901,8 +24683,14 @@ if (typeof mxVertexHandler !== 'undefined')
 
 				if (this.rotationShape.rotation !== deg)
 				{
+					// mxShape.redraw resets node visibility to 'visible', which
+					// would undo the hidden state the base redraw set from
+					// isRotationHandleVisible (e.g. labelAutoRotate or table
+					// cells that are also rotated), so preserve it across redraw.
+					var vis = this.rotationShape.node.style.visibility;
 					this.rotationShape.rotation = deg;
 					this.rotationShape.redraw();
+					this.rotationShape.node.style.visibility = vis;
 				}
 			}
 
@@ -18959,6 +24747,25 @@ if (typeof mxVertexHandler !== 'undefined')
 			}
 		};
 		
+		// Rotates the dashed selection border to follow auto-rotated labels.
+		// drawPreview repaints the border on both the normal redraw and the
+		// live-preview drag (where redrawHandles is skipped via redraw(true)),
+		// so setting the rotation here keeps the outline aligned with the
+		// label as it is dragged along the edge. Falls back to the static
+		// rotation style when auto rotation is off so the border snaps back.
+		var vertexHandlerDrawPreview = mxVertexHandler.prototype.drawPreview;
+		mxVertexHandler.prototype.drawPreview = function()
+		{
+			if (this.selectionBorder != null)
+			{
+				var autoRotation = Graph.getLabelAutoRotation(this.state);
+				this.selectionBorder.rotation = (autoRotation != null) ? autoRotation :
+					Number(this.state.style[mxConstants.STYLE_ROTATION] || '0');
+			}
+
+			vertexHandlerDrawPreview.apply(this, arguments);
+		};
+
 		// Destroys special handles
 		var vertexHandlerDestroy = mxVertexHandler.prototype.destroy;
 		mxVertexHandler.prototype.destroy = function()

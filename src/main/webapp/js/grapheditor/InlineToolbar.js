@@ -2,8 +2,7 @@
  * Floating toolbar that appears when a single edge is selected,
  * providing quick access to edge style changes.
  */
-InlineToolbar = function(editorUi)
-{
+InlineToolbar = function (editorUi) {
 	this.editorUi = editorUi;
 	this.graph = editorUi.editor.graph;
 	this.init();
@@ -45,8 +44,7 @@ InlineToolbar.connStyleIcon = Graph.createSvgImage(16, 16,
 /**
  * Initializes the toolbar icon and event listeners.
  */
-InlineToolbar.prototype.init = function()
-{
+InlineToolbar.prototype.init = function () {
 	// Container for buttons
 	this.toolbar = document.createElement('div');
 	this.toolbar.style.position = 'absolute';
@@ -62,8 +60,7 @@ InlineToolbar.prototype.init = function()
 
 	var btnSize = this.iconSize - 4;
 
-	var createButton = mxUtils.bind(this, function(title)
-	{
+	var createButton = mxUtils.bind(this, function (title) {
 		var btn = document.createElement('div');
 		btn.style.width = btnSize + 'px';
 		btn.style.height = btnSize + 'px';
@@ -80,8 +77,7 @@ InlineToolbar.prototype.init = function()
 		return btn;
 	});
 
-	var createSpacer = function()
-	{
+	var createSpacer = function () {
 		var sp = document.createElement('div');
 		sp.style.display = 'inline-block';
 		sp.style.width = '4px';
@@ -112,25 +108,19 @@ InlineToolbar.prototype.init = function()
 	this.graph.container.appendChild(this.toolbar);
 
 	// Prevent mousedown from deselecting the edge
-	mxEvent.addListener(this.toolbar, 'mousedown', mxUtils.bind(this, function(evt)
-	{
-		if (this.graph.isEnabled())
-		{
+	mxEvent.addListener(this.toolbar, 'mousedown', mxUtils.bind(this, function (evt) {
+		if (this.graph.isEnabled()) {
 			mxEvent.consume(evt);
 		}
 	}));
 
 	// Click handlers for each button
-	mxEvent.addListener(this.lineStyleBtn, 'click', mxUtils.bind(this, function(evt)
-	{
-		if (this.graph.isEnabled())
-		{
-			if (this.currentPopoverAnchor == this.lineStyleBtn)
-			{
+	mxEvent.addListener(this.lineStyleBtn, 'click', mxUtils.bind(this, function (evt) {
+		if (this.graph.isEnabled()) {
+			if (this.currentPopoverAnchor == this.lineStyleBtn) {
 				this.hidePopover();
 			}
-			else
-			{
+			else {
 				this.showLineStyleMenu(evt);
 			}
 
@@ -138,16 +128,12 @@ InlineToolbar.prototype.init = function()
 		}
 	}));
 
-	mxEvent.addListener(this.lineEndBtn, 'click', mxUtils.bind(this, function(evt)
-	{
-		if (this.graph.isEnabled())
-		{
-			if (this.currentPopoverAnchor == this.lineEndBtn)
-			{
+	mxEvent.addListener(this.lineEndBtn, 'click', mxUtils.bind(this, function (evt) {
+		if (this.graph.isEnabled()) {
+			if (this.currentPopoverAnchor == this.lineEndBtn) {
 				this.hidePopover();
 			}
-			else
-			{
+			else {
 				this.showLineEndMenu(evt);
 			}
 
@@ -155,16 +141,12 @@ InlineToolbar.prototype.init = function()
 		}
 	}));
 
-	mxEvent.addListener(this.connStyleBtn, 'click', mxUtils.bind(this, function(evt)
-	{
-		if (this.graph.isEnabled())
-		{
-			if (this.currentPopoverAnchor == this.connStyleBtn)
-			{
+	mxEvent.addListener(this.connStyleBtn, 'click', mxUtils.bind(this, function (evt) {
+		if (this.graph.isEnabled()) {
+			if (this.currentPopoverAnchor == this.connStyleBtn) {
 				this.hidePopover();
 			}
-			else
-			{
+			else {
 				this.showConnStyleMenu(evt);
 			}
 
@@ -172,23 +154,19 @@ InlineToolbar.prototype.init = function()
 		}
 	}));
 
-	this.selectionHandler = mxUtils.bind(this, function()
-	{
+	this.selectionHandler = mxUtils.bind(this, function () {
 		this.updateSelection();
 	});
 
-	this.repaintHandler = mxUtils.bind(this, function()
-	{
+	this.repaintHandler = mxUtils.bind(this, function () {
 		this.repaint();
 	});
 
-	this.modelHandler = mxUtils.bind(this, function()
-	{
+	this.modelHandler = mxUtils.bind(this, function () {
 		this.updateSelection();
 	});
 
-	this.hideHandler = mxUtils.bind(this, function()
-	{
+	this.hideHandler = mxUtils.bind(this, function () {
 		this.hide();
 	});
 
@@ -208,24 +186,20 @@ InlineToolbar.prototype.init = function()
 /**
  * Updates visibility based on the current selection.
  */
-InlineToolbar.prototype.updateSelection = function()
-{
+InlineToolbar.prototype.updateSelection = function () {
 	var cells = this.graph.getSelectionCells();
 	var state = null;
 
 	if (cells.length == 1 && this.graph.model.isEdge(cells[0]) &&
-		this.graph.isEnabled() && !this.graph.isCellLocked(cells[0]))
-	{
+		this.graph.isEnabled() && !this.graph.isCellLocked(cells[0])) {
 		state = this.graph.view.getState(cells[0]);
 	}
 
-	if (state != null)
-	{
+	if (state != null) {
 		this.currentState = state;
 		this.show();
 	}
-	else
-	{
+	else {
 		this.currentState = null;
 		this.hide();
 	}
@@ -234,12 +208,10 @@ InlineToolbar.prototype.updateSelection = function()
 /**
  * Computes the midpoint along the edge path.
  */
-InlineToolbar.prototype.getEdgeMidpoint = function(state)
-{
+InlineToolbar.prototype.getEdgeMidpoint = function (state) {
 	var pts = state.absolutePoints;
 
-	if (pts == null || pts.length < 2)
-	{
+	if (pts == null || pts.length < 2) {
 		return null;
 	}
 
@@ -247,18 +219,15 @@ InlineToolbar.prototype.getEdgeMidpoint = function(state)
 	var totalLength = 0;
 	var segments = [];
 
-	for (var i = 1; i < pts.length; i++)
-	{
-		if (pts[i] != null && pts[i - 1] != null)
-		{
+	for (var i = 1; i < pts.length; i++) {
+		if (pts[i] != null && pts[i - 1] != null) {
 			var dx = pts[i].x - pts[i - 1].x;
 			var dy = pts[i].y - pts[i - 1].y;
 			var len = Math.sqrt(dx * dx + dy * dy);
 			segments.push(len);
 			totalLength += len;
 		}
-		else
-		{
+		else {
 			segments.push(0);
 		}
 	}
@@ -267,17 +236,14 @@ InlineToolbar.prototype.getEdgeMidpoint = function(state)
 	var halfLength = totalLength / 2;
 	var accumulated = 0;
 
-	for (var i = 0; i < segments.length; i++)
-	{
-		if (accumulated + segments[i] >= halfLength)
-		{
+	for (var i = 0; i < segments.length; i++) {
+		if (accumulated + segments[i] >= halfLength) {
 			var remaining = halfLength - accumulated;
 			var ratio = (segments[i] > 0) ? remaining / segments[i] : 0;
 			var p1 = pts[i];
 			var p2 = pts[i + 1];
 
-			if (p1 != null && p2 != null)
-			{
+			if (p1 != null && p2 != null) {
 				return new mxPoint(
 					p1.x + (p2.x - p1.x) * ratio,
 					p1.y + (p2.y - p1.y) * ratio
@@ -294,8 +260,7 @@ InlineToolbar.prototype.getEdgeMidpoint = function(state)
 	var first = pts[0];
 	var last = pts[pts.length - 1];
 
-	if (first != null && last != null)
-	{
+	if (first != null && last != null) {
 		return new mxPoint((first.x + last.x) / 2, (first.y + last.y) / 2);
 	}
 
@@ -310,12 +275,10 @@ InlineToolbar.prototype.toolbarAnimDuration = 150;
 /**
  * Shows the toolbar with a fade-in.
  */
-InlineToolbar.prototype.show = function()
-{
+InlineToolbar.prototype.show = function () {
 	this.updateIcons();
 
-	if (this.hideTimeout != null)
-	{
+	if (this.hideTimeout != null) {
 		window.clearTimeout(this.hideTimeout);
 		this.hideTimeout = null;
 	}
@@ -334,26 +297,22 @@ InlineToolbar.prototype.show = function()
 /**
  * Hides the toolbar with a fade-out.
  */
-InlineToolbar.prototype.hide = function()
-{
+InlineToolbar.prototype.hide = function () {
 	this.hidePopover(true);
 
-	if (this.hideTimeout != null)
-	{
+	if (this.hideTimeout != null) {
 		window.clearTimeout(this.hideTimeout);
 		this.hideTimeout = null;
 	}
 
-	if (this.toolbar.style.display == 'none')
-	{
+	if (this.toolbar.style.display == 'none') {
 		return;
 	}
 
 	this.toolbar.style.transition = 'opacity ' + this.toolbarAnimDuration + 'ms ease-in';
 	this.toolbar.style.opacity = '0';
 
-	this.hideTimeout = window.setTimeout(mxUtils.bind(this, function()
-	{
+	this.hideTimeout = window.setTimeout(mxUtils.bind(this, function () {
 		this.toolbar.style.display = 'none';
 		this.hideTimeout = null;
 	}), this.toolbarAnimDuration);
@@ -362,12 +321,8 @@ InlineToolbar.prototype.hide = function()
 /**
  * Returns true if the current edge shape supports the curved bend style.
  */
-InlineToolbar.prototype.supportsCurvedBend = function(style)
-{
-	var shape = mxUtils.getValue(style, mxConstants.STYLE_SHAPE, null);
-
-	return shape == null || shape == 'connector' ||
-		shape == 'filledEdge' || shape == 'wire' || shape == 'pipe' || shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR;
+InlineToolbar.prototype.supportsCurvedBend = function (style) {
+	return Graph.edgeSupportsCurved(style) || shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR;
 };
 
 /**
@@ -375,8 +330,7 @@ InlineToolbar.prototype.supportsCurvedBend = function(style)
  * All three buttons use static icons for visual consistency;
  * the active style is shown inside the popover instead.
  */
-InlineToolbar.prototype.updateIcons = function()
-{
+InlineToolbar.prototype.updateIcons = function () {
 };
 
 /**
@@ -384,8 +338,7 @@ InlineToolbar.prototype.updateIcons = function()
  * the axis-aligned rectangle at (rx, ry) with size (rw, rh).
  * Uses the Liang-Barsky clipping algorithm.
  */
-InlineToolbar.prototype.segmentIntersectsRect = function(x1, y1, x2, y2, rx, ry, rw, rh)
-{
+InlineToolbar.prototype.segmentIntersectsRect = function (x1, y1, x2, y2, rx, ry, rw, rh) {
 	var dx = x2 - x1;
 	var dy = y2 - y1;
 	var p = [-dx, dx, -dy, dy];
@@ -393,30 +346,23 @@ InlineToolbar.prototype.segmentIntersectsRect = function(x1, y1, x2, y2, rx, ry,
 	var tMin = 0;
 	var tMax = 1;
 
-	for (var i = 0; i < 4; i++)
-	{
-		if (p[i] == 0)
-		{
-			if (q[i] < 0)
-			{
+	for (var i = 0; i < 4; i++) {
+		if (p[i] == 0) {
+			if (q[i] < 0) {
 				return false;
 			}
 		}
-		else
-		{
+		else {
 			var t = q[i] / p[i];
 
-			if (p[i] < 0)
-			{
+			if (p[i] < 0) {
 				tMin = Math.max(tMin, t);
 			}
-			else
-			{
+			else {
 				tMax = Math.min(tMax, t);
 			}
 
-			if (tMin > tMax)
-			{
+			if (tMin > tMax) {
 				return false;
 			}
 		}
@@ -429,21 +375,17 @@ InlineToolbar.prototype.segmentIntersectsRect = function(x1, y1, x2, y2, rx, ry,
  * Repositions the toolbar at the cell midpoint, avoiding overlap with
  * edge waypoint handles and edge segments.
  */
-InlineToolbar.prototype.repaint = function()
-{
-	if (this.currentState != null && this.toolbar.style.display != 'none')
-	{
+InlineToolbar.prototype.repaint = function () {
+	if (this.currentState != null && this.toolbar.style.display != 'none') {
 		// Refresh state in case cell was deleted or edge changed
 		var state = this.graph.view.getState(this.currentState.cell);
 
-		if (state != null)
-		{
+		if (state != null) {
 			this.currentState = state;
 			this.updateIcons();
 			var mid = this.getEdgeMidpoint(state);
 
-			if (mid != null)
-			{
+			if (mid != null) {
 				// Toolbar dimensions: 3 buttons + 2 spacers (4px) + padding (4px each side) + border (1px each side)
 				var btnSize = this.iconSize - 4;
 				var toolbarWidth = btnSize * 3 + 4 * 2 + 10;
@@ -456,23 +398,19 @@ InlineToolbar.prototype.repaint = function()
 				// Check for overlap with edge handler bends and reposition if needed
 				var handler = this.graph.selectionCellsHandler.getHandler(state.cell);
 
-				if (handler != null)
-				{
+				if (handler != null) {
 					var minGap = 8;
 					var allBends = (handler.bends || []).concat(handler.virtualBends || []);
 
-					var checkOverlap = mxUtils.bind(this, function(tx, ty)
-					{
+					var checkOverlap = mxUtils.bind(this, function (tx, ty) {
 						var bounds = new mxRectangle(Math.round(tx) - minGap,
 							Math.round(ty) - minGap, toolbarWidth + 2 * minGap,
 							toolbarHeight + 2 * minGap);
 
-						for (var i = 0; i < allBends.length; i++)
-						{
+						for (var i = 0; i < allBends.length; i++) {
 							if (allBends[i] != null && allBends[i].bounds != null &&
 								allBends[i].node.style.visibility !== 'hidden' &&
-								mxUtils.intersects(bounds, allBends[i].bounds))
-							{
+								mxUtils.intersects(bounds, allBends[i].bounds)) {
 								return true;
 							}
 						}
@@ -480,17 +418,14 @@ InlineToolbar.prototype.repaint = function()
 						// Check intersection with edge segments
 						var pts = state.absolutePoints;
 
-						if (pts != null)
-						{
-							for (var i = 1; i < pts.length; i++)
-							{
+						if (pts != null) {
+							for (var i = 1; i < pts.length; i++) {
 								if (pts[i] != null && pts[i - 1] != null &&
 									this.segmentIntersectsRect(
 										pts[i - 1].x, pts[i - 1].y,
 										pts[i].x, pts[i].y,
 										bounds.x, bounds.y,
-										bounds.width, bounds.height))
-								{
+										bounds.width, bounds.height)) {
 									return true;
 								}
 							}
@@ -498,8 +433,7 @@ InlineToolbar.prototype.repaint = function()
 
 						// Check overlap with edge label
 						if (state.text != null && state.text.boundingBox != null &&
-							mxUtils.intersects(bounds, state.text.boundingBox))
-						{
+							mxUtils.intersects(bounds, state.text.boundingBox)) {
 							return true;
 						}
 
@@ -507,24 +441,20 @@ InlineToolbar.prototype.repaint = function()
 						var model = this.graph.getModel();
 						var childCount = model.getChildCount(state.cell);
 
-						for (var i = 0; i < childCount; i++)
-						{
+						for (var i = 0; i < childCount; i++) {
 							var childState = this.graph.view.getState(
 								model.getChildAt(state.cell, i));
 
-							if (childState != null)
-							{
+							if (childState != null) {
 								if (childState.shape != null &&
 									childState.shape.boundingBox != null &&
-									mxUtils.intersects(bounds, childState.shape.boundingBox))
-								{
+									mxUtils.intersects(bounds, childState.shape.boundingBox)) {
 									return true;
 								}
 
 								if (childState.text != null &&
 									childState.text.boundingBox != null &&
-									mxUtils.intersects(bounds, childState.text.boundingBox))
-								{
+									mxUtils.intersects(bounds, childState.text.boundingBox)) {
 									return true;
 								}
 							}
@@ -533,33 +463,28 @@ InlineToolbar.prototype.repaint = function()
 						return false;
 					});
 
-					if (checkOverlap(x, y))
-					{
+					if (checkOverlap(x, y)) {
 						// Try below the edge midpoint instead
 						var belowY = mid.y + this.offset;
 						var found = false;
 
-						if (!checkOverlap(x, belowY))
-						{
+						if (!checkOverlap(x, belowY)) {
 							y = belowY;
 							found = true;
 						}
 
 						// Try left/right of the edge midpoint
-						if (!found)
-						{
+						if (!found) {
 							var centerY = mid.y - toolbarHeight / 2;
 							var leftX = mid.x - toolbarWidth - this.offset;
 							var rightX = mid.x + this.offset;
 
-							if (!checkOverlap(leftX, centerY))
-							{
+							if (!checkOverlap(leftX, centerY)) {
 								x = leftX;
 								y = centerY;
 								found = true;
 							}
-							else if (!checkOverlap(rightX, centerY))
-							{
+							else if (!checkOverlap(rightX, centerY)) {
 								x = rightX;
 								y = centerY;
 								found = true;
@@ -568,30 +493,24 @@ InlineToolbar.prototype.repaint = function()
 
 						// Find nearest non-overlapping position by
 						// moving further away from the midpoint
-						if (!found)
-						{
+						if (!found) {
 							var centerY = mid.y - toolbarHeight / 2;
 
-							for (var d = this.offset + minGap; d < 100; d += minGap)
-							{
-								if (!checkOverlap(x, mid.y - toolbarHeight - d))
-								{
+							for (var d = this.offset + minGap; d < 100; d += minGap) {
+								if (!checkOverlap(x, mid.y - toolbarHeight - d)) {
 									y = mid.y - toolbarHeight - d;
 									break;
 								}
-								else if (!checkOverlap(x, mid.y + d))
-								{
+								else if (!checkOverlap(x, mid.y + d)) {
 									y = mid.y + d;
 									break;
 								}
-								else if (!checkOverlap(mid.x - toolbarWidth - d, centerY))
-								{
+								else if (!checkOverlap(mid.x - toolbarWidth - d, centerY)) {
 									x = mid.x - toolbarWidth - d;
 									y = centerY;
 									break;
 								}
-								else if (!checkOverlap(mid.x + d, centerY))
-								{
+								else if (!checkOverlap(mid.x + d, centerY)) {
 									x = mid.x + d;
 									y = centerY;
 									break;
@@ -609,13 +528,11 @@ InlineToolbar.prototype.repaint = function()
 				var minY = container.scrollTop + 4;
 				var maxY = container.scrollTop + container.clientHeight - toolbarHeight - 4;
 
-				if (maxX > minX)
-				{
+				if (maxX > minX) {
 					x = Math.max(minX, Math.min(x, maxX));
 				}
 
-				if (maxY > minY)
-				{
+				if (maxY > minY) {
 					y = Math.max(minY, Math.min(y, maxY));
 				}
 
@@ -627,29 +544,37 @@ InlineToolbar.prototype.repaint = function()
 };
 
 /**
- * Returns the index of the active edge style item.
+ * Clamps a position (in container scroll coordinates) so an element of the
+ * given size stays within the container's visible viewport. When the element
+ * is larger than the viewport along an axis it is pinned to the top/left edge
+ * so its start stays visible. Returns the clamped point.
  */
-InlineToolbar.prototype.getActiveEdgeStyleIndex = function(items, style)
-{
-	for (var i = 0; i < items.length; i++)
-	{
-		var item = items[i];
-		var match = true;
+InlineToolbar.prototype.clampToContainer = function (x, y, w, h) {
+	var c = this.graph.container;
+	var minX = c.scrollLeft + 4;
+	var maxX = c.scrollLeft + c.clientWidth - w - 4;
+	var minY = c.scrollTop + 4;
+	var maxY = c.scrollTop + c.clientHeight - h - 4;
 
-		for (var j = 0; j < item.keys.length; j++)
-		{
-			var val = item.values[j];
-			var cur = mxUtils.getValue(style, item.keys[j], null);
+	return new mxPoint(
+		(maxX > minX) ? Math.max(minX, Math.min(x, maxX)) : minX,
+		(maxY > minY) ? Math.max(minY, Math.min(y, maxY)) : minY);
+};
 
-			if ((val == null ? null : String(val)) != (cur == null ? null : String(cur)))
-			{
-				match = false;
-				break;
-			}
-		}
-
-		if (match)
-		{
+/**
+ * Returns the index of the item whose icon matches the given image source,
+ * or -1 if none matches. The routing and shape sections mirror the Format
+ * panel's "waypoints" and "connection" dropdowns, which resolve the current
+ * cell style to exactly one icon via EditorUi.getImageForEdgeStyle /
+ * getImageForEdgeShape. Selecting the item that carries that canonical icon
+ * keeps the inline toolbar's highlight in sync with the Format panel and
+ * guarantees a single active item, even when the edge carries unrelated
+ * style attributes (dash pattern, arrow sizes, width) that a strict
+ * key/value match would trip over.
+ */
+InlineToolbar.prototype.getActiveIndexForImage = function (items, imageSrc) {
+	for (var i = 0; i < items.length; i++) {
+		if (items[i].img === imageSrc) {
 			return i;
 		}
 	}
@@ -672,8 +597,7 @@ InlineToolbar.prototype.popoverAnimDuration = 220;
  * The popover includes arrow, positioning, animation and close handlers.
  * Options: persistOnClick (default false) keeps popover open when clicking inside.
  */
-InlineToolbar.prototype.createPopover = function(anchorBtn, opts)
-{
+InlineToolbar.prototype.createPopover = function (anchorBtn, opts) {
 	this.hidePopover(true);
 
 	var persistOnClick = opts != null && opts.persistOnClick;
@@ -722,8 +646,7 @@ InlineToolbar.prototype.createPopover = function(anchorBtn, opts)
 	popover.appendChild(body);
 
 	// Prevent mousedown from deselecting edge
-	mxEvent.addListener(popover, 'mousedown', function(e)
-	{
+	mxEvent.addListener(popover, 'mousedown', function (e) {
 		mxEvent.consume(e);
 	});
 
@@ -733,8 +656,7 @@ InlineToolbar.prototype.createPopover = function(anchorBtn, opts)
 	container.appendChild(popover);
 
 	// Position function — call after body content is added
-	var positionPopover = mxUtils.bind(this, function()
-	{
+	var positionPopover = mxUtils.bind(this, function () {
 		var toolbarRect = this.toolbar.getBoundingClientRect();
 		var btnRect = anchorBtn.getBoundingClientRect();
 		var containerRect = container.getBoundingClientRect();
@@ -746,13 +668,18 @@ InlineToolbar.prototype.createPopover = function(anchorBtn, opts)
 		var btnCenterX = btnRect.left + btnRect.width / 2 - containerRect.left + scrollLeft;
 		var popX = btnCenterX - popoverWidth / 2;
 
-		// Check if popover fits below the toolbar within the viewport
-		var spaceBelow = window.innerHeight - toolbarRect.bottom;
-		var showAbove = spaceBelow < popoverHeight + 4;
+		// Decide above/below from the room available on each side WITHIN the
+		// container's visible viewport (not the window — the inline editor's
+		// container can be shorter than the window). Prefer below; flip above
+		// only when below does not fit and above is the roomier side.
+		var spaceAbove = toolbarRect.top - containerRect.top;
+		var spaceBelow = (containerRect.top + container.clientHeight) - toolbarRect.bottom;
+		var fitsBelow = spaceBelow >= popoverHeight + 4;
+		var fitsAbove = spaceAbove >= popoverHeight + 4;
+		var showAbove = !fitsBelow && (fitsAbove || spaceAbove > spaceBelow);
 		var popY;
 
-		if (showAbove)
-		{
+		if (showAbove) {
 			popY = toolbarRect.top - containerRect.top + scrollTop - popoverHeight - 2;
 
 			// Move arrow to bottom
@@ -764,17 +691,23 @@ InlineToolbar.prototype.createPopover = function(anchorBtn, opts)
 			body.style.marginTop = '0';
 			body.style.marginBottom = arrowOffset + 'px';
 		}
-		else
-		{
+		else {
 			popY = toolbarRect.bottom - containerRect.top + scrollTop + 2;
 		}
 
-		var minX = scrollLeft + 4;
-		var maxX = scrollLeft + container.clientWidth - popoverWidth - 4;
+		// Clamp to the visible viewport so the popover is never clipped by a
+		// container edge (e.g. the inline editor's top border).
+		var unclampedY = popY;
+		var clamped = this.clampToContainer(popX, popY, popoverWidth, popoverHeight);
+		popX = clamped.x;
+		popY = clamped.y;
 
-		if (maxX > minX)
-		{
-			popX = Math.max(minX, Math.min(popX, maxX));
+		// In the degenerate case where the popover fits on neither side and the
+		// clamp detaches it from the toolbar edge, the fixed arrow would point
+		// at empty space — hide it rather than show a dangling pointer.
+		if (popY != unclampedY) {
+			arrowBorder.style.display = 'none';
+			arrowFill.style.display = 'none';
 		}
 
 		popover.style.left = Math.round(popX) + 'px';
@@ -792,8 +725,7 @@ InlineToolbar.prototype.createPopover = function(anchorBtn, opts)
 	});
 
 	// Animate in function — call after positioning
-	var animateIn = mxUtils.bind(this, function()
-	{
+	var animateIn = mxUtils.bind(this, function () {
 		popover.style.transition = 'transform ' + this.popoverAnimDuration +
 			'ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity ' +
 			Math.round(this.popoverAnimDuration * 0.5) + 'ms ease-out';
@@ -807,50 +739,43 @@ InlineToolbar.prototype.createPopover = function(anchorBtn, opts)
 	this.currentPopoverAnchor = anchorBtn;
 
 	// Close handlers
-	this.popoverCloseHandler = mxUtils.bind(this, function(e)
-	{
+	this.popoverCloseHandler = mxUtils.bind(this, function (e) {
 		var target = e.target || e.srcElement;
 		var cw = this.editorUi.colorWindow;
 
 		if (!mxEvent.isConsumed(e) && !popover.contains(target) &&
 			!this.toolbar.contains(target) &&
 			(this.currentSubPanel == null || !this.currentSubPanel.contains(target)) &&
-			(cw == null || cw.window == null || !cw.window.div.contains(target)))
-		{
+			(cw == null || cw.window == null || !cw.window.div.contains(target))) {
 			this.hidePopover();
 		}
 	});
 
-	this.popoverScrollHandler = mxUtils.bind(this, function()
-	{
+	this.popoverScrollHandler = mxUtils.bind(this, function () {
 		this.hidePopover();
 	});
 
-	this.popoverKeyHandler = mxUtils.bind(this, function(e)
-	{
-		if (e.keyCode == 27)
-		{
+	this.popoverKeyHandler = mxUtils.bind(this, function (e) {
+		if (e.keyCode == 27) {
 			this.hidePopover();
 			mxEvent.consume(e);
 		}
 	});
 
-	window.setTimeout(mxUtils.bind(this, function()
-	{
+	window.setTimeout(mxUtils.bind(this, function () {
 		document.addEventListener('mousedown', this.popoverCloseHandler, true);
 		container.addEventListener('scroll', this.popoverScrollHandler);
 		document.addEventListener('keydown', this.popoverKeyHandler);
 	}), 0);
 
-	return {body: body, popover: popover, position: positionPopover, animateIn: animateIn};
+	return { body: body, popover: popover, position: positionPopover, animateIn: animateIn };
 };
 
 /**
  * Builds a grid of icon items inside a body element.
  * Returns the grid element.
  */
-InlineToolbar.prototype.buildIconGrid = function(body, items, activeIndex, callback)
-{
+InlineToolbar.prototype.buildIconGrid = function (body, items, activeIndex, callback) {
 	var itemSize = this.iconSize + 8;
 	var cols = Math.min(this.popoverColumns, items.length);
 	var grid = document.createElement('div');
@@ -858,10 +783,8 @@ InlineToolbar.prototype.buildIconGrid = function(body, items, activeIndex, callb
 	grid.style.gridTemplateColumns = 'repeat(' + cols + ', ' + itemSize + 'px)';
 	grid.style.gap = '2px';
 
-	for (var i = 0; i < items.length; i++)
-	{
-		if (items[i].separator && i > 0)
-		{
+	for (var i = 0; i < items.length; i++) {
+		if (items[i].separator && i > 0) {
 			var sep = document.createElement('div');
 			sep.style.gridColumn = '1 / -1';
 			sep.style.height = '1px';
@@ -882,8 +805,7 @@ InlineToolbar.prototype.buildIconGrid = function(body, items, activeIndex, callb
 		cell.style.boxSizing = 'border-box';
 		cell.setAttribute('title', items[i].title);
 
-		if (i == activeIndex)
-		{
+		if (i == activeIndex) {
 			cell.style.backgroundColor = 'light-dark(#e8f0fe, #3c4043)';
 			cell.style.border = '2px solid light-dark(#1a73e8, #8ab4f8)';
 		}
@@ -895,26 +817,20 @@ InlineToolbar.prototype.buildIconGrid = function(body, items, activeIndex, callb
 		img.className = 'geAdaptiveAsset';
 		cell.appendChild(img);
 
-		(function(item, cellElt, idx)
-		{
-			mxEvent.addListener(cellElt, 'mouseenter', function()
-			{
-				if (idx != activeIndex)
-				{
+		(function (item, cellElt, idx) {
+			mxEvent.addListener(cellElt, 'mouseenter', function () {
+				if (idx != activeIndex) {
 					cellElt.style.backgroundColor = 'light-dark(#f0f0f0, #4a4a4a)';
 				}
 			});
 
-			mxEvent.addListener(cellElt, 'mouseleave', function()
-			{
-				if (idx != activeIndex)
-				{
+			mxEvent.addListener(cellElt, 'mouseleave', function () {
+				if (idx != activeIndex) {
 					cellElt.style.backgroundColor = '';
 				}
 			});
 
-			mxEvent.addListener(cellElt, 'click', function(e)
-			{
+			mxEvent.addListener(cellElt, 'click', function (e) {
 				callback(item);
 				mxEvent.consume(e);
 			});
@@ -929,14 +845,95 @@ InlineToolbar.prototype.buildIconGrid = function(body, items, activeIndex, callb
 };
 
 /**
- * Shows the line style popover: dash pattern, stroke width, stroke color.
+ * Creates a clickable color swatch that opens the color picker for the
+ * given style key and applies the chosen color to the given cells.
+ * Picking a color (or closing the picker) hides the toolbar, matching
+ * the behaviour of the other color swatches.
  */
-InlineToolbar.prototype.showLineStyleMenu = function(evt)
-{
+InlineToolbar.prototype.createColorSwatch = function (title, currentColor, styleKey, defaultColorValue) {
+	var graph = this.graph;
+	var swatch = document.createElement('div');
+	swatch.style.width = '28px';
+	swatch.style.height = '28px';
+	swatch.style.borderRadius = '6px';
+	swatch.style.border = '1px solid light-dark(#d0d0d0, #505050)';
+	swatch.style.cursor = 'pointer';
+	swatch.style.boxSizing = 'border-box';
+	swatch.style.flexShrink = '0';
+	swatch.setAttribute('title', title);
+
+	var updateSwatch = function (color) {
+		if (color == null || color == 'none') {
+			swatch.style.background = 'linear-gradient(135deg, white 45%, red 45%, red 55%, white 55%)';
+			swatch.style.backgroundColor = '';
+		}
+		else {
+			var cssColor = mxUtils.getLightDarkColor(color);
+
+			if (mxUtils.isLightDarkColor(color) &&
+				cssColor.light != cssColor.dark) {
+				swatch.style.background = 'linear-gradient(to right bottom, ' +
+					cssColor.cssText + ' 50%, ' + mxUtils.invertLightDarkColor(cssColor).
+						cssText + ' 50.3%)';
+			}
+			else {
+				swatch.style.background = '';
+				swatch.style.backgroundColor = cssColor.cssText;
+			}
+		}
+	};
+
+	updateSwatch(currentColor);
+
+	mxEvent.addListener(swatch, 'click', mxUtils.bind(this, function (e) {
+		// Reads the current selection's color for this style key. The color
+		// picker is a non-modal window that stays open across selection
+		// changes; passing this lets ColorWindow re-sync its swatch to the
+		// new selection (it refreshes from getColorFn on selectionChange/
+		// styleChanged), matching the Format panel and font color menus.
+		var getColorFn = function () {
+			var cell = graph.getSelectionCell();
+			var cellStyle = (cell != null) ? graph.getCellStyle(cell, false) : null;
+
+			return (cellStyle != null) ? (cellStyle[styleKey] || mxConstants.NONE) :
+				mxConstants.NONE;
+		};
+
+		this.editorUi.pickColor(getColorFn(),
+			mxUtils.bind(this, function (color) {
+				// Apply to the live selection read at apply time, not the cells
+				// captured when the swatch was built. Same reason as above:
+				// the selection may have changed while the picker was open.
+				graph.stopEditing(false);
+				graph.setCellStyles(styleKey, color, this.editorUi.getSelectionState().cells);
+				this.hide();
+			}), 'default', defaultColorValue, null, title, getColorFn);
+
+		var cw = this.editorUi.colorWindow;
+
+		if (cw != null) {
+			var hideListener = mxUtils.bind(this, function () {
+				cw.window.removeListener(hideListener);
+				this.hide();
+			});
+
+			cw.window.addListener(mxEvent.HIDE, hideListener);
+		}
+
+		mxEvent.consume(e);
+	}));
+
+	return swatch;
+};
+
+/**
+ * Shows the line style popover: dash pattern, stroke width, stroke color
+ * and, for edge shapes that support them, fill and gradient color.
+ */
+InlineToolbar.prototype.showLineStyleMenu = function (evt) {
 	this.editorUi.hideCurrentMenu();
 
-	if (this.currentState == null)
-	{
+	if (this.currentState == null) {
 		return;
 	}
 
@@ -944,20 +941,20 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 	var style = graph.getCurrentCellStyle(this.currentState.cell);
 	var cells = graph.getSelectionCells();
 
-	var p = this.createPopover(this.lineStyleBtn, {persistOnClick: true});
+	var p = this.createPopover(this.lineStyleBtn, { persistOnClick: true });
 	var body = p.body;
 
 	// Row 1: Dash pattern dropdown
 	var dashKeys = [mxConstants.STYLE_DASHED, mxConstants.STYLE_DASH_PATTERN];
 	var dashItems = [
-		{label: mxResources.get('solid'), values: [null, null], pattern: null},
-		{label: mxResources.get('dashed') + ' (1)', values: ['1', null], pattern: '8 4'},
-		{label: mxResources.get('dashed') + ' (2)', values: ['1', '8 8'], pattern: '8 8'},
-		{label: mxResources.get('dashed') + ' (3)', values: ['1', '12 12'], pattern: '12 12'},
-		{label: mxResources.get('dashed') + ' (4)', values: ['1', '8 4 1 4'], pattern: '8 4 1 4'},
-		{label: mxResources.get('dotted') + ' (1)', values: ['1', '1 1'], pattern: '1 1'},
-		{label: mxResources.get('dotted') + ' (2)', values: ['1', '1 2'], pattern: '1 2'},
-		{label: mxResources.get('dotted') + ' (3)', values: ['1', '1 4'], pattern: '1 4'}
+		{ label: mxResources.get('solid'), values: [null, null], pattern: null },
+		{ label: mxResources.get('dashed') + ' (1)', values: ['1', null], pattern: '8 4' },
+		{ label: mxResources.get('dashed') + ' (2)', values: ['1', '8 8'], pattern: '8 8' },
+		{ label: mxResources.get('dashed') + ' (3)', values: ['1', '12 12'], pattern: '12 12' },
+		{ label: mxResources.get('dashed') + ' (4)', values: ['1', '8 4 1 4'], pattern: '8 4 1 4' },
+		{ label: mxResources.get('dotted') + ' (1)', values: ['1', '1 1'], pattern: '1 1' },
+		{ label: mxResources.get('dotted') + ' (2)', values: ['1', '1 2'], pattern: '1 2' },
+		{ label: mxResources.get('dotted') + ' (3)', values: ['1', '1 4'], pattern: '1 4' }
 	];
 
 	// Determine active dash pattern
@@ -965,14 +962,12 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 	var dashPattern = mxUtils.getValue(style, mxConstants.STYLE_DASH_PATTERN, null);
 	var activeDashIndex = 0;
 
-	for (var i = 0; i < dashItems.length; i++)
-	{
+	for (var i = 0; i < dashItems.length; i++) {
 		var dv = dashItems[i].values[0];
 		var pv = dashItems[i].values[1];
 
 		if ((dv == null ? null : String(dv)) == (dashed == null ? null : String(dashed)) &&
-			(pv == null ? null : String(pv)) == (dashPattern == null ? null : String(dashPattern)))
-		{
+			(pv == null ? null : String(pv)) == (dashPattern == null ? null : String(dashPattern))) {
 			activeDashIndex = i;
 			break;
 		}
@@ -981,8 +976,7 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 	// Helper to create an SVG dash preview image
 	var previewWidth = 80;
 
-	var createDashPreview = function(pattern)
-	{
+	var createDashPreview = function (pattern) {
 		var da = (pattern != null) ? ' stroke-dasharray="' + pattern + '"' : '';
 		var svgImg = Graph.createSvgImage(previewWidth, 2,
 			'<line x1="0" y1="1" x2="' + previewWidth + '" y2="1" stroke="black" stroke-width="2"' +
@@ -1022,23 +1016,18 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 	dashChevron.innerHTML = '&#9660;';
 	dashDropdown.appendChild(dashChevron);
 
-	mxEvent.addListener(dashDropdown, 'mouseenter', function()
-	{
+	mxEvent.addListener(dashDropdown, 'mouseenter', function () {
 		dashDropdown.style.backgroundColor = 'light-dark(#f0f0f0, #4a4a4a)';
 	});
 
-	mxEvent.addListener(dashDropdown, 'mouseleave', function()
-	{
+	mxEvent.addListener(dashDropdown, 'mouseleave', function () {
 		dashDropdown.style.backgroundColor = '';
 	});
 
-	mxEvent.addListener(dashDropdown, 'click', mxUtils.bind(this, function(e)
-	{
+	mxEvent.addListener(dashDropdown, 'click', mxUtils.bind(this, function (e) {
 		// Toggle: close if already open for this dropdown
-		if (this.currentSubPanel != null && this.currentSubPanel._ownerDropdown === dashDropdown)
-		{
-			if (this.currentSubPanel.parentNode != null)
-			{
+		if (this.currentSubPanel != null && this.currentSubPanel._ownerDropdown === dashDropdown) {
+			if (this.currentSubPanel.parentNode != null) {
 				this.currentSubPanel.parentNode.removeChild(this.currentSubPanel);
 			}
 
@@ -1049,8 +1038,7 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 		}
 
 		// Close existing sub-panel from a different dropdown
-		if (this.currentSubPanel != null && this.currentSubPanel.parentNode != null)
-		{
+		if (this.currentSubPanel != null && this.currentSubPanel.parentNode != null) {
 			this.currentSubPanel.parentNode.removeChild(this.currentSubPanel);
 			this.currentSubPanel = null;
 		}
@@ -1065,8 +1053,7 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 		panel.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
 		panel.style.padding = '4px';
 
-		for (var i = 0; i < dashItems.length; i++)
-		{
+		for (var i = 0; i < dashItems.length; i++) {
 			var row = document.createElement('div');
 			row.style.display = 'flex';
 			row.style.alignItems = 'center';
@@ -1076,43 +1063,34 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 			row.style.minWidth = (previewWidth + 16) + 'px';
 			row.setAttribute('title', dashItems[i].label);
 
-			if (i == activeDashIndex)
-			{
+			if (i == activeDashIndex) {
 				row.style.backgroundColor = 'light-dark(#e8f0fe, #3c4043)';
 			}
 
 			row.appendChild(createDashPreview(dashItems[i].pattern));
 
-			(function(item, rowElt, idx)
-			{
-				mxEvent.addListener(rowElt, 'mouseenter', function()
-				{
-					if (idx != activeDashIndex)
-					{
+			(function (item, rowElt, idx) {
+				mxEvent.addListener(rowElt, 'mouseenter', function () {
+					if (idx != activeDashIndex) {
 						rowElt.style.backgroundColor = 'light-dark(#f0f0f0, #4a4a4a)';
 					}
 				});
 
-				mxEvent.addListener(rowElt, 'mouseleave', function()
-				{
-					if (idx != activeDashIndex)
-					{
+				mxEvent.addListener(rowElt, 'mouseleave', function () {
+					if (idx != activeDashIndex) {
 						rowElt.style.backgroundColor = '';
 					}
 				});
 
-				mxEvent.addListener(rowElt, 'click', mxUtils.bind(this, function(ce)
-				{
+				mxEvent.addListener(rowElt, 'click', mxUtils.bind(this, function (ce) {
 					graph.stopEditing(false);
 					graph.getModel().beginUpdate();
 
-					try
-					{
+					try {
 						graph.setCellStyles(dashKeys[0], item.values[0], cells);
 						graph.setCellStyles(dashKeys[1], item.values[1], cells);
 					}
-					finally
-					{
+					finally {
 						graph.getModel().endUpdate();
 					}
 
@@ -1123,8 +1101,7 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 					dashPreview.appendChild(createDashPreview(item.pattern));
 
 					// Close sub-panel
-					if (panel.parentNode != null)
-					{
+					if (panel.parentNode != null) {
 						panel.parentNode.removeChild(panel);
 					}
 
@@ -1136,8 +1113,7 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 			panel.appendChild(row);
 		}
 
-		mxEvent.addListener(panel, 'mousedown', function(me)
-		{
+		mxEvent.addListener(panel, 'mousedown', function (me) {
 			mxEvent.consume(me);
 		});
 
@@ -1151,18 +1127,14 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 		var scrollLeft = container.scrollLeft;
 		var scrollTop = container.scrollTop;
 
-		var panelX = ddRect.left - containerRect.left + scrollLeft;
-		var panelY = ddRect.bottom - containerRect.top + scrollTop + 4;
-		var minX = scrollLeft + 4;
-		var maxX = scrollLeft + container.clientWidth - panel.offsetWidth - 4;
+		// Position below the dropdown, clamped to the visible viewport.
+		var clamped = this.clampToContainer(
+			ddRect.left - containerRect.left + scrollLeft,
+			ddRect.bottom - containerRect.top + scrollTop + 4,
+			panel.offsetWidth, panel.offsetHeight);
 
-		if (maxX > minX)
-		{
-			panelX = Math.max(minX, Math.min(panelX, maxX));
-		}
-
-		panel.style.left = Math.round(panelX) + 'px';
-		panel.style.top = Math.round(panelY) + 'px';
+		panel.style.left = Math.round(clamped.x) + 'px';
+		panel.style.top = Math.round(clamped.y) + 'px';
 
 		mxEvent.consume(e);
 	}));
@@ -1197,8 +1169,7 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 	widthInput.style.backgroundColor = 'transparent';
 	widthInput.style.color = 'inherit';
 
-	var applyWidth = function(val)
-	{
+	var applyWidth = function (val) {
 		val = Math.max(0, Math.min(999, parseInt(val) || 0));
 		widthInput.value = val + ' pt';
 
@@ -1206,32 +1177,26 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 		graph.setCellStyles(mxConstants.STYLE_STROKEWIDTH, val, cells);
 	};
 
-	mxEvent.addListener(widthInput, 'focus', function()
-	{
+	mxEvent.addListener(widthInput, 'focus', function () {
 		widthInput.value = parseInt(widthInput.value) || 0;
 		widthInput.select();
 	});
 
-	mxEvent.addListener(widthInput, 'blur', function()
-	{
+	mxEvent.addListener(widthInput, 'blur', function () {
 		applyWidth(widthInput.value);
 	});
 
-	mxEvent.addListener(widthInput, 'keydown', function(e)
-	{
-		if (e.keyCode == 13)
-		{
+	mxEvent.addListener(widthInput, 'keydown', function (e) {
+		if (e.keyCode == 13) {
 			applyWidth(widthInput.value);
 			widthInput.blur();
 		}
-		else if (e.keyCode == 38)
-		{
+		else if (e.keyCode == 38) {
 			var v = (parseInt(widthInput.value) || 0) + 1;
 			applyWidth(v);
 			e.preventDefault();
 		}
-		else if (e.keyCode == 40)
-		{
+		else if (e.keyCode == 40) {
 			var v = (parseInt(widthInput.value) || 0) - 1;
 			applyWidth(v);
 			e.preventDefault();
@@ -1255,8 +1220,7 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 	upBtn.style.width = '16px';
 	upBtn.style.userSelect = 'none';
 
-	mxEvent.addListener(upBtn, 'click', function(e)
-	{
+	mxEvent.addListener(upBtn, 'click', function (e) {
 		var v = (parseInt(widthInput.value) || 0) + 1;
 		applyWidth(v);
 		mxEvent.consume(e);
@@ -1271,8 +1235,7 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 	downBtn.style.width = '16px';
 	downBtn.style.userSelect = 'none';
 
-	mxEvent.addListener(downBtn, 'click', function(e)
-	{
+	mxEvent.addListener(downBtn, 'click', function (e) {
 		var v = (parseInt(widthInput.value) || 0) - 1;
 		applyWidth(v);
 		mxEvent.consume(e);
@@ -1283,75 +1246,56 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 	widthContainer.appendChild(stepperDiv);
 	row2.appendChild(widthContainer);
 
-	// Color swatch
+	// Stroke color swatch
 	var strokeColor = mxUtils.getValue(style, mxConstants.STYLE_STROKECOLOR, '#000000');
-	var swatch = document.createElement('div');
-	swatch.style.width = '28px';
-	swatch.style.height = '28px';
-	swatch.style.borderRadius = '6px';
-	swatch.style.border = '1px solid light-dark(#d0d0d0, #505050)';
-	swatch.style.cursor = 'pointer';
-	swatch.style.boxSizing = 'border-box';
-	swatch.style.flexShrink = '0';
-	swatch.setAttribute('title', mxResources.get('strokeColor'));
-
-	function updateSwatch(color)
-	{
-		if (color == null || color == 'none')
-		{
-			swatch.style.background = 'linear-gradient(135deg, white 45%, red 45%, red 55%, white 55%)';
-			swatch.style.backgroundColor = '';
-		}
-		else
-		{
-			var cssColor = mxUtils.getLightDarkColor(color);
-
-			if (mxUtils.isLightDarkColor(color) &&
-				cssColor.light != cssColor.dark)
-			{
-				swatch.style.background = 'linear-gradient(to right bottom, ' +
-					cssColor.cssText + ' 50%, ' + mxUtils.invertLightDarkColor(cssColor).
-					cssText + ' 50.3%)';
-			}
-			else
-			{
-				swatch.style.background = '';
-				swatch.style.backgroundColor = cssColor.cssText;
-			}
-		}
-	};
-
-	updateSwatch(strokeColor);
-
-	mxEvent.addListener(swatch, 'click', mxUtils.bind(this, function(e)
-	{
-		this.editorUi.pickColor(strokeColor != 'none' ? strokeColor : null,
-			mxUtils.bind(this, function(color)
-			{
-				graph.stopEditing(false);
-				graph.setCellStyles(mxConstants.STYLE_STROKECOLOR, color, cells);
-				this.hide();
-			}), 'default', graph.shapeForegroundColor, null,
-			mxResources.get('strokeColor'));
-
-		var cw = this.editorUi.colorWindow;
-
-		if (cw != null)
-		{
-			var hideListener = mxUtils.bind(this, function()
-			{
-				cw.window.removeListener(hideListener);
-				this.hide();
-			});
-
-			cw.window.addListener(mxEvent.HIDE, hideListener);
-		}
-
-		mxEvent.consume(e);
-	}));
-
-	row2.appendChild(swatch);
+	row2.appendChild(this.createColorSwatch(mxResources.get('strokeColor'),
+		strokeColor, mxConstants.STYLE_STROKECOLOR, graph.shapeForegroundColor));
 	body.appendChild(row2);
+
+	// Row 3: Fill and gradient color, shown only for edge shapes that
+	// support them (filled edge, flex arrow, arrow, pipe, wire, …).
+	var state = this.currentState;
+
+	if (state != null && graph.isFillState(state)) {
+		var fillColor = mxUtils.getValue(style, mxConstants.STYLE_FILLCOLOR, null);
+		var row3 = document.createElement('div');
+		row3.style.display = 'flex';
+		row3.style.alignItems = 'center';
+		row3.style.gap = '6px';
+		row3.style.marginTop = '8px';
+
+		var addColorGroup = mxUtils.bind(this, function (labelText, title, color,
+			styleKey, defaultColorValue, extraGap) {
+			var label = document.createElement('span');
+			label.style.fontSize = '11px';
+			label.style.color = 'light-dark(#333, #ccc)';
+
+			if (extraGap) {
+				label.style.marginLeft = '8px';
+			}
+
+			mxUtils.write(label, labelText);
+			row3.appendChild(label);
+			row3.appendChild(this.createColorSwatch(title, color, styleKey,
+				defaultColorValue));
+		});
+
+		addColorGroup(mxResources.get('fill'), mxResources.get('fillColor'),
+			fillColor, mxConstants.STYLE_FILLCOLOR, graph.shapeBackgroundColor, false);
+
+		// Gradient needs a fill color and a shape that supports gradients
+		// (excludes wire/pipe).
+		if (graph.isGradientState(state) && fillColor != null &&
+			fillColor != mxConstants.NONE) {
+			var gradientColor = mxUtils.getValue(style,
+				mxConstants.STYLE_GRADIENTCOLOR, null);
+			addColorGroup(mxResources.get('gradient'), mxResources.get('gradientColor'),
+				gradientColor, mxConstants.STYLE_GRADIENTCOLOR,
+				graph.shapeForegroundColor, true);
+		}
+
+		body.appendChild(row3);
+	}
 
 	// Position and animate
 	p.position();
@@ -1361,12 +1305,10 @@ InlineToolbar.prototype.showLineStyleMenu = function(evt)
 /**
  * Shows the line endings popover: start/end arrow marker dropdowns.
  */
-InlineToolbar.prototype.showLineEndMenu = function(evt)
-{
+InlineToolbar.prototype.showLineEndMenu = function (evt) {
 	this.editorUi.hideCurrentMenu();
 
-	if (this.currentState == null)
-	{
+	if (this.currentState == null) {
 		return;
 	}
 
@@ -1375,7 +1317,7 @@ InlineToolbar.prototype.showLineEndMenu = function(evt)
 	var shape = mxUtils.getValue(style, mxConstants.STYLE_SHAPE, null);
 	var cells = graph.getSelectionCells();
 
-	var p = this.createPopover(this.lineEndBtn, {persistOnClick: true});
+	var p = this.createPopover(this.lineEndBtn, { persistOnClick: true });
 	var body = p.body;
 
 	// Title
@@ -1388,61 +1330,61 @@ InlineToolbar.prototype.showLineEndMenu = function(evt)
 	body.appendChild(title);
 
 	// Build marker items list based on shape
-	var buildMarkerItems = mxUtils.bind(this, function()
-	{
+	var buildMarkerItems = mxUtils.bind(this, function () {
 		var items = [];
 
-		items.push({marker: mxConstants.NONE, fill: 0, img: Format.noMarkerImage.src,
-			title: mxResources.get('none')});
+		items.push({
+			marker: mxConstants.NONE, fill: 0, img: Format.noMarkerImage.src,
+			title: mxResources.get('none')
+		});
 
 		if (shape == 'connector' || shape == 'filledEdge' ||
 			shape == 'wire' || shape == 'pipe' ||
-			shape == 'mxgraph.basic.arc' || shape == null)
-		{
-			items.push({marker: mxConstants.ARROW_CLASSIC, fill: 1, img: Format.classicFilledMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_CLASSIC_THIN, fill: 1, img: Format.classicThinFilledMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_OPEN, fill: 0, img: Format.openFilledMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_OPEN_THIN, fill: 0, img: Format.openThinFilledMarkerImage.src});
-			items.push({marker: 'openAsync', fill: 0, img: Format.openAsyncFilledMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_BLOCK, fill: 1, img: Format.blockFilledMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_BLOCK_THIN, fill: 1, img: Format.blockThinFilledMarkerImage.src});
-			items.push({marker: 'async', fill: 1, img: Format.asyncFilledMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_OVAL, fill: 1, img: Format.ovalFilledMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_DIAMOND, fill: 1, img: Format.diamondFilledMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_DIAMOND_THIN, fill: 1, img: Format.diamondThinFilledMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_CLASSIC, fill: 0, img: Format.classicMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_CLASSIC_THIN, fill: 0, img: Format.classicThinMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_BLOCK, fill: 0, img: Format.blockMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_BLOCK_THIN, fill: 0, img: Format.blockThinMarkerImage.src});
-			items.push({marker: 'async', fill: 0, img: Format.asyncMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_OVAL, fill: 0, img: Format.ovalMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_DIAMOND, fill: 0, img: Format.diamondMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_DIAMOND_THIN, fill: 0, img: Format.diamondThinMarkerImage.src});
-			items.push({marker: 'box', fill: 0, img: Format.boxMarkerImage.src});
-			items.push({marker: 'halfCircle', fill: 0, img: Format.halfCircleMarkerImage.src});
-			items.push({marker: 'dash', fill: 0, img: Format.dashMarkerImage.src});
-			items.push({marker: 'cross', fill: 0, img: Format.crossMarkerImage.src});
-			items.push({marker: 'circlePlus', fill: 0, img: Format.circlePlusMarkerImage.src});
-			items.push({marker: 'circle', fill: 1, img: Format.circleMarkerImage.src});
-			items.push({marker: 'baseDash', fill: 0, img: Format.baseDashMarkerImage.src});
-			items.push({marker: 'ERone', fill: 0, img: Format.EROneMarkerImage.src});
-			items.push({marker: 'ERmandOne', fill: 0, img: Format.ERmandOneMarkerImage.src});
-			items.push({marker: 'ERmany', fill: 0, img: Format.ERmanyMarkerImage.src});
-			items.push({marker: 'ERoneToMany', fill: 0, img: Format.ERoneToManyMarkerImage.src});
-			items.push({marker: 'ERzeroToOne', fill: 0, img: Format.ERzeroToOneMarkerImage.src});
-			items.push({marker: 'ERzeroToMany', fill: 0, img: Format.ERzeroToManyMarkerImage.src});
-			items.push({marker: 'doubleBlock', fill: 0, img: Format.doubleBlockMarkerImage.src});
-			items.push({marker: 'doubleBlock', fill: 1, img: Format.doubleBlockFilledMarkerImage.src});
+			shape == 'mxgraph.basic.arc' || shape == null) {
+			items.push({ marker: mxConstants.ARROW_CLASSIC, fill: 1, img: Format.classicFilledMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_CLASSIC_THIN, fill: 1, img: Format.classicThinFilledMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_OPEN, fill: 0, img: Format.openFilledMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_OPEN_THIN, fill: 0, img: Format.openThinFilledMarkerImage.src });
+			items.push({ marker: 'openAsync', fill: 0, img: Format.openAsyncFilledMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_BLOCK, fill: 1, img: Format.blockFilledMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_BLOCK_THIN, fill: 1, img: Format.blockThinFilledMarkerImage.src });
+			items.push({ marker: 'async', fill: 1, img: Format.asyncFilledMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_OVAL, fill: 1, img: Format.ovalFilledMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_DIAMOND, fill: 1, img: Format.diamondFilledMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_DIAMOND_THIN, fill: 1, img: Format.diamondThinFilledMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_CLASSIC, fill: 0, img: Format.classicMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_CLASSIC_THIN, fill: 0, img: Format.classicThinMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_BLOCK, fill: 0, img: Format.blockMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_BLOCK_THIN, fill: 0, img: Format.blockThinMarkerImage.src });
+			items.push({ marker: 'async', fill: 0, img: Format.asyncMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_OVAL, fill: 0, img: Format.ovalMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_DIAMOND, fill: 0, img: Format.diamondMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_DIAMOND_THIN, fill: 0, img: Format.diamondThinMarkerImage.src });
+			items.push({ marker: 'box', fill: 0, img: Format.boxMarkerImage.src });
+			items.push({ marker: 'halfCircle', fill: 0, img: Format.halfCircleMarkerImage.src });
+			items.push({ marker: 'dash', fill: 0, img: Format.dashMarkerImage.src });
+			items.push({ marker: 'cross', fill: 0, img: Format.crossMarkerImage.src });
+			items.push({ marker: 'circlePlus', fill: 0, img: Format.circlePlusMarkerImage.src });
+			items.push({ marker: 'circle', fill: 1, img: Format.circleMarkerImage.src });
+			items.push({ marker: 'baseDash', fill: 0, img: Format.baseDashMarkerImage.src });
+			items.push({ marker: 'ERone', fill: 0, img: Format.EROneMarkerImage.src });
+			items.push({ marker: 'ERmandOne', fill: 0, img: Format.ERmandOneMarkerImage.src });
+			items.push({ marker: 'ERmany', fill: 0, img: Format.ERmanyMarkerImage.src });
+			items.push({ marker: 'ERoneToMany', fill: 0, img: Format.ERoneToManyMarkerImage.src });
+			items.push({ marker: 'ERzeroToOne', fill: 0, img: Format.ERzeroToOneMarkerImage.src });
+			items.push({ marker: 'ERzeroToMany', fill: 0, img: Format.ERzeroToManyMarkerImage.src });
+			items.push({ marker: 'doubleBlock', fill: 0, img: Format.doubleBlockMarkerImage.src });
+			items.push({ marker: 'doubleBlock', fill: 1, img: Format.doubleBlockFilledMarkerImage.src });
 		}
-		else if (shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR)
-		{
-			items.push({marker: mxConstants.ARROW_CLASSIC, fill: 1, img: Format.classicFilledMarkerImage.src});
-			items.push({marker: mxConstants.ARROW_OVAL, fill: 1, img: Format.ovalFilledMarkerImage.src});
+		else if (shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR) {
+			items.push({ marker: mxConstants.ARROW_CLASSIC, fill: 1, img: Format.classicFilledMarkerImage.src });
+			items.push({ marker: mxConstants.ARROW_OVAL, fill: 1, img: Format.ovalFilledMarkerImage.src });
 		}
-		else if (shape == 'flexArrow')
-		{
-			items.push({marker: mxConstants.ARROW_BLOCK, fill: 0, img: Format.blockMarkerImage.src,
-				title: mxResources.get('block')});
+		else if (shape == 'flexArrow') {
+			items.push({
+				marker: mxConstants.ARROW_BLOCK, fill: 0, img: Format.blockMarkerImage.src,
+				title: mxResources.get('block')
+			});
 		}
 
 		return items;
@@ -1451,8 +1393,7 @@ InlineToolbar.prototype.showLineEndMenu = function(evt)
 	var markerItems = buildMarkerItems();
 
 	// Create dropdown button for a marker (start or end)
-	var createMarkerDropdown = mxUtils.bind(this, function(prefix)
-	{
+	var createMarkerDropdown = mxUtils.bind(this, function (prefix) {
 		var arrowKey = (prefix == 'start') ? mxConstants.STYLE_STARTARROW : mxConstants.STYLE_ENDARROW;
 		var fillKey = prefix + 'Fill';
 		var currentMarker = mxUtils.getValue(style, arrowKey, mxConstants.NONE);
@@ -1478,32 +1419,25 @@ InlineToolbar.prototype.showLineEndMenu = function(evt)
 		preview.style.justifyContent = 'center';
 		preview.style.minWidth = '0';
 
-		var updatePreview = function()
-		{
+		var updatePreview = function () {
 			preview.innerHTML = '';
 
 			var src = null;
 
-			if (currentMarker != mxConstants.NONE && currentMarker != null)
-			{
+			if (currentMarker != mxConstants.NONE && currentMarker != null) {
 				// Find matching item to get the image
-				for (var i = 0; i < markerItems.length; i++)
-				{
+				for (var i = 0; i < markerItems.length; i++) {
 					if (markerItems[i].marker == currentMarker &&
-						String(markerItems[i].fill) == String(currentFill))
-					{
+						String(markerItems[i].fill) == String(currentFill)) {
 						src = markerItems[i].img;
 						break;
 					}
 				}
 
 				// Fallback: try without fill match
-				if (src == null)
-				{
-					for (var i = 0; i < markerItems.length; i++)
-					{
-						if (markerItems[i].marker == currentMarker)
-						{
+				if (src == null) {
+					for (var i = 0; i < markerItems.length; i++) {
+						if (markerItems[i].marker == currentMarker) {
 							src = markerItems[i].img;
 							break;
 						}
@@ -1511,22 +1445,19 @@ InlineToolbar.prototype.showLineEndMenu = function(evt)
 				}
 			}
 
-			if (src != null)
-			{
+			if (src != null) {
 				var img = document.createElement('img');
 				img.src = src;
 				img.style.height = '16px';
 				img.className = 'geAdaptiveAsset';
 
-				if (prefix == 'end')
-				{
+				if (prefix == 'end') {
 					img.style.transform = 'scaleX(-1)';
 				}
 
 				preview.appendChild(img);
 			}
-			else
-			{
+			else {
 				var noneText = document.createElement('span');
 				noneText.style.fontSize = '11px';
 				noneText.style.color = 'light-dark(#666, #999)';
@@ -1547,24 +1478,19 @@ InlineToolbar.prototype.showLineEndMenu = function(evt)
 		dropdown.appendChild(chevron);
 
 		// Hover effect
-		mxEvent.addListener(dropdown, 'mouseenter', function()
-		{
+		mxEvent.addListener(dropdown, 'mouseenter', function () {
 			dropdown.style.backgroundColor = 'light-dark(#f0f0f0, #4a4a4a)';
 		});
 
-		mxEvent.addListener(dropdown, 'mouseleave', function()
-		{
+		mxEvent.addListener(dropdown, 'mouseleave', function () {
 			dropdown.style.backgroundColor = '';
 		});
 
 		// Click toggles sub-panel
-		mxEvent.addListener(dropdown, 'click', mxUtils.bind(this, function(e)
-		{
+		mxEvent.addListener(dropdown, 'click', mxUtils.bind(this, function (e) {
 			// Toggle: close if already open for this dropdown
-			if (this.currentSubPanel != null && this.currentSubPanel._ownerDropdown === dropdown)
-			{
-				if (this.currentSubPanel.parentNode != null)
-				{
+			if (this.currentSubPanel != null && this.currentSubPanel._ownerDropdown === dropdown) {
+				if (this.currentSubPanel.parentNode != null) {
 					this.currentSubPanel.parentNode.removeChild(this.currentSubPanel);
 				}
 
@@ -1575,8 +1501,7 @@ InlineToolbar.prototype.showLineEndMenu = function(evt)
 			}
 
 			this.showMarkerSubPanel(dropdown, prefix, markerItems, currentMarker,
-				currentFill, cells, shape, function(marker, fill)
-			{
+				currentFill, cells, shape, function (marker, fill) {
 				currentMarker = marker;
 				currentFill = fill;
 				updatePreview();
@@ -1604,12 +1529,10 @@ InlineToolbar.prototype.showLineEndMenu = function(evt)
 /**
  * Opens a sub-panel grid of marker icons below the given dropdown.
  */
-InlineToolbar.prototype.showMarkerSubPanel = function(dropdown, prefix, items, currentMarker,
-	currentFill, cells, shape, onSelect)
-{
+InlineToolbar.prototype.showMarkerSubPanel = function (dropdown, prefix, items, currentMarker,
+	currentFill, cells, shape, onSelect) {
 	// Close existing sub-panel
-	if (this.currentSubPanel != null && this.currentSubPanel.parentNode != null)
-	{
+	if (this.currentSubPanel != null && this.currentSubPanel.parentNode != null) {
 		this.currentSubPanel.parentNode.removeChild(this.currentSubPanel);
 		this.currentSubPanel = null;
 	}
@@ -1633,19 +1556,16 @@ InlineToolbar.prototype.showMarkerSubPanel = function(dropdown, prefix, items, c
 	// Determine active index
 	var activeIndex = -1;
 
-	for (var i = 0; i < items.length; i++)
-	{
+	for (var i = 0; i < items.length; i++) {
 		if (items[i].marker == currentMarker &&
-			String(items[i].fill) == String(currentFill))
-		{
+			String(items[i].fill) == String(currentFill)) {
 			activeIndex = i;
 			break;
 		}
 	}
 
 	// No-marker selected and first item is "none"
-	if (activeIndex == -1 && (currentMarker == mxConstants.NONE || currentMarker == null))
-	{
+	if (activeIndex == -1 && (currentMarker == mxConstants.NONE || currentMarker == null)) {
 		activeIndex = 0;
 	}
 
@@ -1654,8 +1574,7 @@ InlineToolbar.prototype.showMarkerSubPanel = function(dropdown, prefix, items, c
 	grid.style.gridTemplateColumns = 'repeat(' + cols + ', ' + itemSize + 'px)';
 	grid.style.gap = '2px';
 
-	for (var i = 0; i < items.length; i++)
-	{
+	for (var i = 0; i < items.length; i++) {
 		var cell = document.createElement('div');
 		cell.style.width = itemSize + 'px';
 		cell.style.height = itemSize + 'px';
@@ -1666,13 +1585,11 @@ InlineToolbar.prototype.showMarkerSubPanel = function(dropdown, prefix, items, c
 		cell.style.cursor = 'pointer';
 		cell.style.boxSizing = 'border-box';
 
-		if (items[i].title != null)
-		{
+		if (items[i].title != null) {
 			cell.setAttribute('title', items[i].title);
 		}
 
-		if (i == activeIndex)
-		{
+		if (i == activeIndex) {
 			cell.style.backgroundColor = 'light-dark(#e8f0fe, #3c4043)';
 			cell.style.border = '2px solid light-dark(#1a73e8, #8ab4f8)';
 		}
@@ -1683,51 +1600,41 @@ InlineToolbar.prototype.showMarkerSubPanel = function(dropdown, prefix, items, c
 		img.style.height = '20px';
 		img.className = 'geAdaptiveAsset';
 
-		if (prefix == 'end')
-		{
+		if (prefix == 'end') {
 			img.style.transform = 'scaleX(-1)';
 		}
 
 		cell.appendChild(img);
 
-		(function(item, cellElt, idx)
-		{
-			mxEvent.addListener(cellElt, 'mouseenter', function()
-			{
-				if (idx != activeIndex)
-				{
+		(function (item, cellElt, idx) {
+			mxEvent.addListener(cellElt, 'mouseenter', function () {
+				if (idx != activeIndex) {
 					cellElt.style.backgroundColor = 'light-dark(#f0f0f0, #4a4a4a)';
 				}
 			});
 
-			mxEvent.addListener(cellElt, 'mouseleave', function()
-			{
-				if (idx != activeIndex)
-				{
+			mxEvent.addListener(cellElt, 'mouseleave', function () {
+				if (idx != activeIndex) {
 					cellElt.style.backgroundColor = '';
 				}
 			});
 
-			mxEvent.addListener(cellElt, 'click', mxUtils.bind(this, function(e)
-			{
+			mxEvent.addListener(cellElt, 'click', mxUtils.bind(this, function (e) {
 				graph.stopEditing(false);
 				graph.getModel().beginUpdate();
 
-				try
-				{
+				try {
 					graph.setCellStyles(arrowKey, item.marker, cells);
 					graph.setCellStyles(fillKey, item.fill, cells);
 				}
-				finally
-				{
+				finally {
 					graph.getModel().endUpdate();
 				}
 
 				onSelect(item.marker, String(item.fill));
 
 				// Close sub-panel
-				if (panel.parentNode != null)
-				{
+				if (panel.parentNode != null) {
 					panel.parentNode.removeChild(panel);
 				}
 
@@ -1742,8 +1649,7 @@ InlineToolbar.prototype.showMarkerSubPanel = function(dropdown, prefix, items, c
 	panel.appendChild(grid);
 
 	// Prevent mousedown from bubbling
-	mxEvent.addListener(panel, 'mousedown', function(e)
-	{
+	mxEvent.addListener(panel, 'mousedown', function (e) {
 		mxEvent.consume(e);
 	});
 
@@ -1757,32 +1663,24 @@ InlineToolbar.prototype.showMarkerSubPanel = function(dropdown, prefix, items, c
 	var scrollLeft = container.scrollLeft;
 	var scrollTop = container.scrollTop;
 
-	var panelWidth = panel.offsetWidth;
-	var panelX = dropdownRect.left - containerRect.left + scrollLeft;
-	var panelY = dropdownRect.bottom - containerRect.top + scrollTop + 4;
+	// Clamp to the visible viewport (both axes) so a panel near the bottom
+	// edge shifts up to stay visible instead of being clipped.
+	var clamped = this.clampToContainer(
+		dropdownRect.left - containerRect.left + scrollLeft,
+		dropdownRect.bottom - containerRect.top + scrollTop + 4,
+		panel.offsetWidth, panel.offsetHeight);
 
-	// Keep within visible viewport
-	var minX = scrollLeft + 4;
-	var maxX = scrollLeft + container.clientWidth - panelWidth - 4;
-
-	if (maxX > minX)
-	{
-		panelX = Math.max(minX, Math.min(panelX, maxX));
-	}
-
-	panel.style.left = Math.round(panelX) + 'px';
-	panel.style.top = Math.round(panelY) + 'px';
+	panel.style.left = Math.round(clamped.x) + 'px';
+	panel.style.top = Math.round(clamped.y) + 'px';
 };
 
 /**
  * Shows the connection style popover: routing style grid.
  */
-InlineToolbar.prototype.showConnStyleMenu = function(evt)
-{
+InlineToolbar.prototype.showConnStyleMenu = function (evt) {
 	this.editorUi.hideCurrentMenu();
 
-	if (this.currentState == null)
-	{
+	if (this.currentState == null) {
 		return;
 	}
 
@@ -1803,40 +1701,41 @@ InlineToolbar.prototype.showConnStyleMenu = function(evt)
 	body.appendChild(titleDiv);
 
 	// Shared callback for applying style items
-	var applyItem = mxUtils.bind(this, function(item)
-	{
+	var applyItem = mxUtils.bind(this, function (item) {
 		graph.stopEditing(false);
 		graph.getModel().beginUpdate();
 
-		try
-		{
+		try {
 			var selCells = graph.getSelectionCells();
+			var edges = [];
 
-			for (var i = 0; i < selCells.length; i++)
-			{
-				if (graph.getModel().isEdge(selCells[i]))
-				{
-					if (item.reset)
-					{
+			for (var i = 0; i < selCells.length; i++) {
+				if (graph.getModel().isEdge(selCells[i])) {
+					if (item.reset) {
 						var geo = graph.getCellGeometry(selCells[i]);
 
-						if (geo != null)
-						{
+						if (geo != null) {
 							geo = geo.clone();
 							geo.points = null;
 							graph.getModel().setGeometry(selCells[i], geo);
 						}
 					}
 
-					for (var j = 0; j < item.keys.length; j++)
-					{
+					for (var j = 0; j < item.keys.length; j++) {
 						graph.setCellStyles(item.keys[j], item.values[j], [selCells[i]]);
 					}
+
+					edges.push(selCells[i]);
 				}
 			}
+
+			// Optional follow-up inside the same update (libavoid routes the edges
+			// immediately after the style is applied, atomically with it).
+			if (item.postFn != null) {
+				item.postFn(graph, edges);
+			}
 		}
-		finally
-		{
+		finally {
 			graph.getModel().endUpdate();
 		}
 
@@ -1844,8 +1743,7 @@ InlineToolbar.prototype.showConnStyleMenu = function(evt)
 		this.hidePopover();
 	});
 
-	var addDivider = function()
-	{
+	var addDivider = function () {
 		var div = document.createElement('div');
 		div.style.height = '1px';
 		div.style.backgroundColor = 'light-dark(#d0d0d0, #505050)';
@@ -1856,87 +1754,138 @@ InlineToolbar.prototype.showConnStyleMenu = function(evt)
 	// Section 1: Routing styles
 	var routingItems = [];
 
-	if (shape != 'arrow')
-	{
-		routingItems.push({img: Format.straightImage.src, title: mxResources.get('straight'),
-			keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE],
-			values: [null, null, null], reset: true});
-		routingItems.push({img: Format.orthogonalImage.src, title: mxResources.get('orthogonal'),
-			keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE],
-			values: ['orthogonalEdgeStyle', null, null], reset: true});
-		routingItems.push({img: Format.verticalElbowImage.src, title: mxResources.get('horizontal'),
-			keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_ELBOW, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE],
-			values: ['elbowEdgeStyle', 'vertical', null, null], reset: true});
-		routingItems.push({img: Format.horizontalElbowImage.src, title: mxResources.get('vertical'),
-			keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_ELBOW, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE],
-			values: ['elbowEdgeStyle', null, null, null], reset: true});
-		routingItems.push({img: Format.horizontalIsometricImage.src, title: mxResources.get('isometric'),
-			keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_ELBOW, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE],
-			values: ['isometricEdgeStyle', null, null, null], reset: true});
-		routingItems.push({img: Format.verticalIsometricImage.src, title: mxResources.get('isometric'),
-			keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_ELBOW, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE],
-			values: ['isometricEdgeStyle', 'vertical', null, null], reset: true});
+	if (shape != 'arrow') {
+		// Each routing item also carries libavoidRouting so picking any plain
+		// routing clears the flag, keeping the choices mutually exclusive. The
+		// active-item highlight is resolved via getImageForEdgeStyle, which
+		// already distinguishes a libavoid edge from a plain orthogonal one.
+		routingItems.push({
+			img: Format.straightImage.src, title: mxResources.get('straight'),
+			keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
+			values: [null, null, null, null], reset: true
+		});
+		routingItems.push({
+			img: Format.orthogonalImage.src, title: mxResources.get('orthogonal'),
+			keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
+			values: ['orthogonalEdgeStyle', null, null, null], reset: true
+		});
 
-		if (shape == null || shape == 'connector')
-		{
-			routingItems.push({img: Format.curvedImage.src, title: mxResources.get('curved'),
-				keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE],
-				values: ['orthogonalEdgeStyle', '1', null], reset: true});
+		// Shown only when the libavoid extensions bundle is loaded (a no-op in
+		// viewers / configs without extensions.min.js).
+		if (typeof LibavoidRouting !== 'undefined') {
+			routingItems.push({
+				img: Format.libavoidImage.src, title: mxResources.get('libavoidAutoRoute'),
+				keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
+				values: ['orthogonalEdgeStyle', null, null, '1'], reset: true,
+				postFn: function (graph, edges) { LibavoidRouting.autoReroute(graph, edges); }
+			});
 		}
 
-		routingItems.push({img: Format.entityImage.src, title: mxResources.get('entityRelation'),
-			keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE],
-			values: ['entityRelationEdgeStyle', null, null], reset: true});
+		routingItems.push({
+			img: Format.verticalElbowImage.src, title: mxResources.get('horizontal'),
+			keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_ELBOW, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
+			values: ['elbowEdgeStyle', 'vertical', null, null, null], reset: true
+		});
+		routingItems.push({
+			img: Format.horizontalElbowImage.src, title: mxResources.get('vertical'),
+			keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_ELBOW, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
+			values: ['elbowEdgeStyle', null, null, null, null], reset: true
+		});
+		routingItems.push({
+			img: Format.horizontalIsometricImage.src, title: mxResources.get('isometric'),
+			keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_ELBOW, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
+			values: ['isometricEdgeStyle', null, null, null, null], reset: true
+		});
+		routingItems.push({
+			img: Format.verticalIsometricImage.src, title: mxResources.get('isometric'),
+			keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_ELBOW, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
+			values: ['isometricEdgeStyle', 'vertical', null, null, null], reset: true
+		});
+
+		if (this.supportsCurvedBend(style)) {
+			routingItems.push({
+				img: Format.curvedImage.src, title: mxResources.get('curved'),
+				keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
+				values: ['orthogonalEdgeStyle', '1', null, null], reset: true
+			});
+		}
+
+		routingItems.push({
+			img: Format.entityImage.src, title: mxResources.get('entityRelation'),
+			keys: [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
+			values: ['entityRelationEdgeStyle', null, null, null], reset: true
+		});
 	}
 
-	if (routingItems.length > 0)
-	{
+	if (routingItems.length > 0) {
 		this.buildIconGrid(body, routingItems,
-			this.getActiveEdgeStyleIndex(routingItems, style), applyItem);
+			this.getActiveIndexForImage(routingItems,
+				this.editorUi.getImageForEdgeStyle(style)), applyItem);
 	}
 
 	// Section 2: Edge shape
 	var shapeKeys = [mxConstants.STYLE_SHAPE, mxConstants.STYLE_STARTSIZE,
-		mxConstants.STYLE_ENDSIZE, mxConstants.STYLE_DASHED, 'width'];
+	mxConstants.STYLE_ENDSIZE, mxConstants.STYLE_DASHED, 'width'];
 
 	var shapeItems = [];
-	shapeItems.push({img: Format.connectionImage.src, title: mxResources.get('line'),
-		keys: shapeKeys, values: [null, null, null, null, null]});
-	shapeItems.push({img: Format.linkEdgeImage.src, title: mxResources.get('link'),
-		keys: shapeKeys, values: ['link', null, null, null, null]});
-	shapeItems.push({img: Format.arrowImage.src, title: mxResources.get('arrow'),
-		keys: shapeKeys, values: ['flexArrow', null, null, null, null]});
-	shapeItems.push({img: Format.simpleArrowImage.src, title: mxResources.get('simpleArrow'),
-		keys: shapeKeys, values: ['arrow', null, null, null, null]});
-	shapeItems.push({img: Format.filledEdgeImage.src, title: 'Filled Edge',
-		keys: shapeKeys, values: ['filledEdge', null, null, null, null]});
-	shapeItems.push({img: Format.pipeEdgeImage.src, title: 'Pipe',
-		keys: shapeKeys, values: ['pipe', null, null, null, null]});
-	shapeItems.push({img: Format.wireEdgeImage.src, title: 'Wire',
-		keys: shapeKeys, values: ['wire', null, null, '1', null]});
-	shapeItems.push({img: Format.mondrianEdgeImage.src, title: 'Mondrian Connector',
-		keys: shapeKeys, values: [mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR, null, null, null, null]});
+	shapeItems.push({
+		img: Format.connectionImage.src, title: mxResources.get('line'),
+		keys: shapeKeys, values: [null, null, null, null, null]
+	});
+	shapeItems.push({
+		img: Format.linkEdgeImage.src, title: mxResources.get('link'),
+		keys: shapeKeys, values: ['link', null, null, null, null]
+	});
+	shapeItems.push({
+		img: Format.arrowImage.src, title: mxResources.get('arrow'),
+		keys: shapeKeys, values: ['flexArrow', null, null, null, null]
+	});
+	shapeItems.push({
+		img: Format.simpleArrowImage.src, title: mxResources.get('simpleArrow'),
+		keys: shapeKeys, values: ['arrow', null, null, null, null]
+	});
+	shapeItems.push({
+		img: Format.filledEdgeImage.src, title: 'Filled Edge',
+		keys: shapeKeys, values: ['filledEdge', null, null, null, null]
+	});
+	shapeItems.push({
+		img: Format.pipeEdgeImage.src, title: 'Pipe',
+		keys: shapeKeys, values: ['pipe', null, null, null, null]
+	});
+	shapeItems.push({
+		img: Format.wireEdgeImage.src, title: 'Wire',
+		keys: shapeKeys, values: ['wire', null, null, '1', null]
+	});
+	shapeItems.push({
+		img: Format.mondrianEdgeImage.src, title: 'Mondrian Connector',
+		keys: shapeKeys, values: [mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR, null, null, null, null]
+	});
 
-	if (routingItems.length > 0)
-	{
+	if (routingItems.length > 0) {
 		addDivider();
 	}
 
 	this.buildIconGrid(body, shapeItems,
-		this.getActiveEdgeStyleIndex(shapeItems, style), applyItem);
+		this.getActiveIndexForImage(shapeItems,
+			this.editorUi.getImageForEdgeShape(style)), applyItem);
 
 	// Section 3: Bend style
 	var bendKeys = [mxConstants.STYLE_ROUNDED, mxConstants.STYLE_CURVED];
 	var bendItems = [];
-	bendItems.push({img: Format.sharpBendImage.src, title: mxResources.get('sharp'),
-		keys: bendKeys, values: ['0', '0']});
-	bendItems.push({img: Format.roundedBendImage.src, title: mxResources.get('rounded'),
-		keys: bendKeys, values: ['1', '0']});
+	bendItems.push({
+		img: Format.sharpBendImage.src, title: mxResources.get('sharp'),
+		keys: bendKeys, values: ['0', '0']
+	});
+	bendItems.push({
+		img: Format.roundedBendImage.src, title: mxResources.get('rounded'),
+		keys: bendKeys, values: ['1', '0']
+	});
 
-	if (this.supportsCurvedBend(style))
-	{
-		bendItems.push({img: Format.curvedBendImage.src, title: mxResources.get('curved'),
-			keys: bendKeys, values: ['0', '1']});
+	if (this.supportsCurvedBend(style)) {
+		bendItems.push({
+			img: Format.curvedBendImage.src, title: mxResources.get('curved'),
+			keys: bendKeys, values: ['0', '1']
+		});
 	}
 
 	// Determine active bend
@@ -1944,16 +1893,13 @@ InlineToolbar.prototype.showConnStyleMenu = function(evt)
 	var rounded = mxUtils.getValue(style, mxConstants.STYLE_ROUNDED, '0');
 	var curvedVal = mxUtils.getValue(style, mxConstants.STYLE_CURVED, '0');
 
-	if (curvedVal == '1')
-	{
+	if (curvedVal == '1') {
 		activeBend = 2;
 	}
-	else if (rounded == '1')
-	{
+	else if (rounded == '1') {
 		activeBend = 1;
 	}
-	else
-	{
+	else {
 		activeBend = 0;
 	}
 
@@ -1961,8 +1907,7 @@ InlineToolbar.prototype.showConnStyleMenu = function(evt)
 	var showBend = this.supportsCurvedBend(style) ||
 		(state != null && graph.isRoundedState(state));
 
-	if (showBend)
-	{
+	if (showBend) {
 		addDivider();
 		this.buildIconGrid(body, bendItems, activeBend, applyItem);
 	}
@@ -1976,52 +1921,42 @@ InlineToolbar.prototype.showConnStyleMenu = function(evt)
  * Hides the current popover if visible. If immediate is true,
  * removes without animation.
  */
-InlineToolbar.prototype.hidePopover = function(immediate)
-{
+InlineToolbar.prototype.hidePopover = function (immediate) {
 	// Close sub-panel first
-	if (this.currentSubPanel != null)
-	{
-		if (this.currentSubPanel.parentNode != null)
-		{
+	if (this.currentSubPanel != null) {
+		if (this.currentSubPanel.parentNode != null) {
 			this.currentSubPanel.parentNode.removeChild(this.currentSubPanel);
 		}
 
 		this.currentSubPanel = null;
 	}
 
-	if (this.popoverCloseHandler != null)
-	{
+	if (this.popoverCloseHandler != null) {
 		document.removeEventListener('mousedown', this.popoverCloseHandler, true);
 		this.popoverCloseHandler = null;
 	}
 
-	if (this.popoverScrollHandler != null)
-	{
+	if (this.popoverScrollHandler != null) {
 		this.graph.container.removeEventListener('scroll', this.popoverScrollHandler);
 		this.popoverScrollHandler = null;
 	}
 
-	if (this.popoverKeyHandler != null)
-	{
+	if (this.popoverKeyHandler != null) {
 		document.removeEventListener('keydown', this.popoverKeyHandler);
 		this.popoverKeyHandler = null;
 	}
 
-	if (this.currentPopover != null)
-	{
+	if (this.currentPopover != null) {
 		var popover = this.currentPopover;
 		this.currentPopover = null;
 		this.currentPopoverAnchor = null;
 
-		if (immediate || popover.parentNode == null)
-		{
-			if (popover.parentNode != null)
-			{
+		if (immediate || popover.parentNode == null) {
+			if (popover.parentNode != null) {
 				popover.parentNode.removeChild(popover);
 			}
 		}
-		else
-		{
+		else {
 			// Animate out
 			var duration = Math.round(this.popoverAnimDuration * 0.6);
 			popover.style.transition = 'transform ' + duration +
@@ -2031,10 +1966,8 @@ InlineToolbar.prototype.hidePopover = function(immediate)
 			popover.style.transform = 'scale(0.3)';
 			popover.style.pointerEvents = 'none';
 
-			window.setTimeout(function()
-			{
-				if (popover.parentNode != null)
-				{
+			window.setTimeout(function () {
+				if (popover.parentNode != null) {
 					popover.parentNode.removeChild(popover);
 				}
 			}, duration);
@@ -2045,12 +1978,10 @@ InlineToolbar.prototype.hidePopover = function(immediate)
 /**
  * Removes all listeners and DOM elements.
  */
-InlineToolbar.prototype.destroy = function()
-{
+InlineToolbar.prototype.destroy = function () {
 	this.hidePopover(true);
 
-	if (this.hideTimeout != null)
-	{
+	if (this.hideTimeout != null) {
 		window.clearTimeout(this.hideTimeout);
 		this.hideTimeout = null;
 	}
@@ -2063,8 +1994,7 @@ InlineToolbar.prototype.destroy = function()
 	this.graph.removeListener(this.hideHandler);
 	mxEvent.removeListener(this.graph.container, 'scroll', this.repaintHandler);
 
-	if (this.toolbar.parentNode != null)
-	{
+	if (this.toolbar.parentNode != null) {
 		this.toolbar.parentNode.removeChild(this.toolbar);
 	}
 };
@@ -2072,7 +2002,6 @@ InlineToolbar.prototype.destroy = function()
 /**
  * Overrides the hook to create an InlineToolbar instance.
  */
-EditorUi.prototype.createInlineToolbar = function()
-{
+EditorUi.prototype.createInlineToolbar = function () {
 	return new InlineToolbar(this);
 };

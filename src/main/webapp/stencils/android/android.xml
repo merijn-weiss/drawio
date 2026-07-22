@@ -540,14 +540,14 @@
         <fill/>
         <rect h="30" w="280" x="0" y="0"/>
         <fill/>
-        <fillcolor color="#999999"/>
+        <fillcolor color="fillColor2" default="#999999"/>
         <rect h="5" w="5" x="260" y="46"/>
         <fill/>
         <rect h="5" w="5" x="260" y="52.5"/>
         <fill/>
         <rect h="5" w="5" x="260" y="59"/>
         <fill/>
-        <strokecolor color="#999999"/>
+        <strokecolor color="fillColor2" default="#999999"/>
         <strokewidth width="1"/>
         <path>
             <move x="35" y="6"/>
@@ -557,7 +557,7 @@
         <restore/>
         <rect/>
         <stroke/>
-        <strokecolor color="#999999"/>
+        <strokecolor color="fillColor2" default="#999999"/>
         <path>
             <move x="6" y="13"/>
             <line x="12" y="20"/>

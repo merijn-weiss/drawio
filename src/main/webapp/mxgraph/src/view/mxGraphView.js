@@ -1497,14 +1497,14 @@ mxGraphView.prototype.isLoopStyleEnabled = function(edge, points, source, target
 {
 	var sc = this.graph.getConnectionConstraint(edge, source, true);
 	var tc = this.graph.getConnectionConstraint(edge, target, false);
-	
+
 	if ((points == null || points.length < 2) &&
 		(!mxUtils.getValue(edge.style, mxConstants.STYLE_ORTHOGONAL_LOOP, false) ||
 		((sc == null || sc.point == null) && (tc == null || tc.point == null))))
 	{
 		return source != null && source == target;
 	}
-	
+
 	return false;
 };
 
@@ -1566,7 +1566,7 @@ mxGraphView.prototype.updateFloatingTerminalPoints = function(state, source, tar
 		{
 			this.updateFloatingTerminalPoint(state, target, source, false);
 		}
-		
+
 		if (p0 == null && source != null)
 		{
 			this.updateFloatingTerminalPoint(state, source, target, true);
@@ -2186,7 +2186,7 @@ mxGraphView.prototype.getRelativePoint = function(edgeState, x, y)
 			}
 
 			// Constructs the relative point for the label
-			return new mxPoint(((totalLength / 2 - length - projlen) / totalLength) * -2,
+			return new mxPoint((totalLength > 0) ? ((totalLength / 2 - length - projlen) / totalLength) * -2 : 0,
 						yDistance / this.scale);
 		}
 	}

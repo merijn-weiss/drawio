@@ -228,7 +228,7 @@ var mxEdgeStyle =
 	Loop: function(state, source, target, points, result)
 	{
 		var pts = state.absolutePoints;
-		
+
 		var p0 = pts[0];
 		var pe = pts[pts.length-1];
 
@@ -246,7 +246,7 @@ var mxEdgeStyle =
 
 			return;
 		}
-		
+
 		if (source != null)
 		{
 			var view = state.view;
@@ -256,23 +256,23 @@ var mxEdgeStyle =
 			if (pt != null)
 			{
 				pt = view.transformControlPoint(state, pt);
-					
+
 				if (mxUtils.contains(source, pt.x, pt.y))
 				{
 					pt = null;
 				}
 			}
-			
+
 			var x = 0;
 			var dx = 0;
 			var y = 0;
 			var dy = 0;
-			
+
 		 	var seg = mxUtils.getValue(state.style, mxConstants.STYLE_SEGMENT,
 		 		graph.gridSize) * view.scale;
 			var dir = mxUtils.getValue(state.style, mxConstants.STYLE_DIRECTION,
 				mxConstants.DIRECTION_WEST);
-			
+
 			if (dir == mxConstants.DIRECTION_NORTH ||
 				dir == mxConstants.DIRECTION_SOUTH)
 			{
@@ -284,7 +284,7 @@ var mxEdgeStyle =
 				y = view.getRoutingCenterY(source);
 				dy = seg;
 			}
-			
+
 			if (pt == null ||
 				pt.x < source.x ||
 				pt.x > source.x + source.width)
@@ -321,7 +321,7 @@ var mxEdgeStyle =
 				y = pt.y;
 				dy = 0;
 			}
-			
+
 			result.push(new mxPoint(x - dx, y - dy));
 			result.push(new mxPoint(x + dx, y + dy));
 		}
@@ -837,23 +837,28 @@ var mxEdgeStyle =
 			}
 		}
 		
-		// Removes bends inside the source terminal
-		if (pts[0] == null && source != null)
+		// Keeps bends inside the shape for self-loops with innerLoopWaypoints
+		if (sourceScaled == null || sourceScaled != targetScaled ||
+			mxUtils.getValue(state.style, 'innerLoopWaypoints', '0') != '1')
 		{
-			while (tempPoints.length > 0 && tempPoints[0] != null &&
-				mxUtils.contains(source, tempPoints[0].x, tempPoints[0].y))
+			// Removes bends inside the source terminal
+			if (pts[0] == null && source != null)
 			{
-				tempPoints.splice(0, 1);
+				while (tempPoints.length > 0 && tempPoints[0] != null &&
+					mxUtils.contains(source, tempPoints[0].x, tempPoints[0].y))
+				{
+					tempPoints.splice(0, 1);
+				}
 			}
-		}
-		
-		// Removes bends inside the target terminal
-		if (pts[lastInx] == null && target != null)
-		{
-			while (tempPoints.length > 0 && tempPoints[tempPoints.length - 1] != null &&
-				mxUtils.contains(target, tempPoints[tempPoints.length - 1].x, tempPoints[tempPoints.length - 1].y))
+
+			// Removes bends inside the target terminal
+			if (pts[lastInx] == null && target != null)
 			{
-				tempPoints.splice(tempPoints.length - 1, 1);
+				while (tempPoints.length > 0 && tempPoints[tempPoints.length - 1] != null &&
+					mxUtils.contains(target, tempPoints[tempPoints.length - 1].x, tempPoints[tempPoints.length - 1].y))
+				{
+					tempPoints.splice(tempPoints.length - 1, 1);
+				}
 			}
 		}
 		

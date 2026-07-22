@@ -198,6 +198,19 @@ EditorUi.prototype.patchPages = function(pages, diff, markPages, resolver, updat
 					page.setName(pageDiff.name);
 				}
 
+				// View box (initial view) — empty string removes it.
+				if (pageDiff.viewBox != null)
+				{
+					if (pageDiff.viewBox == '')
+					{
+						page.node.removeAttribute('viewBox');
+					}
+					else
+					{
+						page.node.setAttribute('viewBox', pageDiff.viewBox);
+					}
+				}
+
 				if (pageDiff.view != null)
 				{
 					this.patchViewState(page, pageDiff.view);
@@ -897,7 +910,19 @@ EditorUi.prototype.diffPages = function(oldPages, newPages)
 				{
 					pageDiff.name = newPage.page.getName();
 				}
-				
+
+				// View box (initial view) is diffed like name: synced to
+				// collaborators but kept out of the page hash (getHashValueForPages
+				// never copies it onto the hashed diagram node). Empty string
+				// signals removal on patch.
+				var oldViewBox = oldPages[i].node.getAttribute('viewBox');
+				var newViewBox = newPage.page.node.getAttribute('viewBox');
+
+				if (newViewBox != oldViewBox)
+				{
+					pageDiff.viewBox = (newViewBox != null) ? newViewBox : '';
+				}
+
 				if (!mxUtils.isEmptyObject(pageDiff))
 				{
 					diff[id] = pageDiff;

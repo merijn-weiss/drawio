@@ -1016,6 +1016,16 @@ mxGraph.prototype.pageBreakDashed = true;
 mxGraph.prototype.minPageBreakDist = 20;
 
 /**
+ * Variable: maxPageBreaks
+ *
+ * Specifies the maximum number of page break lines that are drawn per axis in
+ * <updatePageBreaks>. This bounds the drawing loop so that a diagram with
+ * extreme cell coordinates (and therefore extreme graph bounds) cannot force
+ * an effectively infinite, main-thread-blocking loop. Default is 10000.
+ */
+mxGraph.prototype.maxPageBreaks = 10000;
+
+/**
  * Variable: preferPageSize
  * 
  * Specifies if the graph size should be rounded to the next page number in
@@ -3256,8 +3266,8 @@ mxGraph.prototype.updatePageBreaks = function(visible, width, height)
 	// Does not show page breaks if the scale is too small
 	visible = visible && Math.min(bounds.width, bounds.height) > this.minPageBreakDist;
 
-	var horizontalCount = (visible) ? Math.ceil(gb.height / bounds.height) + 1 : 0;
-	var verticalCount = (visible) ? Math.ceil(gb.width / bounds.width) + 1 : 0;
+	var horizontalCount = (visible) ? Math.min(this.maxPageBreaks, Math.ceil(gb.height / bounds.height) + 1) : 0;
+	var verticalCount = (visible) ? Math.min(this.maxPageBreaks, Math.ceil(gb.width / bounds.width) + 1) : 0;
 	var right = (verticalCount - 1) * bounds.width;
 	var bottom = (horizontalCount - 1) * bounds.height;
 	
@@ -4388,23 +4398,25 @@ mxGraph.prototype.updateGroupBounds = function(cells, border, moveGroup, topBord
 					
 					if (bounds != null && bounds.width > 0 && bounds.height > 0)
 					{
-						// Adds the size of the title area for swimlanes
+						// Adds the size of the title area for swimlanes and
+						// the footer region (opposite the title)
 						var size = (this.isSwimlane(cells[i])) ?
 							this.getActualStartSize(cells[i], true) : new mxRectangle();
+						var footer = this.getActualFooterSize(cells[i], true);
 						geo = geo.clone();
-						
+
 						if (moveGroup)
 						{
-							geo.x = Math.round(geo.x + bounds.x - border - size.x - leftBorder);
-							geo.y = Math.round(geo.y + bounds.y - border - size.y - topBorder);
+							geo.x = Math.round(geo.x + bounds.x - border - size.x - leftBorder - footer.x);
+							geo.y = Math.round(geo.y + bounds.y - border - size.y - topBorder - footer.y);
 						}
-						
-						geo.width = Math.round(bounds.width + 2 * border + size.x + leftBorder + rightBorder + size.width);
-						geo.height = Math.round(bounds.height + 2 * border + size.y + topBorder + bottomBorder + size.height);
-						
+
+						geo.width = Math.round(bounds.width + 2 * border + size.x + leftBorder + rightBorder + size.width + footer.x + footer.width);
+						geo.height = Math.round(bounds.height + 2 * border + size.y + topBorder + bottomBorder + size.height + footer.y + footer.height);
+
 						this.model.setGeometry(cells[i], geo);
-						this.moveCells(children, border + size.x - bounds.x + leftBorder,
-								border + size.y - bounds.y + topBorder);
+						this.moveCells(children, border + size.x - bounds.x + leftBorder + footer.x,
+								border + size.y - bounds.y + topBorder + footer.y);
 					}
 				}
 			}
@@ -6290,17 +6302,21 @@ mxGraph.prototype.extendParent = function(cell)
 
 			if (geo != null && !geo.relative)
 			{
+				// Multi-value padding is CSS TRBL order; only the east and
+				// south values apply here as the parent only ever grows to
+				// the right and bottom (top/left would require shifting the
+				// children).
 				var style = this.getCurrentCellStyle(parent);
-				var padding = parseFloat(mxUtils.getValue(style,
+				var padding = mxUtils.parsePadding(mxUtils.getValue(style,
 					mxConstants.STYLE_GROUP_PADDING, 0));
 
-				if (p.width < geo.x + geo.width + padding ||
-					p.height < geo.y + geo.height + padding)
+				if (p.width < geo.x + geo.width + padding.e ||
+					p.height < geo.y + geo.height + padding.s)
 				{
 					p = p.clone();
 
-					p.width = Math.max(p.width, geo.x + geo.width + padding);
-					p.height = Math.max(p.height, geo.y + geo.height + padding);
+					p.width = Math.max(p.width, geo.x + geo.width + padding.e);
+					p.height = Math.max(p.height, geo.y + geo.height + padding.s);
 
 					this.cellsResized([parent], [p], false);
 				}
@@ -6328,8 +6344,9 @@ mxGraph.prototype.contractParent = function(cell)
 
 		if (parent != null && pgeo != null && !this.isCellCollapsed(parent))
 		{
+			// East/south values only, matching extendParent
 			var style = this.getCurrentCellStyle(parent);
-			var padding = parseFloat(mxUtils.getValue(style,
+			var padding = mxUtils.parsePadding(mxUtils.getValue(style,
 				mxConstants.STYLE_GROUP_PADDING, 0));
 			var maxX = 0;
 			var maxY = 0;
@@ -6348,8 +6365,8 @@ mxGraph.prototype.contractParent = function(cell)
 				}
 			}
 
-			maxX += padding;
-			maxY += padding;
+			maxX += padding.e;
+			maxY += padding.s;
 
 			if (maxX > 0 && maxY > 0 &&
 				(pgeo.width > maxX || pgeo.height > maxY))
@@ -9467,10 +9484,10 @@ mxGraph.prototype.isWrapping = function(cell)
 	var style = this.getCurrentCellStyle(cell);
 	var state = this.view.getState(cell);
 	var dir = style[mxConstants.STYLE_TEXT_DIRECTION];
-	// Vertical text forces the foreignObject path (see mxSvgCanvas2D.text),
+	// Vertical text forces the foreignObject path (see mxUtils.convertHtmlToSvg),
 	// so use the HTML whiteSpace key, not svgWhiteSpace, in that case.
 	var usesSvg = mxUtils.getValue(style, 'convertToSvg', '0') == '1' &&
-		(dir == null || dir.substring(0, 9) != 'vertical-') &&
+		!mxUtils.isVerticalTextDirection(dir) &&
 		(state == null || state.text == null || state.text.node == null ||
 		state.text.node.getElementsByTagName('foreignObject').length == 0);
 
@@ -9772,7 +9789,63 @@ mxGraph.prototype.getActualStartSize = function(swimlane, ignoreState)
 			result.width = size;
 		}
 	}
-	
+
+	return result;
+};
+
+/**
+ * Function: getActualFooterSize
+ *
+ * Returns the actual footer size of the given cell as an <mxRectangle>
+ * where top, left, bottom, right footer sizes are returned as y, x,
+ * height and width, respectively. For swimlanes the footer is painted on
+ * the side opposite the title, taking into account direction and
+ * horizontal and vertical flip styles; for other cells it is painted at
+ * the bottom (see <mxRectangleShape.paintFooter>). Returns an empty
+ * rectangle if no <mxConstants.STYLE_FOOTER_SIZE> is set.
+ *
+ * Parameters:
+ *
+ * cell - <mxCell> whose footer size should be returned.
+ * ignoreState - Optional boolean that specifies if cell state should be ignored.
+ */
+mxGraph.prototype.getActualFooterSize = function(cell, ignoreState)
+{
+	var result = new mxRectangle();
+	var style = this.getCurrentCellStyle(cell, ignoreState);
+	var size = Math.max(0, parseInt(mxUtils.getValue(style,
+		mxConstants.STYLE_FOOTER_SIZE, 0)));
+
+	if (size > 0)
+	{
+		if (this.isSwimlane(cell, ignoreState))
+		{
+			// The footer sits opposite the title
+			var dir = this.getSwimlaneDirection(style);
+
+			if (dir == mxConstants.DIRECTION_NORTH)
+			{
+				result.height = size;
+			}
+			else if (dir == mxConstants.DIRECTION_WEST)
+			{
+				result.width = size;
+			}
+			else if (dir == mxConstants.DIRECTION_SOUTH)
+			{
+				result.y = size;
+			}
+			else
+			{
+				result.x = size;
+			}
+		}
+		else
+		{
+			result.height = size;
+		}
+	}
+
 	return result;
 };
 

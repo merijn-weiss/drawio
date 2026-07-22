@@ -27,10 +27,10 @@
 		var fns =
 		[
 			
-			this.createVertexTemplateEntry(s + 'iPhone;bgStyle=bgGreen;fillColor=#aaaaaa;sketch=0;', sizeX, sizeY, '', 'iPhone (portrait)', null, null, null),
-		 	this.createVertexTemplateEntry(s + 'iPhone;direction=north;bgStyle=bgGreen;fillColor=#aaaaaa;sketch=0;', sizeY, sizeX, '', 'iPhone (landscape)', null, null, null),
-			this.createVertexTemplateEntry(s + 'iPad;bgStyle=bgGreen;fillColor=#aaaaaa;sketch=0;', sizeX * 2.425, sizeY * 1.5625, '', 'iPad (portrait)', null, null, null),
-			this.createVertexTemplateEntry(s + 'iPad;direction=north;bgStyle=bgGreen;fillColor=#aaaaaa;sketch=0;', sizeY * 1.5625, sizeX * 2.425, '', 'iPad (landscape)', null, null, null),
+			this.createVertexTemplateEntry(s + 'iPhone;bgStyle=bgGreen;fillColor=#aaaaaa;bodyColor=#000000;homeButtonColor=#bbbbbb;cameraColor=#000099;speakerColor=#444444;sketch=0;', sizeX, sizeY, '', 'iPhone (portrait)', null, null, null),
+		 	this.createVertexTemplateEntry(s + 'iPhone;direction=north;bgStyle=bgGreen;fillColor=#aaaaaa;bodyColor=#000000;homeButtonColor=#bbbbbb;cameraColor=#000099;speakerColor=#444444;sketch=0;', sizeY, sizeX, '', 'iPhone (landscape)', null, null, null),
+			this.createVertexTemplateEntry(s + 'iPad;bgStyle=bgGreen;fillColor=#aaaaaa;bodyColor=#000000;homeButtonColor=#bbbbbb;cameraColor=#000099;sketch=0;', sizeX * 2.425, sizeY * 1.5625, '', 'iPad (portrait)', null, null, null),
+			this.createVertexTemplateEntry(s + 'iPad;direction=north;bgStyle=bgGreen;fillColor=#aaaaaa;bodyColor=#000000;homeButtonColor=#bbbbbb;cameraColor=#000099;sketch=0;', sizeY * 1.5625, sizeX * 2.425, '', 'iPad (landscape)', null, null, null),
 			this.createVertexTemplateEntry(s + 'iBgFlat;strokeColor=#18211b;', sizeX * 0.875, sizeY * 0.7, '', 'iPad background (white)', null, null, null),
 			this.createVertexTemplateEntry(s + 'iBgFlat;strokeColor=#18211b;fillColor=#1f2923;', sizeX * 0.875, sizeY * 0.7, '', 'iPad background (green)', null, null, null),
 			this.createVertexTemplateEntry(s + 'iBgFlat;strokeColor=#18211b;fillColor=#dddddd;', sizeX * 0.875, sizeY * 0.7, '', 'iPad background (gray)', null, null, null),
@@ -129,7 +129,7 @@
 		    
 			this.addEntry(null, function()
 			{
-			   	var bg = new mxCell('', new mxGeometry(0, 0, 175, 15), s4 + 'iAppBar;strokeWidth=1;sketch=0;');
+			   	var bg = new mxCell('', new mxGeometry(0, 0, 175, 15), s4 + 'iAppBar;fillColor2=#eeeeee;fillColor3=#999999;signalColor=#0099ff;statusIconColor=#999999;statusIconAccentColor=#cccccc;compassNeedleColor=#990000;compassNeedleStroke=#333333;callBtnGradient=#E2FFEB;callBtnColor=#008215;strokeWidth=1;sketch=0;');
 			   	bg.vertex = true;
 			   	var text1 = new mxCell('CARRIER', new mxGeometry(0, 2, 50, 13), s4 + 'anchor;align=left;fontSize=8;spacingLeft=18;');
 			   	text1.vertex = true;
@@ -143,7 +143,7 @@
 		
 			this.addEntry(null, function()
 			{
-			   	var bg = new mxCell('', new mxGeometry(0, 0, 280, 15), s4 + 'iAppBar;strokeWidth=1;sketch=0;');
+			   	var bg = new mxCell('', new mxGeometry(0, 0, 280, 15), s4 + 'iAppBar;fillColor2=#eeeeee;fillColor3=#999999;signalColor=#0099ff;statusIconColor=#999999;statusIconAccentColor=#cccccc;compassNeedleColor=#990000;compassNeedleStroke=#333333;callBtnGradient=#E2FFEB;callBtnColor=#008215;strokeWidth=1;sketch=0;');
 			   	bg.vertex = true;
 			   	var text1 = new mxCell('CARRIER', new mxGeometry(0, 2, 50, 13), s4 + 'anchor;align=left;fontSize=8;spacingLeft=18;');
 			   	text1.vertex = true;
@@ -171,7 +171,7 @@
 			
 			this.addEntry(null, function()
 			{
-			   	var bg = new mxCell('', new mxGeometry(0, 0, 175, 15), s4 + 'iTopBarLocked;strokeWidth=1;sketch=0;');
+			   	var bg = new mxCell('', new mxGeometry(0, 0, 175, 15), s4 + 'iTopBarLocked;fillColor2=#000000;statusIconColor=#cccccc;strokeWidth=1;sketch=0;');
 			   	bg.vertex = true;
 			   	var text1 = new mxCell('CARRIER', new mxGeometry(0, 2, 50, 13), s4 + 'anchor;align=left;fontSize=7.5;spacingLeft=18;fontColor=#cccccc;');
 			   	text1.vertex = true;
@@ -281,9 +281,9 @@
 				return sb.createVertexTemplateFromCells([cell], cell.geometry.width, cell.geometry.height, 'Checkboxes');
 			}),
 		    
-			this.createVertexTemplateEntry(s2 + 'iComboBox;spacingTop=2;spacingLeft=2;align=left;strokeColor=#444444;fontColor=#666666;buttonText=;fontSize=8;fillColor=#dddddd;fillColor2=#3D5565;sketch=0;whiteSpace=wrap;', 
+			this.createVertexTemplateEntry(s2 + 'iComboBox;spacingTop=2;spacingLeft=2;align=left;strokeColor=#444444;fontColor=#666666;buttonText=;fontSize=8;fillColor=#dddddd;fillColor2=#3D5565;fillColor3=#ffffff;iconColor=#ffffff;textColor2=#666666;sketch=0;whiteSpace=wrap;',
 					sizeX * 0.29, sizeY * 0.0375, 'Option 1', 'Combobox', null, null, null),
-			this.createVertexTemplateEntry(s2 + 'iOnOffButton;mainText=;strokeColor=#444444;fontSize=9;fontColor=#ffffff;spacingRight=14;buttonState=on;sketch=0;', sizeX * 0.2175, sizeY * 0.0375, 
+			this.createVertexTemplateEntry(s2 + 'iOnOffButton;mainText=;strokeColor=#444444;fontSize=9;fontColor=#ffffff;spacingRight=14;buttonState=on;onGradient=#E2FFEB;onColor=#008215;offGradient=#cc9999;offColor=#881100;handleGradient=#ffffff;handleColor=#888888;sketch=0;', sizeX * 0.2175, sizeY * 0.0375, 
 					'ON', 'On-off button', null, null, null),
 			this.createVertexTemplateEntry(s2 + 'iTextInput;strokeColor=#444444;align=left;buttonText=;fontSize=8;whiteSpace=wrap;', sizeX * 0.2175, sizeY * 0.0375, 
 					'********', 'Password field', null, null, null),
@@ -292,23 +292,23 @@
 			this.addDataEntry(null, 150, 100, 'Dialog Box',
 				'7VZdb5swFP01fmwEdkiX15I2k6ZpU/OwZwsu2KrBzHY+2K/fNTgNiKTKtkqrqiIh2ed+2udcBGFpdVgb3oivOgdF2D1hqdHa9avqkIJShEYyJ2xFKI3wJfThgjXurFHDDdTumgDaB+y42kKPrCRXukTs5xask7rGpYODI3RBKIsjwu4mlshCpuscF0rW0Ke0rlUhpXAVHmwVY6gVPNd73Pg8ObcC8rBBS+P9q0Ppb2MmtZ0VvM7ax0fI8Cx3ZiN/eYdP3tkZ/QSpVtp0JVjePWgppFIDfL68jZc+ApPmEi9lYIuXLF54m254Jl3rc/tOCj1yK7on4IMe9kI62GCoB/bYM2JcybLGbYaVwPhGn8BlIhxR8ExsDay962qOQKOl97vfobsNTr7KA6+k8v18BrUDJzOOhsAUGLzzi2x3UKB6DboCZ1p02cvcieCR9IqIBMhSHMOiAHLbA+Vz7Ek8uAj6Oa8lNtHSxicRsvZyQnobqJHuV1MHikN4kobExPQFAs8xZsBi5I9wP/F/oIz+HWU06TEDiju5g1H+f6FxPqExxZvGT9OrEWfMeKLZdLguUTgZ/NN0Xj/4WZIBxNPBP6ePN6KGEBDNjrS3owwDsSySM1qJ/lAroYHv/nin6jeMzsblb47tHJPoorDgJnJ7PslVCkwmCvz25UN9b0F9t+9Pfbg9/W717sO/sd8='),
 
-			this.createVertexTemplateEntry(s2 + 'iLockButton;fontColor=#cccccc;fontSize=13;mainText=;spacingLeft=50;spacingRight=10;align=center;sketch=0;whiteSpace=wrap;', sizeX * 0.87, sizeY * 0.125, 'slide to unlock', 'Lock button', null, null, null),
+			this.createVertexTemplateEntry(s2 + 'iLockButton;fontColor=#cccccc;fontSize=13;mainText=;spacingLeft=50;spacingRight=10;fillColor2=#4A4F56;fillColor3=#70757B;barGradient=#18232D;barColor=#1F2933;handleGradient=#E9F3FD;handleColor=#ADB7C1;arrowGradient=#AEB7C1;arrowColor=#667079;align=center;sketch=0;whiteSpace=wrap;', sizeX * 0.87, sizeY * 0.125, 'slide to unlock', 'Lock button', null, null, null),
 			this.createVertexTemplateEntry(s + 'iArrowIcon;fillColor=#8BbEff;fillColor2=#135Ec8;strokeColor=#ffffff;sketch=0;', sizeX * 0.075, sizeY * 0.0375, '', 'Arrow', null, null, null),
 			this.createVertexTemplateEntry(s + 'iDeleteIcon;fillColor=#e8878E;fillColor2=#BD1421;strokeColor=#ffffff;sketch=0;', sizeX * 0.075, sizeY * 0.0375, '', 'Delete', null, null, null),
 			this.createVertexTemplateEntry(s + 'iAddIcon;fillColor=#7AdF78;fillColor2=#1A9917;strokeColor=#ffffff;sketch=0;', sizeX * 0.075, sizeY * 0.0375, '', 'Add', null, null, null),
-			this.createVertexTemplateEntry(s + 'iInfoIcon;fillColor=#8BbEff;fillColor2=#135Ec8;strokeColor=#ffffff;sketch=0;', sizeX * 0.075, sizeY * 0.0375, '', 'Info', null, null, null),
+			this.createVertexTemplateEntry(s + 'iInfoIcon;fillColor=#8BbEff;fillColor2=#135Ec8;strokeColor=#ffffff;iconColor=#ffffff;sketch=0;', sizeX * 0.075, sizeY * 0.0375, '', 'Info', null, null, null),
 			this.createVertexTemplateEntry(s + 'iSortFindIcon;fillColor=#8BbEff;fillColor2=#135Ec8;strokeColor=#ffffff;sketch=0;', sizeX * 0.075, sizeY * 0.0375, '', 'Sort/find', null, null, null),
 			this.createVertexTemplateEntry(s + 'iCheckIcon;fillColor=#e8878E;fillColor2=#BD1421;strokeColor=#ffffff;sketch=0;', sizeX * 0.075, sizeY * 0.0375, '', 'Check', null, null, null),
-			this.createVertexTemplateEntry(s + 'iKeybLett;sketch=0;', sizeX * 0.87, sizeY * 0.25, '', 'Keyboard (letters)', null, null, null),
-			this.createVertexTemplateEntry(s + 'iKeybNumb;sketch=0;', sizeX * 0.87, sizeY * 0.25, '', 'Keyboard (numbers)', null, null, null),
-			this.createVertexTemplateEntry(s + 'iKeybSymb;sketch=0;', sizeX * 0.87, sizeY * 0.25, '', 'Keyboard (symbols)', null, null, null),
+			this.createVertexTemplateEntry(s + 'iKeybLett;fillColor2=#8A97A7;fillColor3=#425163;keyGradient=#EEF3F9;keyColor=#DBE2E9;modifierGradient=#8B98A8;modifierColor=#677488;iconColor=#ffffff;textColor=#000000;textColor2=#666666;sketch=0;', sizeX * 0.87, sizeY * 0.25, '', 'Keyboard (letters)', null, null, null),
+			this.createVertexTemplateEntry(s + 'iKeybNumb;fillColor2=#8A97A7;fillColor3=#425163;keyGradient=#EEF3F9;keyColor=#DBE2E9;modifierGradient=#8B98A8;modifierColor=#677488;iconColor=#ffffff;textColor=#000000;textColor2=#666666;sketch=0;', sizeX * 0.87, sizeY * 0.25, '', 'Keyboard (numbers)', null, null, null),
+			this.createVertexTemplateEntry(s + 'iKeybSymb;fillColor2=#8A97A7;fillColor3=#425163;keyGradient=#EEF3F9;keyColor=#DBE2E9;modifierGradient=#8B98A8;modifierColor=#677488;iconColor=#ffffff;textColor=#000000;textColor2=#666666;sketch=0;', sizeX * 0.87, sizeY * 0.25, '', 'Keyboard (symbols)', null, null, null),
 			this.createVertexTemplateEntry(s + 'iDeleteApp;fillColor=#cccccc;fillColor2=#000000;strokeColor=#ffffff;sketch=0;', sizeX * 0.075, sizeY * 0.0375, '', 'Delete app', null, null, null),
-			this.createVertexTemplateEntry(s + 'iDir;', sizeX * 0.5, sizeY * 0.25, '', 'Direction', null, null, null),
-			this.createVertexTemplateEntry(s2 + 'iLocBar;align=left;spacingLeft=4;spacingBottom=4;fontColor=#ffffff;fontSize=10;barPos=80;pointerPos=bottom;buttonText=5th Street Music Store', sizeX * 0.775, sizeY * 0.08125, '', 'Location bar', null, null, null),
-			this.createVertexTemplateEntry(s + 'iCallDialog;sketch=0;', sizeX * 0.75, sizeY * 0.3125, '', 'Call Dialog', null, null, null),
-			this.createVertexTemplateEntry(s + 'iCallButtons;', sizeX * 0.87, sizeY * 0.575, '', 'Call buttons', null, null, null),
-			this.createVertexTemplateEntry(s2 + 'iOption;barPos=80;pointerPos=bottom;buttonText=Option;fontSize=10;fontColor=#ffffff;spacingBottom=6;', sizeX * 0.375, sizeY * 0.06875, '', 'Option', null, null, null),
-			this.createVertexTemplateEntry(s + 'iAlphaList;fontSize=7.5;', sizeX * 0.075, sizeY * 0.5625, '', 'Alphabet list', null, null, null),
+			this.createVertexTemplateEntry(s + 'iDir;strokeColor2=#008cff;directionColor=#ffffff;strokeColor3=#006cdf;dotGradient=#ffffff;fillColor2=#007cef;', sizeX * 0.5, sizeY * 0.25, '', 'Direction', null, null, null),
+			this.createVertexTemplateEntry(s2 + 'iLocBar;align=left;spacingLeft=4;spacingBottom=4;fontColor=#ffffff;fontSize=10;barPos=80;pointerPos=bottom;fillColor2=#000000;fillColor3=#888888;strokeColor2=#000000;buttonGradient=#8BbEff;buttonColor=#135Ec8;iconColor=#ffffff;buttonText=5th Street Music Store', sizeX * 0.775, sizeY * 0.08125, '', 'Location bar', null, null, null),
+			this.createVertexTemplateEntry(s + 'iCallDialog;fillColor2=#000000;strokeColor2=#888888;iconColor=#ffffff;sketch=0;', sizeX * 0.75, sizeY * 0.3125, '', 'Call Dialog', null, null, null),
+			this.createVertexTemplateEntry(s + 'iCallButtons;strokeColor2=#008cff;fillColor2=#0F1B2B;fillColor3=#4F5B6B;textColor=#ffffff;textColor2=#bbbbbb;callBtnGradient=#E2FFEB;callBtnColor=#008215;iconColor=#ffffff;strokeColor3=#0F1B2B;', sizeX * 0.87, sizeY * 0.575, '', 'Call buttons', null, null, null),
+			this.createVertexTemplateEntry(s2 + 'iOption;barPos=80;pointerPos=bottom;buttonText=Option;fontSize=10;fontColor=#ffffff;spacingBottom=6;fillColor2=#000000;fillColor3=#888888;strokeColor2=#000000;', sizeX * 0.375, sizeY * 0.06875, '', 'Option', null, null, null),
+			this.createVertexTemplateEntry(s + 'iAlphaList;fontSize=7.5;iconColor=#999999;', sizeX * 0.075, sizeY * 0.5625, '', 'Alphabet list', null, null, null),
 
 			this.addEntry('button group horizontal', function()
 			{
@@ -335,16 +335,16 @@
 				return sb.createVertexTemplateFromCells([cell], cell.geometry.width, cell.geometry.height, 'Button group, horizontal');
 			}),
 						    
-			this.createVertexTemplateEntry(s3 + 'iPin;fillColor2=#00dd00;fillColor3=#004400;strokeColor=#006600;', sizeX * 0.05, sizeY * 0.0625, '', 'Pin', null, null, null),
-			this.createVertexTemplateEntry(s3 + 'iPin;fillColor2=#dd0000;fillColor3=#440000;strokeColor=#660000;', sizeX * 0.05, sizeY * 0.0625, '', 'Pin', null, null, null),
-			this.createVertexTemplateEntry(s3 + 'iPin;fillColor2=#ccccff;fillColor3=#0000ff;strokeColor=#000066;', sizeX * 0.05, sizeY * 0.0625, '', 'Pin', null, null, null),
-			this.createVertexTemplateEntry(s3 + 'iPin;fillColor2=#ffff00;fillColor3=#888800;strokeColor=#999900;', sizeX * 0.05, sizeY * 0.0625, '', 'Pin', null, null, null),
-			this.createVertexTemplateEntry(s3 + 'iPin;fillColor2=#ffa500;fillColor3=#885000;strokeColor=#997000;', sizeX * 0.05, sizeY * 0.0625, '', 'Pin', null, null, null),
-			this.createVertexTemplateEntry(s + 'iVideoControls;barPos=20;sketch=0;', sizeX * 0.87, sizeY * 0.125, '', 'Video controls', null, null, null),
+			this.createVertexTemplateEntry(s3 + 'iPin;fillColor2=#00dd00;fillColor3=#004400;strokeColor=#006600;pinStemColor=#666666;', sizeX * 0.05, sizeY * 0.0625, '', 'Pin', null, null, null),
+			this.createVertexTemplateEntry(s3 + 'iPin;fillColor2=#dd0000;fillColor3=#440000;strokeColor=#660000;pinStemColor=#666666;', sizeX * 0.05, sizeY * 0.0625, '', 'Pin', null, null, null),
+			this.createVertexTemplateEntry(s3 + 'iPin;fillColor2=#ccccff;fillColor3=#0000ff;strokeColor=#000066;pinStemColor=#666666;', sizeX * 0.05, sizeY * 0.0625, '', 'Pin', null, null, null),
+			this.createVertexTemplateEntry(s3 + 'iPin;fillColor2=#ffff00;fillColor3=#888800;strokeColor=#999900;pinStemColor=#666666;', sizeX * 0.05, sizeY * 0.0625, '', 'Pin', null, null, null),
+			this.createVertexTemplateEntry(s3 + 'iPin;fillColor2=#ffa500;fillColor3=#885000;strokeColor=#997000;pinStemColor=#666666;', sizeX * 0.05, sizeY * 0.0625, '', 'Pin', null, null, null),
+			this.createVertexTemplateEntry(s + 'iVideoControls;barPos=20;fillColor2=#000000;iconColor=#ffffff;barGradient=#444444;barColor=#ffffff;progressGradient=#96D1FF;progressColor=#003377;sketch=0;', sizeX * 0.87, sizeY * 0.125, '', 'Video controls', null, null, null),
 
 			this.addEntry(null, function()
 			{
-			   	var bg = new mxCell('Page title', new mxGeometry(0, 0, 175, 30), s4 + 'iURLBar;verticalAlign=top;fontSize=8;spacingTop=-5;align=center;sketch=0;whiteSpace=wrap;');
+			   	var bg = new mxCell('Page title', new mxGeometry(0, 0, 175, 30), s4 + 'iURLBar;verticalAlign=top;fontSize=8;spacingTop=-5;fillColor2=#cccccc;fillColor3=#003377;fieldColor=#ffffff;fieldStroke=#008cff;cancelBtnGradient=#cccccc;cancelBtnColor=#001144;iconBgColor=#bbbbbb;iconColor=#ffffff;align=center;sketch=0;whiteSpace=wrap;');
 			   	bg.vertex = true;
 			   	var text1 = new mxCell('https://www.draw.io/', new mxGeometry(5, 12, 115, 13), s4 + 'anchor;fontSize=8;spacingLeft=3;align=left;spacingTop=2;');
 			   	text1.vertex = true;
@@ -356,10 +356,10 @@
 				return sb.createVertexTemplateFromCells([bg], bg.geometry.width, bg.geometry.height, 'URL bar');
 			}),
 
-			this.createVertexTemplateEntry(s + 'iSlider;barPos=20;', sizeX * 0.75, sizeY * 0.025, '', 'Slider', null, null, null),
-		 	this.createVertexTemplateEntry(s + 'iProgressBar;barPos=40;', sizeX * 0.75, sizeY * 0.025, '', 'Progress bar', null, null, null),
-			this.createVertexTemplateEntry(s + 'iCloudProgressBar;barPos=20;', sizeX * 0.75, sizeY * 0.025, '', 'Cloud progress bar', null, null, null),
-			this.createVertexTemplateEntry(s2 + 'iDownloadBar;verticalAlign=top;spacingTop=-4;fontSize=8;fontColor=#ffffff;buttonText=' + ';barPos=30;align=center;sketch=0;whiteSpace=wrap;', sizeX * 0.87, sizeY * 0.075, 'Downloading 2 of 6', 'Download bar', null, null, null),
+			this.createVertexTemplateEntry(s + 'iSlider;barPos=20;barGradient=#444444;barColor=#ffffff;progressGradient=#96D1FF;progressColor=#003377;', sizeX * 0.75, sizeY * 0.025, '', 'Slider', null, null, null),
+		 	this.createVertexTemplateEntry(s + 'iProgressBar;barPos=40;fillColor2=#444444;fillColor3=#ffffff;progressGradient=#96D1FF;progressColor=#003377;', sizeX * 0.75, sizeY * 0.025, '', 'Progress bar', null, null, null),
+			this.createVertexTemplateEntry(s + 'iCloudProgressBar;barPos=20;fillColor2=#5C6E86;progressColor=#8AD155;', sizeX * 0.75, sizeY * 0.025, '', 'Cloud progress bar', null, null, null),
+			this.createVertexTemplateEntry(s2 + 'iDownloadBar;verticalAlign=top;spacingTop=-4;fontSize=8;fontColor=#ffffff;buttonText=' + ';barPos=30;fillColor2=#00ccff;fillColor3=#0066cc;barGradient=#96D1FF;barColor=#003377;progressGradient=#aaaaaa;progressColor=#ffffff;align=center;sketch=0;whiteSpace=wrap;', sizeX * 0.87, sizeY * 0.075, 'Downloading 2 of 6', 'Download bar', null, null, null),
 			this.createVertexTemplateEntry(s2 + 'iScreenNameBar;fillColor2=#000000;fillColor3=#ffffff;buttonText=;fontColor=#ffffff;fontSize=10;whiteSpace=wrap;align=center;sketch=0;', sizeX * 0.87, sizeY * 0.0625, 'Screen Name', 'Screen name bar', null, null, null),
 			this.createVertexTemplateEntry(s + 'iIconGrid;gridSize=3,3;', sizeX * 0.75, sizeY * 0.375, '', 'Icon grid', null, null, null),
 			this.createVertexTemplateEntry(s2 + 'iCopy;fillColor=#000000;buttonText=;fontColor=#ffffff;spacingBottom=6;fontSize=9;fillColor2=#000000;fillColor3=#ffffff;align=center;sketch=0;whiteSpace=wrap;', sizeX * 0.2, sizeY * 0.06875, 'Copy', 'Copy', null, null, null),

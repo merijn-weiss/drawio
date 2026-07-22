@@ -277,7 +277,10 @@ mxShapeMockupColorPicker.prototype.cst = {
 };
 
 mxShapeMockupColorPicker.prototype.customProperties = [
-	{name: 'chosenColor', dispName: 'Current Color', type: 'color', primary:true}
+	{name: 'chosenColor', dispName: 'Current Color', defVal: '#aaddff', type: 'color', primary:true},
+	{name: 'frameStrokeColor', dispName: 'Frame Color', defVal: '#999999', type: 'color', primary:true},
+	{name: 'indicatorColor', dispName: 'Indicator Color', defVal: '#ffffff', type: 'color', primary:true},
+	{name: 'arrowColor', dispName: 'Arrow Color', defVal: '#999999', type: 'color', primary:true}
 ];
 
 /**
@@ -291,7 +294,7 @@ mxShapeMockupColorPicker.prototype.paintVertexShape = function(c, x, y, w, h)
 
 	c.translate(x, y);
 
-	c.setStrokeColor('#999999');
+	c.setStrokeColor(mxUtils.getValue(this.style, 'frameStrokeColor', '#999999'));
 	c.roundrect(0, 0, w, h, w * 0.05, h * 0.05);
 	c.fillAndStroke();
 	c.setShadow(false);
@@ -300,7 +303,7 @@ mxShapeMockupColorPicker.prototype.paintVertexShape = function(c, x, y, w, h)
 	c.rect(w * 0.1, h * 0.1, w * 0.8, h * 0.8);
 	c.fill();
 
-	c.setFillColor('#ffffff');
+	c.setFillColor(mxUtils.getValue(this.style, 'indicatorColor', '#ffffff'));
 	c.begin();
 	c.moveTo(w * 0.75, h * 0.75);
 	c.lineTo(w * 0.75, h);
@@ -310,7 +313,7 @@ mxShapeMockupColorPicker.prototype.paintVertexShape = function(c, x, y, w, h)
 	c.close();
 	c.fill();
 
-	c.setFillColor('#999999');
+	c.setFillColor(mxUtils.getValue(this.style, 'arrowColor', '#999999'));
 	c.begin();
 	c.moveTo(w * 0.77, h * 0.77);
 	c.lineTo(w * 0.875, h * 0.98);

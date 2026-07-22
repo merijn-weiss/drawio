@@ -165,8 +165,10 @@ Editor.extensionImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3d
 Editor.colorDropperImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iNDgiIHdpZHRoPSI0OCI+PHBhdGggZD0iTTYgNDJ2LTguNGwxOC44NS0xOC44NS0zLjYtMy42TDIzLjMgOS4xbDQuNiA0LjZMMzUgNi42cS41NS0uNTUgMS4xNzUtLjU1dDEuMTc1LjU1bDQuMDUgNC4wNXEuNTUuNTUuNTUgMS4xNzVUNDEuNCAxM2wtNy4xIDcuMSA0LjYgNC42LTIuMDUgMi4wNS0zLjYtMy42TDE0LjQgNDJabTMtM2g0LjM1TDMxLjEgMjEuMjVsLTQuMzUtNC4zNUw5IDM0LjY1Wm0yMy4xNS0yMSA2LjItNi4yLTIuMTUtMi4xNS02LjIgNi4yWm0wIDBMMzAgMTUuODUgMzIuMTUgMThaIi8+PC9zdmc+';
 Editor.magnifyImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgLTk2MCA5NjAgOTYwIiB3aWR0aD0iMjQiPjxwYXRoIGQ9Ik03ODQtMTIwIDUzMi0zNzJxLTMwIDI0LTY5IDM4dC04MyAxNHEtMTA5IDAtMTg0LjUtNzUuNVQxMjAtNTgwcTAtMTA5IDc1LjUtMTg0LjVUMzgwLTg0MHExMDkgMCAxODQuNSA3NS41VDY0MC01ODBxMCA0NC0xNCA4M3QtMzggNjlsMjUyIDI1Mi01NiA1NlpNMzgwLTQwMHE3NSAwIDEyNy41LTUyLjVUNTYwLTU4MHEwLTc1LTUyLjUtMTI3LjVUMzgwLTc2MHEtNzUgMC0xMjcuNSA1Mi41VDIwMC01ODBxMCA3NSA1Mi41IDEyNy41VDM4MC00MDBaIi8+PC9zdmc+';
 Editor.sendImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgLTk2MCA5NjAgOTYwIiB3aWR0aD0iMjQiPjxwYXRoIGQ9Ik0xMjAtMTYwdi02NDBsNzYwIDMyMC03NjAgMzIwWm04MC0xMjAgNDc0LTIwMC00NzQtMjAwdjE0MGwyNDAgNjAtMjQwIDYwdjE0MFptMCAwdi00MDAgNDAwWiIvPjwvc3ZnPg==';
+Editor.micImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMDAwMDAwIj48cGF0aCBkPSJNNDgwLTQwMHEtNTAgMC04NS0zNXQtMzUtODV2LTI0MHEwLTUwIDM1LTg1dDg1LTM1cTUwIDAgODUgMzV0MzUgODV2MjQwcTAgNTAtMzUgODV0LTg1IDM1Wm0tNDAgMzIwdi0xMjNxLTEwNC0xNC0xNzItOTN0LTY4LTE4NGg4MHEwIDgzIDU4LjUgMTQxLjVUNDgwLTI4MHE4MyAwIDE0MS41LTU4LjVUNjgwLTQ4MGg4MHEwIDEwNS02OCAxODR0LTE3MiA5M3YxMjNoLTgwWiIvPjwvc3ZnPg==';
 Editor.sparklesImage = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwcHgiIGhlaWdodD0iODAwcHgiIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBkPSJNMjU5LjkyLDI2Mi45MSwyMTYuNCwxNDkuNzdhOSw5LDAsMCwwLTE2LjgsMEwxNTYuMDgsMjYyLjkxYTksOSwwLDAsMS01LjE3LDUuMTdMMzcuNzcsMzExLjZhOSw5LDAsMCwwLDAsMTYuOGwxMTMuMTQsNDMuNTJhOSw5LDAsMCwxLDUuMTcsNS4xN0wxOTkuNiw0OTAuMjNhOSw5LDAsMCwwLDE2LjgsMGw0My41Mi0xMTMuMTRhOSw5LDAsMCwxLDUuMTctNS4xN0wzNzguMjMsMzI4LjRhOSw5LDAsMCwwLDAtMTYuOEwyNjUuMDksMjY4LjA4QTksOSwwLDAsMSwyNTkuOTIsMjYyLjkxWiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwMDAwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIHN0cm9rZS13aWR0aD0iNDAiIGRhdGEtZGFya3JlYWRlci1pbmxpbmUtc3Ryb2tlPSIiIHN0eWxlPSItLWRhcmtyZWFkZXItaW5saW5lLXN0cm9rZTogIzE4MWExYjsiLz4KPHBvbHlnb24gcG9pbnRzPSIxMDggNjggODggMTYgNjggNjggMTYgODggNjggMTA4IDg4IDE2MCAxMDggMTA4IDE2MCA4OCAxMDggNjgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2Utd2lkdGg9IjMwIi8+Cjxwb2x5Z29uIHBvaW50cz0iNDI2LjY3IDExNy4zMyA0MDAgNDggMzczLjMzIDExNy4zMyAzMDQgMTQ0IDM3My4zMyAxNzAuNjcgNDAwIDI0MCA0MjYuNjcgMTcwLjY3IDQ5NiAxNDQgNDI2LjY3IDExNy4zMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwMDAwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIHN0cm9rZS13aWR0aD0iMzAiLz4KPC9zdmc+';
 Editor.thinSparklesImage = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwcHgiIGhlaWdodD0iODAwcHgiIHZpZXdCb3g9IjAgMCA1MTIgNTEyIgogICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxwYXRoIGQ9Ik0yNTkuOTIsMjYyLjkxLDIxNi40LDE0OS43N2E5LDksMCwwLDAtMTYuOCwwTDE1Ni4wOCwyNjIuOTFhOSw5LDAsMCwxLTUuMTcsNS4xN0wzNy43NywzMTEuNmE5LDksMCwwLDAsMCwxNi44bDExMy4xNCw0My41MmE5LDksMCwwLDEsNS4xNyw1LjE3TDE5OS42LDQ5MC4yM2E5LDksMCwwLDAsMTYuOCwwbDQzLjUyLTExMy4xNGE5LDksMCwwLDEsNS4xNy01LjE3TDM3OC4yMywzMjguNGE5LDksMCwwLDAsMC0xNi44TDI2NS4wOSwyNjguMDhBOSw5LDAsMCwxLDI1OS45MiwyNjIuOTFaIiBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAwMDAiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLXdpZHRoPSIyNCIgZGF0YS1kYXJrcmVhZGVyLWlubGluZS1zdHJva2U9IiIgc3R5bGU9Ii0tZGFya3JlYWRlci1pbmxpbmUtc3Ryb2tlOiAjMTgxYTFiOyIvPgogICAgPHBvbHlnb24gcG9pbnRzPSIxMDggNjggODggMTYgNjggNjggMTYgODggNjggMTA4IDg4IDE2MCAxMDggMTA4IDE2MCA4OCAxMDggNjgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2Utd2lkdGg9IjI0Ii8+CiAgICA8cG9seWdvbiBwb2ludHM9IjQyNi42NyAxMTcuMzMgNDAwIDQ4IDM3My4zMyAxMTcuMzMgMzA0IDE0NCAzNzMuMzMgMTcwLjY3IDQwMCAyNDAgNDI2LjY3IDE3MC42NyA0OTYgMTQ0IDQyNi42NyAxMTcuMzMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2Utd2lkdGg9IjI0Ii8+Cjwvc3ZnPg==';
+Editor.layoutImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWYxZjFmIj48cGF0aCBkPSJNNjAwLTE2MHYtODBINDQwdi0yMDBoLTgwdjgwSDgwdi0yNDBoMjgwdjgwaDgwdi0yMDBoMTYwdi04MGgyODB2MjQwSDYwMHYtODBoLTgwdjMyMGg4MHYtODBoMjgwdjI0MEg2MDBabTgwLTgwaDEyMHYtODBINjgwdjgwWk0xNjAtNDQwaDEyMHYtODBIMTYwdjgwWm01MjAtMjAwaDEyMHYtODBINjgwdjgwWm0wIDQwMHYtODAgODBaTTI4MC00NDB2LTgwIDgwWm00MDAtMjAwdi04MCA4MFoiLz48L3N2Zz4=';
 Editor.arrowRightImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMDAwMDAwIj48cGF0aCBkPSJNNDAwLTI4MHYtNDAwbDIwMCAyMDAtMjAwIDIwMFoiLz48L3N2Zz4=';
 Editor.arrowDownImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMDAwMDAwIj48cGF0aCBkPSJNNDgwLTM2MCAyODAtNTYwaDQwMEw0ODAtMzYwWiIvPjwvc3ZnPg==';
 Editor.arrowUpImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMDAwMDAwIj48cGF0aCBkPSJtMjgwLTQwMCAyMDAtMjAwIDIwMCAyMDBIMjgwWiIvPjwvc3ZnPg==';
@@ -225,6 +227,7 @@ Editor.autosizeImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy
 Editor.checkmarkImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iMjJweCIgaGVpZ2h0PSIxOHB4IiB2ZXJzaW9uPSIxLjEiPjxwYXRoIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQgMCkiIGQ9Ik03LjE4MSwxNS4wMDdhMSwxLDAsMCwxLS43OTMtMC4zOTFMMy4yMjIsMTAuNUExLDEsMCwxLDEsNC44MDgsOS4yNzRMNy4xMzIsMTIuM2w2LjA0NC04Ljg2QTEsMSwwLDEsMSwxNC44Myw0LjU2OWwtNi44MjMsMTBhMSwxLDAsMCwxLS44LjQzN0g3LjE4MVoiIGZpbGw9IiMwMDAwMDAiLz48L3N2Zz4=';
 Editor.swapImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMDAwMDAwIj48cGF0aCBkPSJNMzIwLTQ0MHYtMjg3TDIxNy02MjRsLTU3LTU2IDIwMC0yMDAgMjAwIDIwMC01NyA1Ni0xMDMtMTAzdjI4N2gtODBaTTYwMC04MCA0MDAtMjgwbDU3LTU2IDEwMyAxMDN2LTI4N2g4MHYyODdsMTAzLTEwMyA1NyA1Nkw2MDAtODBaIi8+PC9zdmc+';
 Editor.copyImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMDAwMDAwIj48cGF0aCBkPSJNNzYwLTIwMEgzMjBxLTMzIDAtNTYuNS0yMy41VDI0MC0yODB2LTU2MHEwLTMzIDIzLjUtNTYuNVQzMjAtOTIwaDI4MGwyNDAgMjQwdjQwMHEwIDMzLTIzLjUgNTYuNVQ3NjAtMjAwWk01NjAtNjQwdi0yMDBIMzIwdjU2MGg0NDB2LTM2MEg1NjBaTTE2MC00MHEtMzMgMC01Ni41LTIzLjVUODAtMTIwdi01NjBoODB2NTYwaDQ0MHY4MEgxNjBabTE2MC04MDB2MjAwLTIwMCA1NjAtNTYwWiIvPjwvc3ZnPg==';
+Editor.pasteImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMDAwMDAwIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoMTY4cTEzLTM2IDQzLjUtNTh0NjguNS0yMnEzOCAwIDY4LjUgMjJ0NDMuNSA1OGgxNjhxMzMgMCA1Ni41IDIzLjVUODQwLTc2MHY1NjBxMCAzMy0yMy41IDU2LjVUNzYwLTEyMEgyMDBabTAtODBoNTYwdi01NjBoLTgwdjEyMEgyODB2LTEyMGgtODB2NTYwWm0yODAtNTYwcTE3IDAgMjguNS0xMS41VDUyMC04MDBxMC0xNy0xMS41LTI4LjVUNDgwLTg0MHEtMTcgMC0yOC41IDExLjVUNDQwLTgwMHEwIDE3IDExLjUgMjguNVQ0ODAtNzYwWiIvPjwvc3ZnPg==';
 Editor.doubleArrowUpImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMDAwMDAwIj48cGF0aCBkPSJtMjk2LTIyNC01Ni01NiAyNDAtMjQwIDI0MCAyNDAtNTYgNTYtMTg0LTE4My0xODQgMTgzWm0wLTI0MC01Ni01NiAyNDAtMjQwIDI0MCAyNDAtNTYgNTYtMTg0LTE4My0xODQgMTgzWiIvPjwvc3ZnPg==';
 Editor.doubleArrowDownImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMDAwMDAwIj48cGF0aCBkPSJNNDgwLTIwMCAyNDAtNDQwbDU2LTU2IDE4NCAxODMgMTg0LTE4MyA1NiA1Ni0yNDAgMjQwWm0wLTI0MEwyNDAtNjgwbDU2LTU2IDE4NCAxODMgMTg0LTE4MyA1NiA1Ni0yNDAgMjQwWiIvPjwvc3ZnPg==';
 Editor.opacityImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWYxZjFmIj48cGF0aCBkPSJNNDgwLTEyMHEtMTMzIDAtMjI2LjUtOTJUMTYwLTQzNnEwLTY1IDI1LTEyMS41VDI1NC02NThsMjI2LTIyMiAyMjYgMjIycTQ0IDQ0IDY5IDEwMC41VDgwMC00MzZxMCAxMzItOTMuNSAyMjRUNDgwLTEyMFpNMjQyLTQwMGg0NzRxMTItNzItMTMuNS0xMjNUNjUwLTYwMEw0ODAtNzY4IDMxMC02MDBxLTI3IDI2LTUzIDc3dC0xNSAxMjNaIi8+PC9zdmc+';
@@ -233,18 +236,18 @@ Editor.shareImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53M
 /**
  * All fill styles supported by rough.js.
  */
-Editor.roughFillStyles = [{val: 'auto', dispName: 'Auto'}, {val: 'hachure', dispName: 'Hachure'},
-	{val: 'solid', dispName: 'Solid'}, {val: 'zigzag', dispName: 'ZigZag'},
-	{val: 'cross-hatch', dispName: 'Cross Hatch'}, {val: 'dashed', dispName: 'Dashed'},
-	{val: 'zigzag-line', dispName: 'ZigZag Line'}];
+Editor.roughFillStyles = [{val: 'auto', dispName: 'Auto', res: 'automatic'}, {val: 'hachure', dispName: 'Hachure', res: 'hachure'},
+	{val: 'solid', dispName: 'Solid', res: 'solid'}, {val: 'zigzag', dispName: 'ZigZag', res: 'zigzag'},
+	{val: 'cross-hatch', dispName: 'Cross Hatch', res: 'crossHatch'}, {val: 'dashed', dispName: 'Dashed', res: 'dashed'},
+	{val: 'zigzag-line', dispName: 'ZigZag Line', res: 'zigzagLine'}];
 
 /**
  * Fill styles for normal mode.
  */
-Editor.fillStyles = [{val: 'auto', dispName: 'Auto'}, {val: 'hatch', dispName: 'Hatch'},
-	{val: 'solid', dispName: 'Solid'}, {val: 'dots', dispName: 'Dots'}, 
-	{val: 'cross-hatch', dispName: 'Cross Hatch'}, {val: 'dashed', dispName: 'Dashed'},
-	{val: 'zigzag-line', dispName: 'ZigZag Line'}];
+Editor.fillStyles = [{val: 'auto', dispName: 'Auto', res: 'automatic'}, {val: 'hatch', dispName: 'Hatch', res: 'hatch'},
+	{val: 'solid', dispName: 'Solid', res: 'solid'}, {val: 'dots', dispName: 'Dots', res: 'dots'},
+	{val: 'cross-hatch', dispName: 'Cross Hatch', res: 'crossHatch'}, {val: 'dashed', dispName: 'Dashed', res: 'dashed'},
+	{val: 'zigzag-line', dispName: 'ZigZag Line', res: 'zigzagLine'}];
 
 /**
  * List of supported custom themes.
@@ -285,7 +288,16 @@ Editor.fitWindowBorders = null;
  * Specifies if the diagram should be saved automatically if possible. Default
  * is true.
  */
-Editor.popupsAllowed = window.urlParams != null? urlParams['noDevice'] != '1' : true;
+/**
+ * Specifies if the host blocks opening new windows/tabs (window.open). When true
+ * (via the suppressNewWindows config option or ?suppressNewWindows=1), link
+ * clicks are forwarded to the embedding host instead of opening locally, and the
+ * "open in new window/tab" options in the Save/Export/HTML dialogs are hidden
+ * (popupsAllowed is forced off). Default false.
+ */
+Editor.suppressNewWindows = window.urlParams != null && urlParams['suppressNewWindows'] == '1';
+
+Editor.popupsAllowed = (window.urlParams != null? urlParams['noDevice'] != '1' : true) && !Editor.suppressNewWindows;
 
 /**
  * Specifies if the html and whiteSpace styles should be removed on inserted cells.
@@ -361,6 +373,14 @@ Editor.showConnectHandle = false;
  * Whether to enable the inline toolbar. Default is true.
  */
 Editor.enableInlineToolbar = true;
+
+/**
+ * Whether to show the "Automatic" (tangent) label rotation option in the
+ * Arrange > Rotation panel. The engine support (labelAutoRotate style) is
+ * always active so saved diagrams render correctly; this only gates the UI.
+ * Experimental, see jgraph/drawio#5365.
+ */
+Editor.enableAutoRotateLabels = true;
 
 /**
  * Returns the current state of the dark mode.
@@ -673,13 +693,30 @@ Editor.extractGraphModelFromPng = function(data)
 			if (type == 'zTXt')
 			{
 				var idx = value.indexOf(String.fromCharCode(0));
-				
-				if (value.substring(0, idx) == 'mxGraphModel')
+				var keyword = value.substring(0, idx);
+
+				if (keyword == 'mxGraphModel' || keyword == 'mxfile')
 				{
+					// Compressed payload starts after the keyword null and the
+					// 1-byte compression method (idx + 2).
+					var buffer = Graph.stringToArrayBuffer(value.substring(idx + 2));
+					var xmlData = null;
+
+					try
+					{
+						// Spec-compliant zTXt is a zlib (RFC 1950) datastream
+						xmlData = pako.inflate(buffer, {to: 'string'});
+					}
+					catch (e)
+					{
+						// Fallback for PNGs written by the pre-fix CLI, which
+						// stored a raw DEFLATE stream [jgraph/drawio-desktop#2425]
+						xmlData = pako.inflateRaw(buffer, {to: 'string'});
+					}
+
 					// Workaround for Java URL Encoder using + for spaces, which isn't compatible with JS
-					var xmlData = pako.inflateRaw(Graph.stringToArrayBuffer(
-						value.substring(idx + 2)), {to: 'string'}).replace(/\+/g,' ');
-					
+					xmlData = (xmlData != null) ? xmlData.replace(/\+/g,' ') : null;
+
 					if (xmlData != null && xmlData.length > 0)
 					{
 						result = xmlData;
@@ -863,23 +900,23 @@ Editor.selectSubstring = function(input, startPos, endPos)
 /**
  * 
  */
-Editor.toUnit = function(value, unit)
+Editor.toUnit = function(pixels, unit)
 {
 	if (unit == mxConstants.INCHES)
 	{
-		return Math.round(value * 100 / mxConstants.PIXELS_PER_INCH) / 100;
+		return Math.round(pixels * 1000 / mxConstants.PIXELS_PER_INCH) / 1000;
 	}
 	else if (unit == mxConstants.MILLIMETERS)
 	{
-		return  Math.round(value * 100 / mxConstants.PIXELS_PER_MM) / 100;
+		return  Math.round(pixels * 1000 / mxConstants.PIXELS_PER_MM) / 1000;
 	}
 	else if (unit == mxConstants.METERS)
 	{
-		return  Math.round(value * 1000 / (mxConstants.PIXELS_PER_MM * 1000)) / 1000;
+		return  Math.round(pixels * 100000 / (mxConstants.PIXELS_PER_MM * 1000)) / 100000;
 	}
 	else
 	{
-		return Math.round(value);
+		return Math.round(pixels * 10) / 10;
 	}
 };
 
@@ -890,19 +927,44 @@ Editor.fromUnit = function(value, unit)
 {
 	if (unit == mxConstants.INCHES)
 	{
-		return Math.round(value * mxConstants.PIXELS_PER_INCH);
+		value = value * mxConstants.PIXELS_PER_INCH;
 	}
 	else if (unit == mxConstants.MILLIMETERS)
 	{
-		return Math.round(value * mxConstants.PIXELS_PER_MM);
+		value = value * mxConstants.PIXELS_PER_MM;
 	}
 	else if (unit == mxConstants.METERS)
 	{
-		return Math.round(value * mxConstants.PIXELS_PER_MM * 1000);
+		value = value * mxConstants.PIXELS_PER_MM * 1000;
+	}
+
+	// Rounds to 0.1px so unit round-trips are stable and values
+	// entered in one unit convert back exactly (eg. 1/8in = 12.5px)
+	return Math.round(value * 10) / 10;
+};
+
+/**
+ * Returns the cursor-key nudge step in model pixels for the given unit. This makes
+ * arrow-key moves correspond to a sensible increment of the document unit instead of
+ * a fixed pixel. Points (the default) return 1 so point-based diagrams are unchanged.
+ */
+Editor.getCursorMoveStep = function(unit)
+{
+	if (unit == mxConstants.MILLIMETERS)
+	{
+		return 0.1 * mxConstants.PIXELS_PER_MM;
+	}
+	else if (unit == mxConstants.INCHES)
+	{
+		return 0.01 * mxConstants.PIXELS_PER_INCH;
+	}
+	else if (unit == mxConstants.METERS)
+	{
+		return 0.0001 * mxConstants.PIXELS_PER_MM * 1000;
 	}
 	else
 	{
-		return Math.round(value);
+		return 1;
 	}
 };
 
@@ -1100,7 +1162,7 @@ Editor.prototype.resetGraph = function()
 {
 	this.graph.gridEnabled = this.graph.defaultGridEnabled && (!this.isChromelessView() || urlParams['grid'] == '1');
 	this.graph.graphHandler.guidesEnabled = true;
-	this.graph.setTooltips(true);
+	this.graph.setTooltips(window.urlParams == null || urlParams['tooltips'] != '0');
 	this.graph.setConnectable(this.graph.defaultConnectable);
 	this.graph.connectionArrowsEnabled = this.graph.defaultConnectionArrowsEnabled;
 	this.graph.foldingEnabled = this.graph.defaultFoldingEnabled;
@@ -1153,7 +1215,8 @@ Editor.prototype.readGraphState = function(node)
 		(!this.isChromelessView() || urlParams['grid'] == '1');
 	this.graph.gridSize = parseFloat(node.getAttribute('gridSize')) || mxGraph.prototype.gridSize;
 	this.graph.graphHandler.guidesEnabled = node.getAttribute('guides') != '0';
-	this.graph.setTooltips(node.getAttribute('tooltips') != '0');
+	this.graph.setTooltips(node.getAttribute('tooltips') != '0' &&
+		(window.urlParams == null || urlParams['tooltips'] != '0'));
 	var connect = node.getAttribute('connect');
 
 	if (connect != null && Editor.config != null && Editor.config.defaultConnectable != null)
@@ -1655,6 +1718,14 @@ Dialog.prototype.getPosition = function(left, top)
 
 /**
  * Adds a resize handler to the dialog.
+ *
+ * In addition to the bottom-right `resize.gif` corner, installs
+ * transparent edge / corner handles on every other side via
+ * `installDialogEdgeResizeHandles` so users can resize the dialog
+ * from any side — same affordance native OS windows provide. The
+ * Dialog is center-positioned, so each handle grows / shrinks the
+ * container symmetrically (`2 * dx` / `2 * dy`); the centering CSS
+ * takes care of repositioning.
  */
 Dialog.prototype.addResizeHandler = function(minSize)
 {
@@ -1666,55 +1737,276 @@ Dialog.prototype.addResizeHandler = function(minSize)
 	resize.style.right = '0px';
 	resize.style.zIndex = '2';
 
-	var startX = null;
-	var startY = null;
-	var width = null;
-	var height = null;
-	
-	var start = mxUtils.bind(this, function(evt)
+	var self = this;
+	var commitResize = function()
 	{
-		startX = mxEvent.getClientX(evt);
-		startY = mxEvent.getClientY(evt);
-		width = parseInt(this.container.style.width);
-		height = parseInt(this.container.style.height);
-		mxEvent.addGestureListeners(document, null, dragHandler, dropHandler);
-		mxEvent.consume(evt);
-	});
-
-	// Adds a temporary pair of listeners to intercept
-	// the gesture event in the document
-	var dragHandler = mxUtils.bind(this, function(evt)
-	{
-		if (startX != null && startY != null)
+		if (typeof self.onResize === 'function')
 		{
+			self.onResize(parseInt(self.container.style.width),
+				parseInt(self.container.style.height));
+		}
+	};
+
+	var addHandle = function(el, edges)
+	{
+		var startX = null, startY = null, startW = null, startH = null;
+
+		var start = function(evt)
+		{
+			startX = mxEvent.getClientX(evt);
+			startY = mxEvent.getClientY(evt);
+			startW = parseInt(self.container.style.width);
+			startH = parseInt(self.container.style.height);
+			mxEvent.addGestureListeners(document, null, drag, drop);
+			mxEvent.consume(evt);
+		};
+
+		var drag = function(evt)
+		{
+			if (startX == null) return;
 			var dx = mxEvent.getClientX(evt) - startX;
 			var dy = mxEvent.getClientY(evt) - startY;
-			this.container.style.width = Math.max(minSize.width, (width + 2 * dx)) + 'px';
-			this.container.style.height = Math.max(minSize.height, (height + 2 * dy)) + 'px';
-			mxEvent.consume(evt);
-		}
-	});
-	
-	var dropHandler = mxUtils.bind(this, function(evt)
-	{
-		if (startX != null && startY != null)
-		{
-			startX = null;
-			startY = null;
-			mxEvent.removeGestureListeners(document, null, dragHandler, dropHandler);
-			mxEvent.consume(evt);
+			var w = startW, h = startH;
 
-			if (typeof this.onResize === 'function')
+			// 2 * delta so the dialog grows / shrinks symmetrically
+			// around its CSS-centered position. The signs differ per
+			// edge: dragging the bottom or right outward (+dx/+dy)
+			// grows; dragging the top or left outward (-dx/-dy on
+			// the inside) shrinks the negative direction, hence the
+			// `- 2 *` for `t` / `l`.
+			if (edges.indexOf('r') >= 0) w += 2 * dx;
+			if (edges.indexOf('l') >= 0) w -= 2 * dx;
+			if (edges.indexOf('b') >= 0) h += 2 * dy;
+			if (edges.indexOf('t') >= 0) h -= 2 * dy;
+
+			self.container.style.width  = Math.max(minSize.width,  w) + 'px';
+			self.container.style.height = Math.max(minSize.height, h) + 'px';
+			mxEvent.consume(evt);
+		};
+
+		var drop = function(evt)
+		{
+			if (startX == null) return;
+			startX = null; startY = null;
+			mxEvent.removeGestureListeners(document, null, drag, drop);
+			mxEvent.consume(evt);
+			commitResize();
+		};
+
+		mxEvent.addGestureListeners(el, start, drag, drop);
+	};
+
+	addHandle(resize, 'br');
+	this.container.appendChild(resize);
+	installDialogEdgeResizeHandles(this.container, addHandle);
+};
+
+/**
+ * Appends 7 transparent edge / corner resize handles (skipping the
+ * bottom-right corner, which the caller already owns) to the given
+ * container. Each handle delegates to the supplied `addHandle(el,
+ * edges)` callback so the host (Dialog or mxWindow) can apply its own
+ * resize math.
+ */
+function installDialogEdgeResizeHandles(container, addHandle)
+{
+	// Edge codes: t/b/l/r — which sides of the window this handle moves.
+	// The bottom-right (`br`) is skipped because the caller already
+	// installed a handle there (Dialog ships an <img>, mxWindow's
+	// setResizable does the same).
+	var configs = [
+		{styles: 'top:0;left:0;width:8px;height:8px;',
+			cursor: 'nw-resize', edges: 'tl'},
+		{styles: 'top:0;left:8px;right:8px;height:4px;',
+			cursor: 'n-resize',  edges: 't'},
+		{styles: 'top:0;right:0;width:8px;height:8px;',
+			cursor: 'ne-resize', edges: 'tr'},
+		// Right and bottom edges stop short of the bottom-right corner
+		// handle (~14px) so dragging the edge doesn't accidentally
+		// trigger the corner.
+		{styles: 'top:8px;right:0;bottom:14px;width:4px;',
+			cursor: 'e-resize',  edges: 'r'},
+		{styles: 'bottom:0;left:0;width:8px;height:8px;',
+			cursor: 'sw-resize', edges: 'bl'},
+		{styles: 'bottom:0;left:8px;right:14px;height:4px;',
+			cursor: 's-resize',  edges: 'b'},
+		{styles: 'top:8px;left:0;bottom:8px;width:4px;',
+			cursor: 'w-resize',  edges: 'l'}
+	];
+
+	var handles = [];
+
+	configs.forEach(function(cfg)
+	{
+		var h = document.createElement('div');
+		h.style.cssText = 'position:absolute;z-index:2;' +
+			cfg.styles + 'cursor:' + cfg.cursor;
+		addHandle(h, cfg.edges);
+		container.appendChild(h);
+		handles.push(h);
+	});
+
+	return handles;
+}
+
+/**
+ * Default mxWindow.setResizable only installs a single bottom-right
+ * <img> handle. Wrap it so every resizable mxWindow also gets
+ * transparent handles on the other three corners and the four edges —
+ * matching the resize affordance native windows on Windows / macOS
+ * provide. The added handles are reused across toggles (cached on the
+ * window via `_edgeResizeHandles`) and hidden / shown together with
+ * the built-in handle.
+ */
+(function()
+{
+	var mxWindowSetResizable = mxWindow.prototype.setResizable;
+
+	mxWindow.prototype.setResizable = function(resizable)
+	{
+		mxWindowSetResizable.apply(this, arguments);
+
+		if (resizable)
+		{
+			if (this._edgeResizeHandles == null)
 			{
-				this.onResize(parseInt(this.container.style.width),
-					parseInt(this.container.style.height));
+				this._edgeResizeHandles = installMxWindowEdgeResizeHandles(this);
+			}
+			else
+			{
+				this._edgeResizeHandles.forEach(function(h)
+				{
+					h.style.display = '';
+				});
 			}
 		}
-	});
+		else if (this._edgeResizeHandles != null)
+		{
+			this._edgeResizeHandles.forEach(function(h)
+			{
+				h.style.display = 'none';
+			});
+		}
+	};
+})();
 
-	mxEvent.addGestureListeners(resize, start, dragHandler, dropHandler);
-	this.container.appendChild(resize);
-};
+/**
+ * Builds the 7 edge / corner resize handles for an mxWindow. The
+ * mxWindow positions itself via setLocation / setSize (no CSS centering),
+ * so each handle moves the opposite edge to keep the anchor edge fixed.
+ * Fires RESIZE_START / RESIZE / RESIZE_END so the persistence listeners
+ * pick up the new size. If the window is docked, fires MOVE_START /
+ * MOVE_END first so the docking wrapper undocks before resizing (the
+ * dock wrapper otherwise blocks setLocation when dockState is set).
+ */
+function installMxWindowEdgeResizeHandles(wnd)
+{
+	var minSize = wnd.minimumSize || new mxRectangle(0, 0, 50, 40);
+
+	var addHandle = function(el, edges)
+	{
+		var startX = null, startY = null;
+		var startWinX, startWinY, startW, startH;
+
+		var down = function(evt)
+		{
+			wnd.activate();
+
+			if (wnd.dockState != null)
+			{
+				wnd.fireEvent(new mxEventObject(mxEvent.MOVE_START, 'event', evt));
+				wnd.fireEvent(new mxEventObject(mxEvent.MOVE_END,   'event', evt));
+			}
+
+			startX = mxEvent.getClientX(evt);
+			startY = mxEvent.getClientY(evt);
+			startWinX = wnd.getX();
+			startWinY = wnd.getY();
+			// Use style.width/height (CSS content size — what setSize
+			// writes) rather than offsetWidth/Height (which includes
+			// borders). Using offsetWidth here makes the anchor edge
+			// drift by exactly the border width when dragging the
+			// opposite edge: setSize would re-apply the dragged size to
+			// style.width, but the new offsetWidth would then be
+			// border-larger than the original, shifting the anchor.
+			startW = parseInt(wnd.div.style.width) || wnd.div.offsetWidth;
+			startH = parseInt(wnd.div.style.height) || wnd.div.offsetHeight;
+
+			mxEvent.addGestureListeners(document, null, move, up);
+			wnd.fireEvent(new mxEventObject(mxEvent.RESIZE_START, 'event', evt));
+			mxEvent.consume(evt);
+		};
+
+		var move = function(evt)
+		{
+			if (startX == null) return;
+			var dx = mxEvent.getClientX(evt) - startX;
+			var dy = mxEvent.getClientY(evt) - startY;
+
+			var newX = startWinX, newY = startWinY;
+			var newW = startW, newH = startH;
+
+			if (edges.indexOf('t') >= 0)
+			{
+				newY = startWinY + dy;
+				newH = startH - dy;
+			}
+			if (edges.indexOf('b') >= 0)
+			{
+				newH = startH + dy;
+			}
+			if (edges.indexOf('l') >= 0)
+			{
+				newX = startWinX + dx;
+				newW = startW - dx;
+			}
+			if (edges.indexOf('r') >= 0)
+			{
+				newW = startW + dx;
+			}
+
+			if (newW < minSize.width)
+			{
+				if (edges.indexOf('l') >= 0)
+				{
+					newX = startWinX + startW - minSize.width;
+				}
+				newW = minSize.width;
+			}
+			if (newH < minSize.height)
+			{
+				if (edges.indexOf('t') >= 0)
+				{
+					newY = startWinY + startH - minSize.height;
+				}
+				newH = minSize.height;
+			}
+
+			if (newX !== startWinX || newY !== startWinY)
+			{
+				wnd.setLocation(newX, newY);
+			}
+			wnd.setSize(newW, newH);
+
+			wnd.fireEvent(new mxEventObject(mxEvent.RESIZE, 'event', evt));
+			mxEvent.consume(evt);
+		};
+
+		var up = function(evt)
+		{
+			if (startX == null) return;
+			startX = null;
+			startY = null;
+			mxEvent.removeGestureListeners(document, null, move, up);
+			wnd.fireEvent(new mxEventObject(mxEvent.RESIZE_END, 'event', evt));
+			mxEvent.consume(evt);
+		};
+
+		mxEvent.addGestureListeners(el, down, move, up);
+	};
+
+	return installDialogEdgeResizeHandles(wnd.div, addHandle);
+}
 
 /**
  * Removes the dialog from the DOM.
@@ -2037,10 +2329,11 @@ PrintDialog.prototype.create = function(editorUi)
 		var x0 = 0;
 		var y0 = 0;
 
-		// Applies print scale
+		// Applies print scale without rounding so the printed page grid
+		// stays aligned with the page breaks on the canvas
 		pf = mxRectangle.fromRectangle(pf);
-		pf.width = Math.ceil(pf.width * printScale);
-		pf.height = Math.ceil(pf.height * printScale);
+		pf.width = pf.width * printScale;
+		pf.height = pf.height * printScale;
 		scale *= printScale;
 		
 		// Starts at first visible page
@@ -2207,7 +2500,6 @@ var PageSetupDialog = function(editorUi)
 
 	var hd = document.createElement('h3');
 	mxUtils.write(hd, mxResources.get('pageSetup'));
-	hd.style.cssText = 'width:100%;text-align:center;margin-top:0px;margin-bottom:10px';
 	div.appendChild(hd);
 
 	// Paper size section
@@ -2215,7 +2507,7 @@ var PageSetupDialog = function(editorUi)
 	paperSection.className = 'geDialogSection';
 
 	var paperRow = document.createElement('div');
-	paperRow.className = 'geDialogFormRow';
+	paperRow.className = 'geDialogFormRow geDialogFormRowTop';
 
 	var paperLabel = document.createElement('span');
 	paperLabel.className = 'geDialogFormLabel';
@@ -2248,6 +2540,7 @@ var PageSetupDialog = function(editorUi)
 	var gridSizeInput = document.createElement('input');
 	gridSizeInput.setAttribute('type', 'number');
 	gridSizeInput.setAttribute('min', '0');
+	gridSizeInput.setAttribute('step', 'any');
 	gridSizeInput.style.width = '60px';
 	gridSizeInput.style.flex = '0 0 auto';
 	gridSizeInput.value = graph.getGridSize();
@@ -2255,7 +2548,7 @@ var PageSetupDialog = function(editorUi)
 
 	mxEvent.addListener(gridSizeInput, 'change', function()
 	{
-		var value = parseInt(gridSizeInput.value);
+		var value = parseFloat(gridSizeInput.value);
 		gridSizeInput.value = Math.max(1, (isNaN(value)) ? graph.getGridSize() : value);
 	});
 
@@ -2274,64 +2567,17 @@ var PageSetupDialog = function(editorUi)
 	mxUtils.write(bgLabel, mxResources.get('background') + ':');
 	bgRow.appendChild(styleLabel(bgLabel));
 
-	var bgContent = document.createElement('div');
-	bgContent.style.display = 'flex';
-	bgContent.style.alignItems = 'center';
-	bgContent.style.gap = '8px';
-	bgContent.style.flex = '1';
-	bgContent.style.minWidth = '0';
-	styleContent(bgContent);
-
-	var imgPreview = document.createElement('div');
-	imgPreview.style.display = 'inline-block';
-	imgPreview.style.verticalAlign = 'middle';
-	imgPreview.style.backgroundPosition = 'center center';
-	imgPreview.style.backgroundRepeat = 'no-repeat';
-	imgPreview.style.backgroundSize = 'contain';
-	imgPreview.style.border = '1px solid lightGray';
-	imgPreview.style.borderRadius = '4px';
-	imgPreview.style.height = '32px';
-	imgPreview.style.width = '64px';
-	imgPreview.style.cursor = 'pointer';
-	imgPreview.style.padding = '4px';
-	imgPreview.style.flexShrink = '0';
-
 	var newBackgroundImage = graph.backgroundImage;
 	var newBackgroundColor = graph.background;
-	var newShadowVisible = graph.shadowVisible;
 
-	function updateBackgroundImage()
+	var changeImageLink = document.createElement('button');
+	changeImageLink.className = 'geBtn';
+	changeImageLink.style.margin = '0px';
+	mxUtils.write(changeImageLink, mxResources.get('change') + '...');
+
+	mxEvent.addListener(changeImageLink, 'click', function(evt)
 	{
-		var img = newBackgroundImage;
-
-		if (img != null && img.originalSrc != null)
-		{
-			img = editorUi.createImageForPageLink(img.originalSrc, null);
-		}
-
-		if (img != null && img.src != null)
-		{
-			imgPreview.style.backgroundImage = 'url(' + img.src + ')';
-			imgPreview.style.display = 'inline-block';
-		}
-		else
-		{
-			imgPreview.style.backgroundImage = '';
-			imgPreview.style.display = 'none';
-		}
-
-		imgPreview.style.backgroundColor = '';
-
-		if (newBackgroundColor != null && newBackgroundColor != mxConstants.NONE)
-		{
-			imgPreview.style.backgroundColor = newBackgroundColor;
-			imgPreview.style.display = 'inline-block';
-		}
-	};
-
-	var changeImage = function(evt)
-	{
-		editorUi.showBackgroundImageDialog(function(image, failed, color, shadowVisible)
+		editorUi.showBackgroundImageDialog(function(image, failed, color)
 		{
 			if (!failed)
 			{
@@ -2341,36 +2587,24 @@ var PageSetupDialog = function(editorUi)
 				}
 
 				newBackgroundImage = image;
-				newShadowVisible = shadowVisible;
 			}
 
 			newBackgroundColor = color;
-			updateBackgroundImage();
 		}, newBackgroundImage, newBackgroundColor, true);
 
 		mxEvent.consume(evt);
-	};
+	});
 
-	mxEvent.addListener(imgPreview, 'click', changeImage);
-
-	var changeImageLink = document.createElement('button');
-	changeImageLink.className = 'geBtn';
-	changeImageLink.style.margin = '0px';
-	mxUtils.write(changeImageLink, mxResources.get('change') + '...');
-	mxEvent.addListener(changeImageLink, 'click', changeImage);
-
-	updateBackgroundImage();
-	bgContent.appendChild(imgPreview);
-	bgContent.appendChild(changeImageLink);
-	bgRow.appendChild(bgContent);
-
+	bgRow.appendChild(styleContent(changeImageLink));
 	bgSection.appendChild(bgRow);
 	div.appendChild(bgSection);
 
-	// Adaptive colors section
-	var adaptiveSection = document.createElement('div');
-	adaptiveSection.className = 'geDialogSection';
+	// Less common options live in a collapsed Advanced section. Each option
+	// keeps its own geDialogSection card: the helper's content div is the
+	// first card, the other cards are appended to the collapsible wrapper.
+	var advanced = editorUi.addAdvancedSection(div);
 
+	// Adaptive colors section
 	var adaptiveRow = document.createElement('div');
 	adaptiveRow.className = 'geDialogFormRow';
 
@@ -2405,18 +2639,195 @@ var PageSetupDialog = function(editorUi)
 		(!editorUi.isOffline() || mxClient.IS_CHROMEAPP || EditorUi.isElectronApp))
 	{
 		var helpLink = editorUi.menus.createHelpLink(
-			'https://github.com/jgraph/drawio/discussions/4713');
+			'https://www.drawio.com/docs/manual/editor/appearance/adaptive-colours/');
 		helpLink.style.marginLeft = '8px';
 		adaptiveRow.appendChild(helpLink);
 	}
 
-	adaptiveSection.appendChild(adaptiveRow);
-	div.appendChild(adaptiveSection);
+	advanced.content.appendChild(adaptiveRow);
+
+	// Initial view section — lets the author pin the page's opening viewport
+	// (pan + zoom). Stored on the diagram node via ChangePageView and restored
+	// by EditorUi.fitInitialView on the fitDiagramOnLoad / fitDiagramOnPage
+	// paths. Pages live in the diagramly layer, so the section (and its apply
+	// below) is skipped when there is no current page (e.g. bare grapheditor).
+	var pendingViewBox, viewBoxChanged;
+
+	if (editorUi.currentPage != null)
+	{
+		pendingViewBox = editorUi.currentPage.getViewBox();
+		viewBoxChanged = false;
+
+		var viewSection = document.createElement('div');
+		viewSection.className = 'geDialogSection';
+
+		var viewRow = document.createElement('div');
+		viewRow.className = 'geDialogFormRow';
+
+		var viewLabel = document.createElement('span');
+		viewLabel.className = 'geDialogFormLabel';
+		mxUtils.write(viewLabel,
+			mxResources.get('initialView', null, 'Initial view') + ':');
+		viewRow.appendChild(styleLabel(viewLabel));
+
+		var viewContent = document.createElement('div');
+		viewContent.style.flex = '1';
+		viewContent.style.minWidth = '0';
+		viewContent.style.display = 'flex';
+		viewContent.style.alignItems = 'center';
+
+		var viewStatus = document.createElement('span');
+		viewStatus.style.flex = '1 1 auto';
+		viewStatus.style.minWidth = '0';
+		viewStatus.style.overflow = 'hidden';
+		viewStatus.style.textOverflow = 'ellipsis';
+		viewStatus.style.whiteSpace = 'nowrap';
+		// The dialog's 1em line-height would clip descenders under
+		// overflow:hidden - give the single-line box full glyph height
+		viewStatus.style.lineHeight = 'normal';
+
+		var updateViewStatus = function()
+		{
+			var label;
+
+			if (pendingViewBox != null)
+			{
+				label = pendingViewBox.x + ', ' + pendingViewBox.y;
+
+				if (pendingViewBox.scale != null)
+				{
+					label += ' · ' + Math.round(pendingViewBox.scale * 100) + '%';
+				}
+			}
+			else
+			{
+				label = mxResources.get('default');
+			}
+
+			viewStatus.textContent = label;
+		};
+
+		updateViewStatus();
+		viewContent.appendChild(viewStatus);
+
+		viewRow.appendChild(styleContent(viewContent));
+		viewSection.appendChild(viewRow);
+
+		// Action buttons sit on their own full-width row. geBtn is display:flex,
+		// so its text-overflow:ellipsis never renders; squeezed into the
+		// label-indented content column the long translations (German "Aktuelle
+		// übernehmen" / "Zurücksetzen") would be hard-clipped on both ends. A
+		// dedicated row gives them the full section width, and flexShrink:0 keeps
+		// each label intact (wrapping only as a last resort for longer locales).
+		var viewButtonRow = document.createElement('div');
+		viewButtonRow.className = 'geDialogFormRow';
+		viewButtonRow.style.justifyContent = 'flex-end';
+		viewButtonRow.style.flexWrap = 'wrap';
+		viewButtonRow.style.gap = '8px';
+
+		var useCurrentViewBtn = mxUtils.button(mxResources.get('useCurrent'), function()
+		{
+			pendingViewBox = graph.getCurrentViewBox();
+			viewBoxChanged = true;
+			updateViewStatus();
+		});
+		useCurrentViewBtn.className = 'geBtn';
+		useCurrentViewBtn.style.margin = '0px';
+		useCurrentViewBtn.style.flexShrink = '0';
+		viewButtonRow.appendChild(useCurrentViewBtn);
+
+		var resetViewBtn = mxUtils.button(mxResources.get('reset'), function()
+		{
+			pendingViewBox = null;
+			viewBoxChanged = true;
+			updateViewStatus();
+		});
+		resetViewBtn.className = 'geBtn';
+		resetViewBtn.style.margin = '0px';
+		resetViewBtn.style.flexShrink = '0';
+		viewButtonRow.appendChild(resetViewBtn);
+
+		viewSection.appendChild(viewButtonRow);
+		advanced.wrapper.appendChild(viewSection);
+	}
+
+	// Animation section — entry point for the page-level animation editor.
+	// The animation auto-plays when the page is viewed in chromeless /
+	// lightbox mode (the hint text explains this). AnimationDialog isn't
+	// part of the grapheditor layer, so we guard the section with a `typeof`
+	// check; in builds without the diagramly layer (rare — only the
+	// bare-bones grapheditor demo) the section is skipped.
+	if (typeof AnimationDialog !== 'undefined')
+	{
+		var animationSection = document.createElement('div');
+		animationSection.className = 'geDialogSection';
+
+		var animationRow = document.createElement('div');
+		animationRow.className = 'geDialogFormRow geDialogFormRowTop';
+
+		// The label keeps its natural width (no styleLabel) so the hint
+		// text next to the Edit button gets the remaining row width
+		var animationLabel = document.createElement('span');
+		animationLabel.className = 'geDialogFormLabel';
+		animationLabel.style.minWidth = '0';
+		mxUtils.write(animationLabel,
+			mxResources.get('animation', null, 'Animation') + ':');
+		animationRow.appendChild(animationLabel);
+
+		var animationContent = document.createElement('div');
+		animationContent.style.flex = '1';
+		animationContent.style.minWidth = '0';
+		animationContent.style.display = 'flex';
+		animationContent.style.alignItems = 'center';
+		animationContent.style.gap = '8px';
+
+		var animationHint = document.createElement('span');
+		animationHint.className = 'geDialogHint';
+		animationHint.style.flex = '1 1 auto';
+		animationHint.style.minWidth = '0';
+		mxUtils.write(animationHint,
+			mxResources.get('lightboxAnimationHint', null,
+				'Plays automatically when the page is shown in lightbox mode.'));
+		animationContent.appendChild(animationHint);
+
+		var editAnimBtn = mxUtils.button(
+			mxResources.get('edit', null, 'Edit'),
+			function()
+			{
+				// Close Page Setup first so the non-modal AnimationDialog
+				// isn't obscured by the modal backdrop. The user can
+				// reopen Page Setup afterwards.
+				editorUi.hideDialog();
+
+				// Reuse the singleton animation window (also opened via the
+				// 'animation' action) instead of stacking a new dialog. The
+				// action's handler creates it on first use and wires up
+				// window-state persistence.
+				var menus = editorUi.menus;
+
+				if (menus != null && menus.animationWindow != null)
+				{
+					menus.animationWindow.window.setVisible(true);
+					menus.animationWindow.window.activate();
+				}
+				else if (editorUi.actions.get('animation') != null)
+				{
+					editorUi.actions.get('animation').funct();
+				}
+			});
+		editAnimBtn.className = 'geBtn';
+		editAnimBtn.style.minWidth = '90px';
+		animationContent.appendChild(editAnimBtn);
+
+		animationRow.appendChild(styleContent(animationContent));
+		animationSection.appendChild(animationRow);
+		advanced.wrapper.appendChild(animationSection);
+	}
 
 	// Apply function
 	var applyFn = function()
 	{
-		var gridSize = parseInt(gridSizeInput.value);
+		var gridSize = parseFloat(gridSizeInput.value);
 
 		if (!isNaN(gridSize) && graph.gridSize !== gridSize)
 		{
@@ -2432,11 +2843,6 @@ var PageSetupDialog = function(editorUi)
 
 		change.ignoreImage = oldSrc === newSrc;
 
-		if (newShadowVisible != null)
-		{
-			change.shadowVisible = newShadowVisible;
-		}
-
 		var newAdaptive = adaptiveDropdown.value;
 		var currentAdaptive = (graph.adaptiveColors == null) ?
 			'default' : graph.adaptiveColors;
@@ -2450,12 +2856,35 @@ var PageSetupDialog = function(editorUi)
 		if (graph.pageFormat.width != change.previousFormat.width ||
 			graph.pageFormat.height != change.previousFormat.height ||
 			!change.ignoreColor || !change.ignoreImage ||
-			change.shadowVisible != graph.shadowVisible ||
 			adaptiveChanged)
 		{
 			graph.model.execute(change);
 		}
+
+		// Applies an initial-view change (Use Current / Reset). Guarded on the
+		// current page so this stays a no-op outside the diagramly layer, where
+		// ChangePageView is not defined.
+		if (viewBoxChanged && editorUi.currentPage != null)
+		{
+			graph.model.execute(new ChangePageView(editorUi,
+				editorUi.currentPage, pendingViewBox));
+		}
 	};
+
+	// Exposes each button's own label as its tooltip so the full text stays
+	// available on hover even when a long translation is clipped to fit the
+	// dialog width (geBtn is display:flex, so text-overflow never renders).
+	var dialogButtons = div.querySelectorAll('.geBtn');
+
+	for (var i = 0; i < dialogButtons.length; i++)
+	{
+		var btnLabel = mxUtils.trim(dialogButtons[i].textContent);
+
+		if (dialogButtons[i].getAttribute('title') == null && btnLabel != '')
+		{
+			dialogButtons[i].setAttribute('title', btnLabel);
+		}
+	}
 
 	var dlg = new CustomDialog(editorUi, div, applyFn, null,
 		mxResources.get('apply'));
@@ -2536,7 +2965,8 @@ PageSetupDialog.addPageFormatPanel = function(div, namePostfix, pageFormat, page
 	unitSelect.style.boxSizing = 'border-box';
 	var units = [{label: mxResources.get('points'), unit: mxConstants.POINTS},
 		{label: mxResources.get('inches'), unit: mxConstants.INCHES},
-		{label: mxResources.get('millimeters'), unit: mxConstants.MILLIMETERS}];
+		{label: mxResources.get('millimeters'), unit: mxConstants.MILLIMETERS},
+		{label: mxResources.get('meters'), unit: mxConstants.METERS}];
 
 	for (var i = 0; i < units.length; i++)
 	{
@@ -2687,9 +3117,14 @@ PageSetupDialog.addPageFormatPanel = function(div, namePostfix, pageFormat, page
 			heightInput.value = Editor.toUnit(pageFormat.height, unitSelect.value);
 		}
 		
-		var newPageFormat = new mxRectangle(0, 0,
-			Math.floor(Editor.fromUnit(parseFloat(widthInput.value), unitSelect.value)),
-			Math.floor(Editor.fromUnit(parseFloat(heightInput.value), unitSelect.value)));
+		// Uses the exact preset size so that selecting a standard format never
+		// depends on the display precision of the current unit round-tripping
+		var newPageFormat = (f.format != null) ? new mxRectangle(0, 0,
+			(!landscapeCheckBox.checked) ? f.format.width : f.format.height,
+			(!landscapeCheckBox.checked) ? f.format.height : f.format.width) :
+			new mxRectangle(0, 0,
+				Editor.fromUnit(parseFloat(widthInput.value), unitSelect.value),
+				Editor.fromUnit(parseFloat(heightInput.value), unitSelect.value));
 		
 		// Initial select of custom should not update page format to avoid update of combo
 		if (!quiet && (newPageFormat.width != pageFormat.width ||
@@ -3379,6 +3814,11 @@ var WrapperWindow = function(editorUi, title, x, y, w, h, fn, div)
 			d.push('M 0 ' + tmp3 + ' L ' + tmp2 + ' ' + tmp3 + ' M ' + tmp3 + ' 0 L ' + tmp3 + ' ' + tmp2);
 		}
 		
+		// Major grid lines on all four tile edges: the pattern clips the outer half of a
+		// stroke on the tile boundary, so adjacent tiles must supply the two halves
+		var major = 'M ' + tmp2 + ' 0 L 0 0 0 ' + tmp2 +
+			' M ' + tmp2 + ' 0 L ' + tmp2 + ' ' + tmp2 + ' L 0 ' + tmp2;
+
 		// KNOWN: Rounding errors for certain scales (eg. 144%, 121% in Chrome, FF and Safari). Workaround
 		// in Chrome is to use 100% for the svg size, but this results in blurred grid for large diagrams.
 		var size = tmp2;
@@ -3397,7 +3837,7 @@ var WrapperWindow = function(editorUi, title, x, y, w, h, fn, div)
 		    '<defs><pattern id="grid" width="' + tmp2 + '" height="' + tmp2 + '" patternUnits="userSpaceOnUse">' +
 		    '<path d="' + d.join(' ') + '" fill="none" style="stroke:' + mxUtils.htmlEntities(cssColor.cssText) +
 			';" stroke="' + cssColor.light + '" opacity="0.2" stroke-width="1"/>' +
-		    '<path d="M ' + tmp2 + ' 0 L 0 0 0 ' + tmp2 + '" fill="none" style="stroke:' +
+		    '<path d="' + major + '" fill="none" style="stroke:' +
 			mxUtils.htmlEntities(cssColor.cssText) + ';" stroke="' +
 			cssColor.light + '" stroke-width="1"/>' +
 		    '</pattern></defs><rect width="100%" height="100%" fill="url(#grid)"/></svg>';
@@ -3427,7 +3867,7 @@ var WrapperWindow = function(editorUi, title, x, y, w, h, fn, div)
 		}
 	};
 	
-	// Draws page breaks only within the page
+	// Draws page breaks only within the visible area
 	mxGraph.prototype.updatePageBreaks = function(visible, width, height)
 	{
 		var scale = this.view.scale;
@@ -3441,13 +3881,50 @@ var WrapperWindow = function(editorUi, title, x, y, w, h, fn, div)
 		height = bounds2.height;
 		var bounds = new mxRectangle(scale * tr.x, scale * tr.y, fmt.width * ps, fmt.height * ps);
 
+		// Maps from canvas to screen coordinates using the DOM as the view
+		// state is normalized in this call if CSS transforms are used
+		var ctm = (this.view.canvas != null && this.view.canvas.getCTM != null) ?
+			this.view.canvas.getCTM() : null;
+		var cs = (ctm != null) ? ctm.a : 1;
+		var cx = (ctm != null) ? ctm.e : 0;
+		var cy = (ctm != null) ? ctm.f : 0;
+
 		// Does not show page breaks if the scale is too small
-		visible = visible && Math.min(bounds.width, bounds.height) > this.minPageBreakDist;
+		visible = visible && Math.min(bounds.width, bounds.height) * cs > this.minPageBreakDist;
 
 		var horizontalCount = (visible) ? Math.ceil(height / bounds.height) - 1 : 0;
 		var verticalCount = (visible) ? Math.ceil(width / bounds.width) - 1 : 0;
 		var right = bounds2.x + width;
 		var bottom = bounds2.y + height;
+
+		// Restricts the page breaks to the visible area plus one viewport of
+		// margin in each direction so that extreme cell coordinates cannot
+		// block the UI with an excessive number of nodes, and keeps track of
+		// the covered area for updating the clipped page breaks after scrolling
+		var hMin = 0;
+		var hMax = horizontalCount - 1;
+		var vMin = 0;
+		var vMax = verticalCount - 1;
+		this.pageBreakCoverage = null;
+
+		if (visible && this.container != null)
+		{
+			var cw = this.container.clientWidth;
+			var ch = this.container.clientHeight;
+			var x0 = (this.container.scrollLeft - cw - cx) / cs - bounds2.x;
+			var y0 = (this.container.scrollTop - ch - cy) / cs - bounds2.y;
+
+			vMin = Math.max(0, Math.floor(x0 / bounds.width) - 1);
+			vMax = Math.min(verticalCount - 1, Math.ceil((x0 + 3 * cw / cs) / bounds.width));
+			hMin = Math.max(0, Math.floor(y0 / bounds.height) - 1);
+			hMax = Math.min(horizontalCount - 1, Math.ceil((y0 + 3 * ch / cs) / bounds.height));
+
+			if (hMin > 0 || hMax < horizontalCount - 1 || vMin > 0 || vMax < verticalCount - 1)
+			{
+				this.pageBreakCoverage = new mxRectangle(this.container.scrollLeft - cw / 2,
+					this.container.scrollTop - ch / 2, 2 * cw, 2 * ch);
+			}
+		}
 
 		if (this.horizontalPageBreaks == null && horizontalCount > 0)
 		{
@@ -3463,16 +3940,24 @@ var WrapperWindow = function(editorUi, title, x, y, w, h, fn, div)
 		{
 			if (breaks != null)
 			{
-				var count = (breaks == this.horizontalPageBreaks) ? horizontalCount : verticalCount; 
-				
-				for (var i = 0; i <= count; i++)
+				var horizontal = breaks == this.horizontalPageBreaks;
+				var first = (horizontal) ? hMin : vMin;
+				var last = (horizontal) ? hMax : vMax;
+
+				// Bounds the drawing loop as a fallback where the visible
+				// area is unknown (eg. no container)
+				var count = (visible && isFinite(first) && isFinite(last)) ?
+					Math.max(0, Math.min(this.maxPageBreaks, last - first + 1)) : 0;
+
+				for (var i = 0; i < count; i++)
 				{
-					var pts = (breaks == this.horizontalPageBreaks) ?
-						[new mxPoint(Math.round(bounds2.x), Math.round(bounds2.y + (i + 1) * bounds.height)),
-						 new mxPoint(Math.round(right), Math.round(bounds2.y + (i + 1) * bounds.height))] :
-						[new mxPoint(Math.round(bounds2.x + (i + 1) * bounds.width), Math.round(bounds2.y)),
-						 new mxPoint(Math.round(bounds2.x + (i + 1) * bounds.width), Math.round(bottom))];
-					
+					var pos = first + i + 1;
+					var pts = (horizontal) ?
+						[new mxPoint(Math.round(bounds2.x), Math.round(bounds2.y + pos * bounds.height)),
+						 new mxPoint(Math.round(right), Math.round(bounds2.y + pos * bounds.height))] :
+						[new mxPoint(Math.round(bounds2.x + pos * bounds.width), Math.round(bounds2.y)),
+						 new mxPoint(Math.round(bounds2.x + pos * bounds.width), Math.round(bottom))];
+
 					if (breaks[i] != null && breaks[i].node != null)
 					{
 						breaks[i].points = pts;

@@ -3889,7 +3889,7 @@
 	   		{
 			   	var bg = new mxCell('', new mxGeometry(0, 0, 800, 60), 'html=1;shadow=0;dashed=0;fillColor=#F8F9FA;strokeColor=none;fontSize=16;fontColor=#181819;align=left;spacing=2;spacingLeft=55;');
 			   	bg.vertex = true;
-			   	var item1 = new mxCell('', new mxGeometry(0, 0, 40, 40), s + 'logo;fillColor=#54407A;strokeColor=none;sketch=0;');
+			   	var item1 = new mxCell('', new mxGeometry(0, 0, 40, 40), s + 'logo;iconColor=#ffffff;fillColor=#54407A;strokeColor=none;sketch=0;');
 			   	item1.geometry.relative = true;
 			   	item1.geometry.offset = new mxPoint(10, 10);
 			   	item1.vertex = true;
@@ -3902,7 +3902,7 @@
 	   		{
 			   	var bg = new mxCell('Bootstrap', new mxGeometry(0, 0, 800, 60), 'html=1;shadow=0;dashed=0;fillColor=#F8F9FA;strokeColor=none;fontSize=16;fontColor=#181819;align=left;spacing=2;spacingLeft=55;');
 			   	bg.vertex = true;
-			   	var item1 = new mxCell('', new mxGeometry(0, 0, 40, 40), s + 'logo;fillColor=#54407A;strokeColor=none;sketch=0;');
+			   	var item1 = new mxCell('', new mxGeometry(0, 0, 40, 40), s + 'logo;iconColor=#ffffff;fillColor=#54407A;strokeColor=none;sketch=0;');
 			   	item1.geometry.relative = true;
 			   	item1.geometry.offset = new mxPoint(10, 10);
 			   	item1.vertex = true;

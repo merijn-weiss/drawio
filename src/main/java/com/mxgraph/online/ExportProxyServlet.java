@@ -58,7 +58,7 @@ public class ExportProxyServlet extends HttpServlet
 						proxyPath = String.join("/", Arrays.copyOfRange(pathParts, 2, pathParts.length));
 					}
 					
-					if (serviceId < 0 || serviceId > supportedServices.length)
+					if (serviceId < 0 || serviceId >= supportedServices.length)
 					{
 						serviceId = 0;
 					}
@@ -82,6 +82,22 @@ public class ExportProxyServlet extends HttpServlet
 				exportUrl += "/";
 			}
 			
+			// Defence in depth: a spec-compliant servlet container already
+			// canonicalises the request path, but reject any residual or
+			// encoded traversal in the forwarded path, and confirm the
+			// resolved URL still points under the configured base URL, so it
+			// cannot escape to other endpoints on the backend.
+			if (containsTraversal(proxyPath))
+			{
+				throw new Exception("Invalid proxy path");
+			}
+
+			if (!new URL(exportUrl + proxyPath).toURI().normalize().toString()
+					.startsWith(exportUrl))
+			{
+				throw new Exception("Proxy path escapes the configured base URL");
+			}
+
 			URL url = new URL(exportUrl + proxyPath + queryString);
 			HttpURLConnection con = (HttpURLConnection) url.openConnection();
 			
@@ -165,6 +181,39 @@ public class ExportProxyServlet extends HttpServlet
 	}
 
 	
+	/**
+	 * Returns true if the forwarded proxy path contains a path-traversal
+	 * sequence - a literal "." or ".." segment, an encoded dot/slash
+	 * ("%2e", "%2f", "%5c") that a downstream server might decode into one,
+	 * or a backslash. Used as defence in depth on top of the servlet
+	 * container's own path canonicalisation.
+	 */
+	private boolean containsTraversal(String proxyPath)
+	{
+		if (proxyPath == null || proxyPath.isEmpty())
+		{
+			return false;
+		}
+
+		String lower = proxyPath.toLowerCase();
+
+		if (lower.contains("%2e") || lower.contains("%2f")
+				|| lower.contains("%5c") || proxyPath.contains("\\"))
+		{
+			return true;
+		}
+
+		for (String segment : proxyPath.split("/"))
+		{
+			if (segment.equals("..") || segment.equals("."))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */

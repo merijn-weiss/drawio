@@ -434,8 +434,125 @@ mxSvgCanvas2D.prototype.getAlternateText = function(fo, x, y, w, h, str, align, 
 };
 
 /**
+ * Function: getAlternateTextLines
+ *
+ * Returns the alternate text for the given foreignObject as an array of
+ * lines. Splits the text at linefeeds, applies word wrapping at the given
+ * width if wrap is enabled and truncates the lines to the visible box if
+ * the label is clipped, so that the fallback approximates the layout of
+ * the foreignObject in viewers with no support for foreignObjects.
+ */
+mxSvgCanvas2D.prototype.getAlternateTextLines = function(text, w, h, wrap, overflow, clip)
+{
+	var s = this.state;
+	var lines = text.split(/\r\n|\r|\n/);
+	var doWrap = (wrap || overflow == 'fill' || overflow == 'width') && w > 0;
+	var maxWidth = w + this.foreignObjectPadding;
+	var ctx = null;
+
+	if (doWrap || (clip && w > 0))
+	{
+		// Uses canvas text measuring with the current font. This is an
+		// approximation as the fonts in the target viewer may differ.
+		ctx = document.createElement('canvas').getContext('2d');
+		ctx.font = (((s.fontStyle & mxConstants.FONT_ITALIC) ==
+				mxConstants.FONT_ITALIC) ? 'italic ' : '') +
+			(((s.fontStyle & mxConstants.FONT_BOLD) ==
+				mxConstants.FONT_BOLD) ? 'bold ' : '') +
+			s.fontSize + 'px ' + mxUtils.parseCssFontFamily(s.fontFamily);
+	}
+
+	// Applies word wrapping at the wrapping width of the foreignObject
+	if (doWrap && ctx != null)
+	{
+		var wrapped = [];
+
+		for (var i = 0; i < lines.length; i++)
+		{
+			var words = lines[i].split(/\s+/);
+			var line = '';
+
+			for (var j = 0; j < words.length; j++)
+			{
+				if (words[j].length > 0)
+				{
+					var next = (line.length > 0) ? line + ' ' + words[j] : words[j];
+
+					if (line.length > 0 && ctx.measureText(next).width > maxWidth)
+					{
+						wrapped.push(line);
+						line = words[j];
+					}
+					else
+					{
+						line = next;
+					}
+
+					// Breaks CJK text that is wider than the wrapping width
+					// at character level like the browser as it contains no
+					// word boundaries (other overflowing content is left to
+					// overflow like HTML with word-wrap normal)
+					while (line.length > 1 && ctx.measureText(line).width > maxWidth &&
+						/[\u2E80-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]/.test(line))
+					{
+						var index = line.length - 1;
+
+						while (index > 1 && ctx.measureText(line.substring(0, index)).width > maxWidth)
+						{
+							index--;
+						}
+
+						wrapped.push(line.substring(0, index));
+						line = line.substring(index);
+					}
+				}
+			}
+
+			wrapped.push(line);
+		}
+
+		lines = wrapped;
+	}
+
+	// Removes lines that are not visible if the label is clipped
+	if ((clip || overflow == 'fill') && h > 0)
+	{
+		var visibleLines = Math.max(1, Math.floor(h / Math.round(
+			mxConstants.LINE_HEIGHT * s.fontSize)));
+
+		if (lines.length > visibleLines)
+		{
+			lines = lines.slice(0, visibleLines);
+			lines[lines.length - 1] += '...';
+		}
+	}
+
+	// Truncates the lines at the width if the label is clipped without wrapping
+	if (clip && !doWrap && ctx != null)
+	{
+		for (var i = 0; i < lines.length; i++)
+		{
+			if (ctx.measureText(lines[i]).width > maxWidth)
+			{
+				var index = lines[i].length - 1;
+
+				while (index > 1 && ctx.measureText(
+					lines[i].substring(0, index) + '...').width > maxWidth)
+				{
+					index--;
+				}
+
+				lines[i] = mxUtils.trim(lines[i].substring(0, index)) + '...';
+			}
+		}
+	}
+
+	return lines;
+};
+
+/**
  * Function: getAlternateContent
- * 
+ *
  * Returns the alternate content for the given foreignObject.
  */
 mxSvgCanvas2D.prototype.createAlternateContent = function(fo, x, y, w, h, str, align, valign, wrap, format, overflow, clip, rotation)
@@ -450,11 +567,38 @@ mxSvgCanvas2D.prototype.createAlternateContent = function(fo, x, y, w, h, str, a
 		var anchor = (align == mxConstants.ALIGN_RIGHT) ? 'end' :
 			(align == mxConstants.ALIGN_LEFT) ? 'start' :
 			'middle';
-	
+
+		var lines = this.getAlternateTextLines(text, w, h, wrap, overflow, clip);
+		var lh = Math.round(mxConstants.LINE_HEIGHT * s.fontSize);
+		var x0 = Math.round(x + s.dx);
+
+		// Aligns the block of lines vertically at the anchor point like the
+		// flex layout of the foreignObject: hanging below the anchor for top,
+		// centered for middle and above the anchor for bottom alignment
+		var y0 = y + s.dy + dy * s.fontSize -
+			((valign == mxConstants.ALIGN_TOP) ? 0 :
+			((valign == mxConstants.ALIGN_BOTTOM) ? (lines.length - 1) * lh :
+			(lines.length - 1) * lh / 2));
+
+		var cssFontColor = this.getLightDarkColor(s.fontColor || 'black');
 		var alt = this.createElement('text');
-		alt.setAttribute('x', Math.round(x + s.dx));
-		alt.setAttribute('y', Math.round(y + s.dy + dy * s.fontSize));
-		alt.setAttribute('fill', s.fontColor || 'black');
+		alt.setAttribute('x', x0);
+		alt.setAttribute('y', Math.round(y0));
+
+		// Alternate content is rendered in viewers with no support for
+		// light-dark colors so the fill attribute must be a plain color,
+		// using none for transparent as it is not a valid paint value
+		// in SVG 1.1 and renders black in Inkscape and PowerPoint
+		if (cssFontColor.light == 'transparent')
+		{
+			alt.setAttribute('fill', 'none');
+		}
+		else
+		{
+			alt.setAttribute('fill', cssFontColor.light);
+			alt.style.fill = cssFontColor.cssText;
+		}
+
 		alt.setAttribute('font-family', mxUtils.parseCssFontFamily(s.fontFamily));
 		alt.setAttribute('font-size', Math.round(s.fontSize) + 'px');
 
@@ -485,14 +629,33 @@ mxSvgCanvas2D.prototype.createAlternateContent = function(fo, x, y, w, h, str, a
 		{
 			txtDecor.push('line-through');
 		}
-		
+
 		if (txtDecor.length > 0)
 		{
 			alt.setAttribute('text-decoration', txtDecor.join(' '));
+
+			if ((s.fontStyle & mxConstants.FONT_UNDERLINE_DOTTED) == mxConstants.FONT_UNDERLINE_DOTTED)
+			{
+				alt.style.textDecorationStyle = 'dotted';
+			}
 		}
-		
-		mxUtils.write(alt, text);
-		
+
+		if (lines.length > 1)
+		{
+			for (var i = 0; i < lines.length; i++)
+			{
+				var tspan = this.createElement('tspan');
+				tspan.setAttribute('x', x0);
+				tspan.setAttribute('y', Math.round(y0 + i * lh));
+				mxUtils.write(tspan, lines[i]);
+				alt.appendChild(tspan);
+			}
+		}
+		else
+		{
+			mxUtils.write(alt, lines[0]);
+		}
+
 		return alt;
 	}
 	else
@@ -1079,6 +1242,14 @@ mxSvgCanvas2D.prototype.updateFill = function()
 
 			lightFill = fill;
 		}
+		else if (String(s.fillColor).toLowerCase() == mxConstants.NONE)
+		{
+			// NONE reaches this point via setGradient. Uses none as
+			// transparent is not a valid paint value in SVG 1.1 and
+			// renders black in Inkscape and PowerPoint
+			lightFill = 'none';
+			fill = 'none';
+		}
 		else
 		{
 			var cssFill = this.getLightDarkColor(String(s.fillColor).toLowerCase());
@@ -1440,42 +1611,93 @@ mxSvgCanvas2D.prototype.ellipse = function(x, y, w, h)
 
 /**
  * Function: image
- * 
- * Private helper function to create SVG elements
+ *
+ * Private helper function to create SVG elements. The optional cssVars
+ * renders the image as a use tag with the given CSS declarations in its
+ * style attribute, so that CSS variables apply to the referenced SVG
+ * content. Note that external references are not loaded where SVG is
+ * rendered as an image, eg. in PNG export.
  */
-mxSvgCanvas2D.prototype.image = function(x, y, w, h, src, aspect, flipH, flipV, clipPath)
+mxSvgCanvas2D.prototype.image = function(x, y, w, h, src, aspect, flipH, flipV, clipPath, cssVars)
 {
 	src = this.converter.convert(src);
-	
+
 	// LATER: Add option for embedding images as base64.
 	aspect = (aspect != null) ? aspect : true;
 	flipH = (flipH != null) ? flipH : false;
 	flipV = (flipV != null) ? flipV : false;
-	
+
 	var s = this.state;
 	x += s.dx;
 	y += s.dy;
-	
-	var node = this.createElement('image');
+
+	var node = null;
+
+	if (cssVars != null)
+	{
+		// Inlines themed SVG images as shared symbols via the
+		// createImageSymbol hook where available
+		var ref = (this.createImageSymbol != null) ?
+			this.createImageSymbol(src, aspect) : null;
+
+		// Data URIs are not supported in use tags so the theming
+		// is ignored if no symbol was created for the image
+		if (ref != null || src.substring(0, 5) != 'data:')
+		{
+			var href = (ref != null) ? '#' + ref : src;
+			node = this.createElement('use');
+
+			// Empty declarations share the image without theming
+			if (cssVars != '')
+			{
+				node.setAttribute('style', cssVars);
+			}
+
+			node.setAttribute('href', href);
+
+			if (node.setAttributeNS != null)
+			{
+				node.setAttributeNS(mxConstants.NS_XLINK, 'xlink:href', href);
+			}
+		}
+	}
+
+	if (node == null && this.dedupImages && this.defs != null)
+	{
+		// Shares repeated images via a definition and use tags
+		var def = '#' + this.getImageDef(src, w * s.scale, h * s.scale, aspect);
+		node = this.createElement('use');
+		node.setAttribute('href', def);
+
+		if (node.setAttributeNS != null)
+		{
+			node.setAttributeNS(mxConstants.NS_XLINK, 'xlink:href', def);
+		}
+	}
+	else if (node == null)
+	{
+		node = this.createElement('image');
+
+		// Workaround for missing namespace support
+		if (node.setAttributeNS == null)
+		{
+			node.setAttribute('xlink:href', src);
+		}
+		else
+		{
+			node.setAttributeNS(mxConstants.NS_XLINK, 'xlink:href', src);
+		}
+
+		if (!aspect)
+		{
+			node.setAttribute('preserveAspectRatio', 'none');
+		}
+	}
+
 	node.setAttribute('x', this.format(x * s.scale) + this.imageOffset);
 	node.setAttribute('y', this.format(y * s.scale) + this.imageOffset);
 	node.setAttribute('width', this.format(w * s.scale));
 	node.setAttribute('height', this.format(h * s.scale));
-	
-	// Workaround for missing namespace support
-	if (node.setAttributeNS == null)
-	{
-		node.setAttribute('xlink:href', src);
-	}
-	else
-	{
-		node.setAttributeNS(mxConstants.NS_XLINK, 'xlink:href', src);
-	}
-	
-	if (!aspect)
-	{
-		node.setAttribute('preserveAspectRatio', 'none');
-	}
 
 	if (s.alpha < 1 || s.fillAlpha < 1)
 	{
@@ -1523,6 +1745,72 @@ mxSvgCanvas2D.prototype.image = function(x, y, w, h, src, aspect, flipH, flipV, 
 	}
 	
 	this.root.appendChild(node);
+};
+
+/**
+ * Function: getImageDef
+ *
+ * Returns the ID of the definition for the given image with the given
+ * size, adding the definition to <defs> if it does not yet exist. The
+ * image is wrapped in a symbol so that all sizes with the same aspect
+ * ratio share one definition, as the use tags scale the symbol via its
+ * viewBox. Used if <dedupImages> is enabled.
+ */
+mxSvgCanvas2D.prototype.getImageDef = function(src, w, h, aspect)
+{
+	if (this.imageDefs == null)
+	{
+		this.imageDefs = {};
+		this.imageDefIds = {};
+	}
+
+	// All aspect ratios are equivalent if the aspect is not preserved
+	var key = src + '|' + aspect + '|' +
+		((aspect && h != 0) ? (w / h).toFixed(4) : '');
+	var id = this.imageDefs[key];
+
+	if (id == null)
+	{
+		id = 'mx-image-' + mxUtils.hashCode(key);
+
+		// Resolves hash collisions between different keys
+		while (this.imageDefIds[id] != null)
+		{
+			id += '-1';
+		}
+
+		var symbol = this.createElement('symbol');
+		symbol.setAttribute('id', id);
+		symbol.setAttribute('viewBox', '0 0 ' + this.format(w) +
+			' ' + this.format(h));
+
+		var img = this.createElement('image');
+		img.setAttribute('width', this.format(w));
+		img.setAttribute('height', this.format(h));
+
+		// Workaround for missing namespace support
+		if (img.setAttributeNS == null)
+		{
+			img.setAttribute('xlink:href', src);
+		}
+		else
+		{
+			img.setAttributeNS(mxConstants.NS_XLINK, 'xlink:href', src);
+		}
+
+		if (!aspect)
+		{
+			symbol.setAttribute('preserveAspectRatio', 'none');
+			img.setAttribute('preserveAspectRatio', 'none');
+		}
+
+		symbol.appendChild(img);
+		this.defs.appendChild(symbol);
+		this.imageDefs[key] = id;
+		this.imageDefIds[id] = key;
+	}
+
+	return id;
 };
 
 /**
@@ -2051,9 +2339,14 @@ mxSvgCanvas2D.prototype.getTextCss = function()
 	{
 		deco.push('line-through');
 	}
-	
+
 	if (deco.length > 0)
 	{
+		if ((s.fontStyle & mxConstants.FONT_UNDERLINE_DOTTED) == mxConstants.FONT_UNDERLINE_DOTTED)
+		{
+			deco.push('dotted');
+		}
+
 		css += 'text-decoration: ' + deco.join(' ') + '; ';
 	}
 
@@ -2062,839 +2355,19 @@ mxSvgCanvas2D.prototype.getTextCss = function()
 
 /**
  * Function: convertHtmlToSvg
- *
+ * 
+ * Converts the child nodes of the given HTML element to SVG text and tspan
+ * elements using <mxUtils.convertHtmlToSvg> and returns true if the
+ * conversion was possible. Returns false if the content cannot be converted
+ * (eg. unsupported HTML or vertical writing-mode), in which case the caller
+ * falls back to foreignObject.
  */
-mxSvgCanvas2D.prototype.convertHtmlToSvg = function(elt, text, offset, fontScale)
+mxSvgCanvas2D.prototype.convertHtmlToSvg = function(elt, text, offset, fontScale, dir)
 {
-	var result = true;
-
-	if (elt != null)
-	{
-		// Checks if any child is a block element
-		var hasBlocks = false;
-
-		for (var i = 0; i < elt.childNodes.length; i++)
-		{
-			var name = elt.childNodes[i].nodeName;
-
-			if (name == 'H1' || name == 'H2' || name == 'H3' ||
-				name == 'H4' || name == 'H5' || name == 'H6' ||
-				name == 'P' || name == 'PRE' || name == 'BLOCKQUOTE' ||
-				name == 'DIV')
-			{
-				hasBlocks = true;
-				break;
-			}
-		}
-
-		if (hasBlocks)
-		{
-			result = this.convertHtmlBlocksToSvg(elt, text, offset);
-		}
-		else if (this.containsBrElement(elt))
-		{
-			result = this.convertHtmlWithBreaksToSvg(elt, text, offset, fontScale);
-		}
-		else
-		{
-			result = this.convertHtmlInlineToSvg(elt, text, offset, fontScale);
-		}
-	}
-
-	return result;
+	return mxUtils.convertHtmlToSvg(elt, text, offset, {dir: dir,
+		fontScale: fontScale, fontSize: this.state.fontSize,
+		createElement: mxUtils.bind(this, this.createElement)});
 };
-
-/**
- * Function: getBlockElementStyle
- *
- * Returns default style properties for HTML block elements.
- */
-mxSvgCanvas2D.prototype.getBlockElementStyle = function(nodeName)
-{
-	switch (nodeName)
-	{
-		case 'H1': return {sizeFactor: 2.0, weight: 'bold', family: null, marginTop: 0.67, marginBottom: 0.67, indent: 0};
-		case 'H2': return {sizeFactor: 1.5, weight: 'bold', family: null, marginTop: 0.83, marginBottom: 0.83, indent: 0};
-		case 'H3': return {sizeFactor: 1.17, weight: 'bold', family: null, marginTop: 1.0, marginBottom: 1.0, indent: 0};
-		case 'H4': return {sizeFactor: 1.0, weight: 'bold', family: null, marginTop: 1.33, marginBottom: 1.33, indent: 0};
-		case 'H5': return {sizeFactor: 0.83, weight: 'bold', family: null, marginTop: 1.67, marginBottom: 1.67, indent: 0};
-		case 'H6': return {sizeFactor: 0.67, weight: 'bold', family: null, marginTop: 2.33, marginBottom: 2.33, indent: 0};
-		case 'P': return {sizeFactor: 1.0, weight: null, family: null, marginTop: 1.0, marginBottom: 1.0, indent: 0};
-		case 'PRE': return {sizeFactor: 1.0, weight: null, family: 'monospace', marginTop: 1.0, marginBottom: 1.0, indent: 0};
-		case 'BLOCKQUOTE': return {sizeFactor: 1.0, weight: null, family: null, marginTop: 1.0, marginBottom: 1.0, indent: 40};
-		case 'DIV': return {sizeFactor: 1.0, weight: null, family: null, marginTop: 0, marginBottom: 0, indent: 0};
-		default: return null;
-	}
-};
-
-/**
- * Function: getMaxInlineFontSize
- *
- * Recursively finds the maximum font size (in px) among inline children of
- * the given element. Returns the block font size if no larger inline font
- * is found.
- */
-mxSvgCanvas2D.prototype.getMaxInlineFontSize = function(elt, blockFontSize)
-{
-	var maxSize = blockFontSize;
-
-	for (var i = 0; i < elt.childNodes.length; i++)
-	{
-		var child = elt.childNodes[i];
-
-		if (child.nodeType == mxConstants.NODETYPE_ELEMENT && child.style != null)
-		{
-			var fs = child.style.fontSize;
-
-			if (fs != null && fs != '')
-			{
-				if (fs.slice(-2) == 'px')
-				{
-					var px = parseFloat(fs);
-
-					if (!isNaN(px))
-					{
-						maxSize = Math.max(maxSize, px);
-					}
-				}
-				else if (fs.slice(-2) == 'pt')
-				{
-					var pt = parseFloat(fs);
-
-					if (!isNaN(pt))
-					{
-						maxSize = Math.max(maxSize, pt * 4 / 3);
-					}
-				}
-				else if (fs.slice(-2) == 'em')
-				{
-					var em = parseFloat(fs);
-
-					if (!isNaN(em))
-					{
-						maxSize = Math.max(maxSize, em * blockFontSize);
-					}
-				}
-				else if (fs.slice(-1) == '%')
-				{
-					var pct = parseFloat(fs);
-
-					if (!isNaN(pct))
-					{
-						maxSize = Math.max(maxSize, pct / 100 * blockFontSize);
-					}
-				}
-			}
-
-			// Recurse into inline children
-			var childMax = this.getMaxInlineFontSize(child, blockFontSize);
-			maxSize = Math.max(maxSize, childMax);
-		}
-	}
-
-	return maxSize;
-};
-
-/**
- * Function: containsBlockChild
- *
- * Returns true if the element contains any direct block-level children.
- */
-mxSvgCanvas2D.prototype.containsBlockChild = function(elt)
-{
-	for (var i = 0; i < elt.childNodes.length; i++)
-	{
-		if (this.getBlockElementStyle(elt.childNodes[i].nodeName) != null)
-		{
-			return true;
-		}
-	}
-
-	return false;
-};
-
-/**
- * Function: convertHtmlBlocksToSvg
- *
- * Converts HTML with block elements to SVG text elements inside a group.
- * Handles nested block elements (e.g. DIV containing DIV) by flattening
- * them into the block flow, and treats non-whitespace text nodes between
- * blocks as anonymous inline lines.
- */
-mxSvgCanvas2D.prototype.convertHtmlBlocksToSvg = function(elt, container, offset)
-{
-	var baseFontSize = this.state.fontSize;
-	var cursorY = 0;
-	var prevMarginBottom = 0;
-	var isFirst = true;
-	var result = true;
-	var self = this;
-
-	function processBlockInlineContent(child, blockStyle, blockFontSize)
-	{
-		var marginTop = blockStyle.marginTop;
-		var marginBottom = blockStyle.marginBottom;
-
-		if (child.style != null)
-		{
-			if (child.style.marginTop != '')
-			{
-				var mt = parseFloat(child.style.marginTop);
-
-				if (!isNaN(mt))
-				{
-					if (child.style.marginTop.indexOf('px') >= 0)
-					{
-						marginTop = mt / blockFontSize;
-					}
-					else if (child.style.marginTop.indexOf('em') >= 0)
-					{
-						marginTop = mt;
-					}
-				}
-			}
-
-			if (child.style.marginBottom != '')
-			{
-				var mb = parseFloat(child.style.marginBottom);
-
-				if (!isNaN(mb))
-				{
-					if (child.style.marginBottom.indexOf('px') >= 0)
-					{
-						marginBottom = mb / blockFontSize;
-					}
-					else if (child.style.marginBottom.indexOf('em') >= 0)
-					{
-						marginBottom = mb;
-					}
-				}
-			}
-		}
-
-		// Collapses margins between adjacent blocks
-		var effectiveMarginTop = marginTop * blockFontSize;
-
-		if (isFirst)
-		{
-			cursorY += effectiveMarginTop;
-		}
-		else
-		{
-			var collapsed = Math.max(prevMarginBottom, effectiveMarginTop);
-			cursorY += collapsed;
-		}
-
-		if (self.containsBrElement(child))
-		{
-			var brLines = self.splitAtBr(child);
-
-			for (var li = 0; li < brLines.length && result; li++)
-			{
-				var lineNodes = brLines[li];
-				var tempContainer = document.createElement('span');
-
-				for (var ln = 0; ln < lineNodes.length; ln++)
-				{
-					tempContainer.appendChild(lineNodes[ln]);
-				}
-
-				var lineFontSize = self.getMaxInlineFontSize(tempContainer, blockFontSize);
-				cursorY += lineFontSize;
-
-				var textEl = self.createElement('text');
-				textEl.setAttribute('y', self.format(cursorY));
-				textEl.setAttribute('data-line-font-size', lineFontSize);
-
-				if (blockStyle.sizeFactor != 1.0)
-				{
-					textEl.setAttribute('font-size', blockFontSize + 'px');
-				}
-
-				if (blockStyle.weight != null)
-				{
-					textEl.setAttribute('font-weight', blockStyle.weight);
-				}
-
-				if (blockStyle.family != null)
-				{
-					textEl.setAttribute('font-family', blockStyle.family);
-				}
-
-				if (blockStyle.indent > 0)
-				{
-					textEl.setAttribute('dx', blockStyle.indent);
-				}
-
-				var inlineOffset = new mxPoint(0, 0);
-
-				if (lineNodes.length > 0)
-				{
-					result = self.convertHtmlInlineToSvg(tempContainer, textEl, inlineOffset, 1, blockFontSize);
-				}
-
-				container.appendChild(textEl);
-
-				var lineDescender = lineFontSize * (mxConstants.LINE_HEIGHT - 1);
-				lineDescender += self.getSupSubLineExpansion(lineFontSize,
-					inlineOffset.supDyPx, inlineOffset.subDyPx);
-				cursorY += lineDescender;
-			}
-		}
-		else
-		{
-			var lineFontSize = self.getMaxInlineFontSize(child, blockFontSize);
-			cursorY += lineFontSize;
-
-			var textEl = self.createElement('text');
-			textEl.setAttribute('y', self.format(cursorY));
-			textEl.setAttribute('data-line-font-size', lineFontSize);
-
-			if (blockStyle.sizeFactor != 1.0)
-			{
-				textEl.setAttribute('font-size', blockFontSize + 'px');
-			}
-
-			if (blockStyle.weight != null)
-			{
-				textEl.setAttribute('font-weight', blockStyle.weight);
-			}
-
-			if (blockStyle.family != null)
-			{
-				textEl.setAttribute('font-family', blockStyle.family);
-			}
-
-			if (blockStyle.indent > 0)
-			{
-				textEl.setAttribute('dx', blockStyle.indent);
-			}
-
-			var inlineOffset = new mxPoint(0, 0);
-			result = self.convertHtmlInlineToSvg(child, textEl, inlineOffset, 1, blockFontSize);
-
-			container.appendChild(textEl);
-
-			var lineDescender = lineFontSize * (mxConstants.LINE_HEIGHT - 1);
-			lineDescender += self.getSupSubLineExpansion(lineFontSize,
-				inlineOffset.supDyPx, inlineOffset.subDyPx,
-				inlineOffset.supFontSize, inlineOffset.subFontSize);
-			cursorY += lineDescender;
-		}
-
-		prevMarginBottom = marginBottom * blockFontSize;
-		isFirst = false;
-	}
-
-	function isInlineNode(node)
-	{
-		return node.nodeType == mxConstants.NODETYPE_TEXT ||
-			(node.nodeType == mxConstants.NODETYPE_ELEMENT &&
-			self.getBlockElementStyle(node.nodeName) == null);
-	}
-
-	function processAnonymousInlineRun(nodes)
-	{
-		// Creates a temporary span container for the inline nodes
-		var tempContainer = document.createElement('span');
-
-		for (var k = 0; k < nodes.length; k++)
-		{
-			tempContainer.appendChild(nodes[k].cloneNode(true));
-		}
-
-		// Checks if any non-whitespace content exists
-		var hasContent = false;
-
-		for (var k = 0; k < tempContainer.childNodes.length; k++)
-		{
-			var n = tempContainer.childNodes[k];
-
-			if (n.nodeType == mxConstants.NODETYPE_ELEMENT ||
-				(n.nodeType == mxConstants.NODETYPE_TEXT &&
-				mxUtils.trim(n.nodeValue).length > 0))
-			{
-				hasContent = true;
-				break;
-			}
-		}
-
-		if (!hasContent)
-		{
-			return;
-		}
-
-		// Handles BR elements within the anonymous inline run
-		if (self.containsBrElement(tempContainer))
-		{
-			var brLines = self.splitAtBr(tempContainer);
-
-			for (var li = 0; li < brLines.length && result; li++)
-			{
-				var lineNodes = brLines[li];
-				var lineContainer = document.createElement('span');
-
-				for (var ln = 0; ln < lineNodes.length; ln++)
-				{
-					lineContainer.appendChild(lineNodes[ln]);
-				}
-
-				var lineFontSize = self.getMaxInlineFontSize(lineContainer, baseFontSize);
-				cursorY += lineFontSize;
-
-				var textEl = self.createElement('text');
-				textEl.setAttribute('y', self.format(cursorY));
-				textEl.setAttribute('data-line-font-size', lineFontSize);
-
-				var inlineOffset = new mxPoint(0, 0);
-
-				if (lineNodes.length > 0)
-				{
-					result = self.convertHtmlInlineToSvg(lineContainer, textEl,
-						inlineOffset, 1, baseFontSize);
-				}
-
-				container.appendChild(textEl);
-
-				var lineDescender = lineFontSize * (mxConstants.LINE_HEIGHT - 1);
-				lineDescender += self.getSupSubLineExpansion(lineFontSize,
-					inlineOffset.supDyPx, inlineOffset.subDyPx);
-				cursorY += lineDescender;
-			}
-		}
-		else
-		{
-			var lineFontSize = self.getMaxInlineFontSize(tempContainer, baseFontSize);
-			cursorY += lineFontSize;
-
-			var textEl = self.createElement('text');
-			textEl.setAttribute('y', self.format(cursorY));
-			textEl.setAttribute('data-line-font-size', lineFontSize);
-
-			var inlineOffset = new mxPoint(0, 0);
-			result = self.convertHtmlInlineToSvg(tempContainer, textEl,
-				inlineOffset, 1, baseFontSize);
-
-			container.appendChild(textEl);
-
-			var lineDescender = lineFontSize * (mxConstants.LINE_HEIGHT - 1);
-			lineDescender += self.getSupSubLineExpansion(lineFontSize,
-				inlineOffset.supDyPx, inlineOffset.subDyPx,
-				inlineOffset.supFontSize, inlineOffset.subFontSize);
-			cursorY += lineDescender;
-		}
-
-		prevMarginBottom = 0;
-		isFirst = false;
-	}
-
-	function processChildren(parentElt)
-	{
-		for (var i = 0; i < parentElt.childNodes.length && result; i++)
-		{
-			var child = parentElt.childNodes[i];
-
-			// Collects consecutive inline nodes into anonymous block runs
-			if (isInlineNode(child))
-			{
-				var inlineRun = [];
-
-				while (i < parentElt.childNodes.length &&
-					isInlineNode(parentElt.childNodes[i]))
-				{
-					inlineRun.push(parentElt.childNodes[i]);
-					i++;
-				}
-
-				i--; // Adjust for the for-loop increment
-				processAnonymousInlineRun(inlineRun);
-				continue;
-			}
-
-			var blockStyle = self.getBlockElementStyle(child.nodeName);
-
-			if (blockStyle == null)
-			{
-				result = false;
-				continue;
-			}
-
-			// DIV with nested block children: flatten into current block flow
-			if (child.nodeName == 'DIV' && self.containsBlockChild(child))
-			{
-				processChildren(child);
-			}
-			else
-			{
-				processBlockInlineContent(child, blockStyle,
-					baseFontSize * blockStyle.sizeFactor);
-			}
-		}
-	}
-
-	processChildren(elt);
-
-	// Stores total text height for alignment computation
-	cursorY += prevMarginBottom;
-	offset.textHeight = cursorY;
-
-	return result;
-};
-
-/**
- * Function: convertHtmlInlineToSvg
- *
- * Converts inline HTML elements to SVG tspan elements.
- * effectiveFontSize tracks the current computed font size through nesting,
- * used for SUP/SUB dy computation relative to the parent font size.
- * offset.supDyPx / offset.subDyPx track the maximum SUP/SUB shift on
- * this line for line box expansion computation.
- */
-mxSvgCanvas2D.prototype.convertHtmlInlineToSvg = function(elt, text, offset, fontScale, effectiveFontSize)
-{
-	var result = true;
-
-	if (elt != null)
-	{
-		fontScale = (fontScale != null) ? fontScale : 1;
-		var baseFontSize = this.state.fontSize;
-		effectiveFontSize = (effectiveFontSize != null) ? effectiveFontSize : baseFontSize;
-		var currentDyPx = 0;
-
-		function setCurrentDy(tspan, targetDyPx)
-		{
-			// Tracks absolute dy position so that shifts into and
-			// out of superscript/subscript cancel exactly.
-			// Uses unitless values (SVG user units) so dy scales
-			// correctly with the SVG viewBox when zooming.
-			if (currentDyPx != 0 || targetDyPx != 0)
-			{
-				tspan.setAttribute('dy', Math.round((targetDyPx - currentDyPx) * 100) / 100);
-			}
-
-			currentDyPx = targetDyPx;
-		};
-
-		for (var i = 0; i < elt.childNodes.length && result; i++)
-		{
-			var tspan = this.createElement('tspan');
-			var child = elt.childNodes[i];
-			var dyPx = 0;
-
-			if (child.nodeType == mxConstants.NODETYPE_TEXT)
-			{
-				mxUtils.write(tspan, child.nodeValue);
-			}
-			else if (child.style.backgroundColor == '' &&
-				(child.nodeName == 'SUP' || child.nodeName == 'SUB' ||
-				child.nodeName == 'B' || child.nodeName == 'I' ||
-				child.nodeName == 'SPAN' || child.nodeName == 'FONT' ||
-				child.nodeName == 'STRIKE' || child.nodeName == 'U'))
-			{
-				// Uses original CSS style
-				if (child.style.cssText != '')
-				{
-					tspan.style.cssText = child.style.cssText;
-				}
-
-				if (child.getAttribute('face') != null)
-				{
-					tspan.style.fontFamily = mxUtils.parseCssFontFamily(
-						child.getAttribute('face'));
-				}
-
-				// CSS color is fill in SVG
-				if (child.style.color != '')
-				{
-					var cssColor = mxUtils.getLightDarkColor(child.style.color);
-					tspan.setAttribute('fill', cssColor.light);
-					tspan.style.fill = cssColor.cssText;
-					tspan.style.color = '';
-				}
-
-				var fontSize = tspan.style.fontSize || '';
-
-				var childFontScale = fontScale;
-				var childEffectiveFontSize = effectiveFontSize;
-
-				if (child.nodeName == 'SUP' || child.nodeName == 'SUB')
-				{
-					if (fontSize == '')
-					{
-						tspan.style.fontSize = 'smaller';
-						childFontScale = fontScale * 1.2;
-						childEffectiveFontSize = effectiveFontSize / 1.2;
-					}
-
-					if (child.nodeName == 'SUP' && offset.y == 0)
-					{
-						offset.y = -0.2;
-					}
-					else if (child.nodeName == 'SUB')
-					{
-						offset.y = Math.max(offset.y, 0.15);
-					}
-
-					// Uses parent's effective font size for dy
-					dyPx = (child.nodeName == 'SUP' ? -0.35 : 0.15) * effectiveFontSize;
-
-					// Tracks extreme dy and corresponding font size for line box expansion
-					if (child.nodeName == 'SUP')
-					{
-						if (offset.supDyPx == null || dyPx < offset.supDyPx)
-						{
-							offset.supDyPx = dyPx;
-							offset.supFontSize = childEffectiveFontSize;
-						}
-					}
-					else
-					{
-						if (offset.subDyPx == null || dyPx > offset.subDyPx)
-						{
-							offset.subDyPx = dyPx;
-							offset.subFontSize = childEffectiveFontSize;
-						}
-					}
-				}
-				else
-				{
-					if (child.nodeName == 'I')
-					{
-						tspan.setAttribute('font-style', 'italic');
-					}
-					else if (child.nodeName == 'B')
-					{
-						tspan.setAttribute('font-weight', 'bold');
-					}
-					else if (child.nodeName == 'STRIKE')
-					{
-						tspan.setAttribute('text-decoration', 'line-through');
-					}
-					else if (child.nodeName == 'U')
-					{
-						tspan.setAttribute('text-decoration', 'underline');
-					}
-				}
-
-				// Computes child effective font size from explicit font-size
-				if (fontSize != '' && fontSize != 'smaller')
-				{
-					if (fontSize.slice(-2) == 'px')
-					{
-						childEffectiveFontSize = parseFloat(fontSize);
-					}
-					else if (fontSize.slice(-2) == 'em')
-					{
-						childEffectiveFontSize = parseFloat(fontSize) * effectiveFontSize;
-					}
-					else if (fontSize.slice(-1) == '%')
-					{
-						childEffectiveFontSize = parseFloat(fontSize) / 100 * effectiveFontSize;
-					}
-				}
-
-				if (fontSize.slice(-2) == 'px')
-				{
-					tspan.style.fontSize = (parseFloat(fontSize) *
-						childFontScale / this.state.fontSize) + 'em';
-				}
-
-				result = this.convertHtmlInlineToSvg(child, tspan, offset,
-					childFontScale, childEffectiveFontSize);
-			}
-			else
-			{
-				result = false;
-			}
-
-			setCurrentDy(tspan, dyPx);
-			text.appendChild(tspan);
-		}
-	}
-
-	return result;
-};
-
-/**
- * Function: getSupSubLineExpansion
- *
- * Computes how much a line box expands when it contains superscript or
- * subscript elements. In CSS, vertical-align: super/sub shifts the inline
- * box, which can extend beyond the normal line box boundaries.
- *
- * supDyPx/subDyPx are the extreme dy values (negative for sup, positive for sub).
- * supFontSize/subFontSize are the effective font sizes of those elements.
- *
- * Returns the additional height to add to the line's descender.
- */
-mxSvgCanvas2D.prototype.getSupSubLineExpansion = function(lineFontSize, supDyPx, subDyPx, supFontSize, subFontSize)
-{
-	var expansion = 0;
-
-	if (supDyPx != null && supDyPx < 0)
-	{
-		// The sup's inline box extends above the normal line box.
-		// Sup inline top relative to baseline = dy - supFontSize
-		// Normal inline top relative to baseline = -lineFontSize
-		// In CSS, half the leading is distributed above the baseline,
-		// providing extra space for superscripts without expanding the line.
-		// Expansion above = max(0, normalTop - supTop - halfLeading)
-		var sfz = supFontSize || (lineFontSize / 1.2);
-		var halfLeading = lineFontSize * (mxConstants.LINE_HEIGHT - 1) / 2;
-		expansion = Math.max(0, sfz - lineFontSize - supDyPx - halfLeading);
-	}
-
-	if (subDyPx != null && subDyPx > 0)
-	{
-		// The sub's inline box extends below the normal line box.
-		// Sub inline bottom relative to baseline = dy + subFontSize * (LINE_HEIGHT - 1)
-		// Normal inline bottom = lineFontSize * (LINE_HEIGHT - 1)
-		var sfz = subFontSize || (lineFontSize / 1.2);
-		var subBottom = subDyPx + sfz * (mxConstants.LINE_HEIGHT - 1);
-		var normalBottom = lineFontSize * (mxConstants.LINE_HEIGHT - 1);
-		expansion = Math.max(expansion, subBottom - normalBottom);
-	}
-
-	return expansion;
-};
-
-/**
- * Function: containsBrElement
- *
- * Returns true if the element contains any BR elements at any depth.
- */
-mxSvgCanvas2D.prototype.containsBrElement = function(elt)
-{
-	for (var i = 0; i < elt.childNodes.length; i++)
-	{
-		var child = elt.childNodes[i];
-
-		if (child.nodeName == 'BR')
-		{
-			return true;
-		}
-
-		if (child.nodeType == mxConstants.NODETYPE_ELEMENT &&
-			this.containsBrElement(child))
-		{
-			return true;
-		}
-	}
-
-	return false;
-};
-
-/**
- * Function: splitAtBr
- *
- * Splits the children of the given element at BR boundaries. Returns an
- * array of arrays, where each inner array contains cloned DOM nodes
- * forming one line. Handles BR elements nested inside inline formatting
- * elements by cloning the parent wrapper for each sub-line.
- */
-mxSvgCanvas2D.prototype.splitAtBr = function(elt)
-{
-	var lines = [[]];
-
-	for (var i = 0; i < elt.childNodes.length; i++)
-	{
-		var child = elt.childNodes[i];
-
-		if (child.nodeName == 'BR')
-		{
-			lines.push([]);
-		}
-		else if (child.nodeType == mxConstants.NODETYPE_TEXT)
-		{
-			lines[lines.length - 1].push(child.cloneNode(true));
-		}
-		else if (child.nodeType == mxConstants.NODETYPE_ELEMENT)
-		{
-			if (this.containsBrElement(child))
-			{
-				var subLines = this.splitAtBr(child);
-
-				for (var j = 0; j < subLines.length; j++)
-				{
-					if (j > 0)
-					{
-						lines.push([]);
-					}
-
-					if (subLines[j].length > 0)
-					{
-						var wrapper = child.cloneNode(false);
-
-						for (var k = 0; k < subLines[j].length; k++)
-						{
-							wrapper.appendChild(subLines[j][k]);
-						}
-
-						lines[lines.length - 1].push(wrapper);
-					}
-				}
-			}
-			else
-			{
-				lines[lines.length - 1].push(child.cloneNode(true));
-			}
-		}
-	}
-
-	return lines;
-};
-
-/**
- * Function: convertHtmlWithBreaksToSvg
- *
- * Converts inline HTML content containing BR elements to multiple SVG
- * text elements, one per line. Sets offset.textHeight for alignment.
- */
-mxSvgCanvas2D.prototype.convertHtmlWithBreaksToSvg = function(elt, container, offset, fontScale)
-{
-	var result = true;
-	var baseFontSize = this.state.fontSize;
-	var lines = this.splitAtBr(elt);
-	var cursorY = 0;
-
-	for (var i = 0; i < lines.length && result; i++)
-	{
-		var lineNodes = lines[i];
-		var tempContainer = document.createElement('span');
-
-		for (var j = 0; j < lineNodes.length; j++)
-		{
-			tempContainer.appendChild(lineNodes[j]);
-		}
-
-		var lineFontSize = this.getMaxInlineFontSize(tempContainer, baseFontSize);
-		cursorY += lineFontSize;
-
-		var textEl = this.createElement('text');
-		textEl.setAttribute('y', this.format(cursorY));
-		textEl.setAttribute('data-line-font-size', lineFontSize);
-
-		var inlineOffset = new mxPoint(0, 0);
-
-		if (lineNodes.length > 0)
-		{
-			result = this.convertHtmlInlineToSvg(tempContainer, textEl,
-				inlineOffset, fontScale || 1);
-		}
-
-		container.appendChild(textEl);
-
-		var lineDescender = lineFontSize * (mxConstants.LINE_HEIGHT - 1);
-		lineDescender += this.getSupSubLineExpansion(lineFontSize,
-			inlineOffset.supDyPx, inlineOffset.subDyPx);
-		cursorY += lineDescender;
-	}
-
-	offset.textHeight = cursorY;
-
-	return result;
-};
-
 /**
  * Function: wrapSvgTextElement
  *
@@ -3144,6 +2617,7 @@ mxSvgCanvas2D.prototype.wrapSvgTextElement = function(textEl, maxWidth)
 	{
 		var token = tokens[i];
 		var w = measureWord(token);
+		token.width = w;
 
 		if (token.isSpace)
 		{
@@ -3179,9 +2653,42 @@ mxSvgCanvas2D.prototype.wrapSvgTextElement = function(textEl, maxWidth)
 		lineWidth += w;
 	}
 
+	// Widest rendered line (trailing whitespace trimmed), measured with the
+	// same canvas metrics used for the wrap decision. adjustBlockTextOverflow
+	// uses this as the content width to start-anchor overflowing clipped text,
+	// so the overflow shift works without getBBox (which returns nothing when
+	// the group is not in the live document, e.g. during SVG export).
+	var maxLineWidth = 0;
+
+	for (var li = 0; li < lines.length; li++)
+	{
+		var measuredLine = lines[li];
+		var lineEnd = measuredLine.length;
+
+		while (lineEnd > 0 && measuredLine[lineEnd - 1].isSpace)
+		{
+			lineEnd--;
+		}
+
+		var measuredWidth = 0;
+
+		for (var lk = 0; lk < lineEnd; lk++)
+		{
+			measuredWidth += measuredLine[lk].width;
+		}
+
+		if (measuredWidth > maxLineWidth)
+		{
+			maxLineWidth = measuredWidth;
+		}
+	}
+
 	if (lines.length <= 1)
 	{
-		return null;
+		// No wrapping needed, but expose the single-line width so block-mode
+		// overflow anchoring still works for unbreakable content wider than
+		// the cell.
+		return {elements: null, totalHeight: 0, maxLineWidth: maxLineWidth};
 	}
 
 	// Step 5: Build SVG text elements for each line with proper styling.
@@ -3325,13 +2832,13 @@ mxSvgCanvas2D.prototype.wrapSvgTextElement = function(textEl, maxWidth)
 
 		if (minDy < 0)
 		{
-			lineDescender += self.getSupSubLineExpansion(
+			lineDescender += mxUtils.getSupSubLineExpansion(
 				lineFontSize, minDy, null, minDyFontSize, null);
 		}
 
 		if (maxDy > 0)
 		{
-			lineDescender += self.getSupSubLineExpansion(
+			lineDescender += mxUtils.getSupSubLineExpansion(
 				lineFontSize, null, maxDy, null, maxDyFontSize);
 		}
 
@@ -3340,7 +2847,8 @@ mxSvgCanvas2D.prototype.wrapSvgTextElement = function(textEl, maxWidth)
 
 	return {
 		elements: result,
-		totalHeight: cursorY
+		totalHeight: cursorY,
+		maxLineWidth: maxLineWidth
 	};
 };
 
@@ -3349,7 +2857,8 @@ mxSvgCanvas2D.prototype.wrapSvgTextElement = function(textEl, maxWidth)
  *
  * Wraps text within each <text> element of a block-mode group. Replaces
  * wide text elements with multiple wrapped lines and adjusts y positions.
- * Modifies the group and offset.textHeight in place.
+ * Modifies the group and offset.textHeight in place, and sets
+ * offset.maxLineWidth to the widest rendered line across all blocks.
  */
 mxSvgCanvas2D.prototype.wrapSvgBlockElements = function(group, maxWidth, offset)
 {
@@ -3366,6 +2875,7 @@ mxSvgCanvas2D.prototype.wrapSvgBlockElements = function(group, maxWidth, offset)
 	}
 
 	var heightDelta = 0;
+	var maxLineWidth = 0;
 
 	for (var i = 0; i < children.length; i++)
 	{
@@ -3373,7 +2883,14 @@ mxSvgCanvas2D.prototype.wrapSvgBlockElements = function(group, maxWidth, offset)
 		var blockFontSize = parseFloat(textEl.getAttribute('font-size')) || fontSize;
 		var wrapped = this.wrapSvgTextElement(textEl, maxWidth);
 
-		if (wrapped != null)
+		// Tracks the widest line across all blocks (set whether or not the
+		// block itself wrapped) for the overflow anchoring in plainText.
+		if (wrapped != null && wrapped.maxLineWidth > maxLineWidth)
+		{
+			maxLineWidth = wrapped.maxLineWidth;
+		}
+
+		if (wrapped != null && wrapped.elements != null)
 		{
 			var origY = parseFloat(textEl.getAttribute('y')) || 0;
 			origY += heightDelta;
@@ -3413,6 +2930,12 @@ mxSvgCanvas2D.prototype.wrapSvgBlockElements = function(group, maxWidth, offset)
 					newEl.setAttribute('font-family', textEl.getAttribute('font-family'));
 				}
 
+				if (textEl.getAttribute('fill'))
+				{
+					newEl.setAttribute('fill', textEl.getAttribute('fill'));
+					newEl.style.fill = textEl.style.fill;
+				}
+
 				group.insertBefore(newEl, textEl);
 			}
 
@@ -3434,6 +2957,8 @@ mxSvgCanvas2D.prototype.wrapSvgBlockElements = function(group, maxWidth, offset)
 	{
 		offset.textHeight += heightDelta;
 	}
+
+	offset.maxLineWidth = maxLineWidth;
 };
 
 /**
@@ -3461,11 +2986,11 @@ mxSvgCanvas2D.prototype.text = function(x, y, w, h, str, align, valign, wrap, fo
 				var text = this.createElement('text');
 				var offset = new mxPoint(0, 0);
 
-				// Vertical writing-mode is not supported by the SVG <text> path
-				// (see mxText.js:980), so fall back to foreignObject which does.
+				// Falls back to foreignObject if the conversion is not possible,
+				// eg. for unsupported HTML or vertical writing-mode (see
+				// mxUtils.convertHtmlToSvg, which contains the checks)
 				if (this.allowConvertHtmlToSvg &&
-					(dir == null || dir.substring(0, 9) != 'vertical-') &&
-					this.convertHtmlToSvg(div.firstChild.firstChild, text, offset))
+					this.convertHtmlToSvg(div.firstChild.firstChild, text, offset, null, dir))
 				{
 					if (offset.textHeight != null)
 					{
@@ -3484,13 +3009,22 @@ mxSvgCanvas2D.prototype.text = function(x, y, w, h, str, align, valign, wrap, fo
 								w + this.foreignObjectPadding, offset);
 						}
 
-						// Measures HTML content width for overflow adjustment.
-						// When word wrap is active, text has been wrapped to fit w,
-						// so we skip the unwrapped measurement and let
-						// adjustBlockTextOverflow use getBBox for the actual width.
+						// Measures HTML content width for overflow adjustment so
+						// centered/right clipped content wider than the cell is
+						// start-anchored (matching HTML overflow:hidden). For
+						// wrapped text this is the widest wrapped line, already
+						// measured by wrapSvgBlockElements with the same canvas
+						// metrics used for the wrap decision; for non-wrapped
+						// text it is measured from the live DOM. Both avoid
+						// getBBox, which is unavailable during SVG export.
 						var htmlContentWidth = null;
 
-						if (!wrap && clip && (align == mxConstants.ALIGN_CENTER ||
+						if (wrap)
+						{
+							htmlContentWidth = (offset.maxLineWidth != null) ?
+								offset.maxLineWidth : null;
+						}
+						else if (clip && (align == mxConstants.ALIGN_CENTER ||
 							align == mxConstants.ALIGN_RIGHT))
 						{
 							htmlContentWidth = this.measureHtmlContentWidth(
@@ -3509,7 +3043,7 @@ mxSvgCanvas2D.prototype.text = function(x, y, w, h, str, align, valign, wrap, fo
 							var wrapped = this.wrapSvgTextElement(text,
 								w + this.foreignObjectPadding);
 
-							if (wrapped != null)
+							if (wrapped != null && wrapped.elements != null)
 							{
 								var group = this.createElement('g');
 
@@ -3518,11 +3052,11 @@ mxSvgCanvas2D.prototype.text = function(x, y, w, h, str, align, valign, wrap, fo
 									group.appendChild(wrapped.elements[i]);
 								}
 
-								// Word wrap was applied, so skip unwrapped width
-								// measurement (see block mode comment above)
+								// Word wrap applied: pass the widest wrapped line (canvas-measured)
+								// as content width so overflow anchoring works without getBBox.
 								this.plainText(x + this.state.dx, y + this.state.dy, w, h, '',
 									align, valign, wrap, overflow, clip, rotation, dir, group,
-									null, wrapped.totalHeight, null);
+									null, wrapped.totalHeight, wrapped.maxLineWidth);
 
 								return;
 							}
@@ -4243,10 +3777,15 @@ mxSvgCanvas2D.prototype.updateFont = function(node)
 	{
 		txtDecor.push('line-through');
 	}
-	
+
 	if (txtDecor.length > 0)
 	{
 		node.setAttribute('text-decoration', txtDecor.join(' '));
+
+		if ((s.fontStyle & mxConstants.FONT_UNDERLINE_DOTTED) == mxConstants.FONT_UNDERLINE_DOTTED)
+		{
+			node.style.textDecorationStyle = 'dotted';
+		}
 	}
 };
 

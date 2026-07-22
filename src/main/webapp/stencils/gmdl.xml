@@ -492,7 +492,7 @@
     <connections/>
     <foreground>
         <save/>
-        <fillcolor color="#498af4"/>
+        <fillcolor color="fillColor1" default="#498af4"/>
         <path>
             <move x="6" y="100"/>
             <arc large-arc-flag="0" rx="6" ry="6" sweep-flag="1" x="0" x-axis-rotation="0" y="94"/>
@@ -506,7 +506,7 @@
         </path>
         <fillstroke/>
         <strokecolor color="none"/>
-        <fillcolor color="#ffffff"/>
+        <fillcolor color="accentColor" default="#ffffff"/>
         <rect h="4" w="36" x="18" y="49.5"/>
         <fill/>
         <rect h="4" w="36" x="18" y="58.5"/>
@@ -613,7 +613,7 @@
             <close/>
         </path>
         <fillstroke/>
-        <fillcolor color="#ffffff"/>
+        <fillcolor color="accentColor" default="#ffffff"/>
         <path>
             <move x="53.4" y="95"/>
             <line x="53.4" y="61.2"/>
@@ -850,7 +850,7 @@
 <shape aspect="variable" h="100" name="google plus" strokewidth="inherit" w="100">
     <connections/>
     <foreground>
-        <fillcolor color="#dc4b3f"/>
+        <fillcolor color="fillColor1" default="#dc4b3f"/>
         <path>
             <move x="0" y="5"/>
             <arc large-arc-flag="0" rx="5" ry="5" sweep-flag="1" x="5" x-axis-rotation="0" y="0"/>
@@ -863,7 +863,7 @@
             <close/>
         </path>
         <fillstroke/>
-        <fillcolor color="#ffffff"/>
+        <fillcolor color="accentColor" default="#ffffff"/>
         <path>
             <move x="51.5" y="19"/>
             <arc large-arc-flag="0" rx="15" ry="15" sweep-flag="1" x="57.6" x-axis-rotation="0" y="32.6"/>
@@ -888,7 +888,7 @@
             <close/>
         </path>
         <fillstroke/>
-        <fillcolor color="#dc4b3f"/>
+        <fillcolor color="fillColor1" default="#dc4b3f"/>
         <path>
             <move x="36.6" y="19"/>
             <arc large-arc-flag="0" rx="8" ry="8" sweep-flag="1" x="44.4" x-axis-rotation="0" y="21.8"/>
@@ -915,7 +915,7 @@
             <close/>
         </path>
         <fillstroke/>
-        <fillcolor color="#ffffff"/>
+        <fillcolor color="accentColor" default="#ffffff"/>
         <path>
             <move x="76" y="36.5"/>
             <line x="76" y="45"/>
@@ -1142,7 +1142,7 @@
         <rect/>
         <stroke/>
         <strokecolor color="none"/>
-        <fillcolor color="#CFCECE"/>
+        <fillcolor color="accentColor" default="#CFCECE"/>
         <path>
             <move x="42" y="35"/>
             <line x="55" y="35"/>
@@ -1444,7 +1444,7 @@
     <foreground>
         <save/>
         <strokecolor color="none"/>
-        <fillcolor color="#efefef"/>
+        <fillcolor color="fillColor1" default="#efefef"/>
         <strokewidth width="0.3"/>
         <path>
             <move x="29.31" y="62.41"/>
@@ -1458,7 +1458,7 @@
         <rect/>
         <stroke/>
         <strokecolor color="none"/>
-        <fillcolor color="#05aaf4"/>
+        <fillcolor color="fillColor2" default="#05aaf4"/>
         <rect h="10" w="10" x="29.31" y="49.41"/>
         <fill/>
         <rect h="10" w="10" x="45.31" y="49.41"/>
@@ -1471,11 +1471,11 @@
     <connections/>
     <foreground>
         <strokecolor color="none"/>
-        <fillcolor color="#ffd759"/>
+        <fillcolor color="fillColor1" default="#ffd759"/>
         <ellipse h="90" w="90" x="0" y="0"/>
         <fill/>
-        <strokecolor color="#dddddd"/>
-        <fillcolor color="#ffffff"/>
+        <strokecolor color="strokeColor2" default="#dddddd"/>
+        <fillcolor color="fillColor2" default="#ffffff"/>
         <strokewidth width="0.3"/>
         <path>
             <move x="45" y="75"/>
@@ -1777,7 +1777,7 @@
             <close/>
         </path>
         <fillstroke/>
-        <fillcolor color="#ffffff"/>
+        <fillcolor color="accentColor" default="#ffffff"/>
         <rect h="9" w="12" x="6" y="12"/>
         <fillstroke/>
         <restore/>
@@ -1786,7 +1786,7 @@
         <rect h="3" w="12" x="6" y="0"/>
         <fillstroke/>
         <strokecolor color="none"/>
-        <fillcolor color="#ffffff"/>
+        <fillcolor color="accentColor" default="#ffffff"/>
         <ellipse h="2" w="2" x="20" y="10.5"/>
         <fill/>
     </foreground>
@@ -2225,7 +2225,7 @@
         </path>
         <fillstroke/>
         <strokecolor color="none"/>
-        <fillcolor color="#ffffff"/>
+        <fillcolor color="accentColor" default="#ffffff"/>
         <rect h="32.5" w="36" x="18" y="48.5"/>
         <fill/>
         <restore/>
@@ -2593,7 +2593,7 @@
             <close/>
         </path>
         <fillstroke/>
-        <fillcolor color="#ffffff"/>
+        <fillcolor color="accentColor" default="#ffffff"/>
         <path>
             <move x="78.7" y="34.8"/>
             <arc large-arc-flag="0" rx="45" ry="45" sweep-flag="1" x="62.8" x-axis-rotation="0" y="70.2"/>

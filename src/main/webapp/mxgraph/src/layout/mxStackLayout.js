@@ -346,40 +346,40 @@ mxStackLayout.prototype.execute = function(parent)
 		var x0 = this.x0 + this.border + this.marginLeft;
 		var y0 = this.y0 + this.border + this.marginTop;
 		
-		// Handles swimlane start size
-		if (this.graph.isSwimlane(parent))
+		// Handles swimlane start size, taking into account direction and
+		// horizontal and vertical flip styles: the title may sit on any
+		// side of the swimlane, returned as left (x), top (y), right
+		// (width) and bottom (height) sizes
+		var startSize = this.graph.getActualStartSize(parent, true);
+
+		if (pgeo != null)
 		{
-			// Uses computed style to get latest 
-			var style = this.graph.getCellStyle(parent);
-			var start = mxUtils.getNumber(style, mxConstants.STYLE_STARTSIZE, mxConstants.DEFAULT_STARTSIZE);
-			var horz = mxUtils.getValue(style, mxConstants.STYLE_HORIZONTAL, true) == 1;
-
-			if (pgeo != null)
-			{
-				if (horz)
-				{
-					start = Math.min(start, pgeo.height);
-				}
-				else
-				{
-					start = Math.min(start, pgeo.width);
-				}
-			}
-			
-			if (horizontal == horz)
-			{
-				fillValue -= start;
-			}
-
-			if (horz)
-			{
-				y0 += start;
-			}
-			else
-			{
-				x0 += start;
-			}
+			startSize.x = Math.min(startSize.x, pgeo.width);
+			startSize.y = Math.min(startSize.y, pgeo.height);
+			startSize.width = Math.min(startSize.width, pgeo.width);
+			startSize.height = Math.min(startSize.height, pgeo.height);
 		}
+
+		// Handles the footer size, painted opposite the title for swimlanes
+		// and at the bottom for other containers: reduces the fill size when
+		// the title or footer is on the fill axis and shifts the stack
+		// origin when either is at the near end of an axis; the far-end
+		// strips are handled in updateParentGeometry and resizeLast below
+		var footerSize = this.graph.getActualFooterSize(parent, true);
+
+		if (horizontal)
+		{
+			fillValue -= startSize.y + startSize.height +
+				footerSize.y + footerSize.height;
+		}
+		else
+		{
+			fillValue -= startSize.x + startSize.width +
+				footerSize.x + footerSize.width;
+		}
+
+		x0 += startSize.x + footerSize.x;
+		y0 += startSize.y + footerSize.y;
 
 		model.beginUpdate();
 		try
@@ -512,11 +512,13 @@ mxStackLayout.prototype.execute = function(parent)
 			{
 				if (horizontal)
 				{
-					last.width = pgeo.width - last.x - this.spacing - this.marginRight - this.marginLeft;
+					last.width = pgeo.width - last.x - this.spacing - this.marginRight -
+						this.marginLeft - startSize.width - footerSize.width;
 				}
 				else
 				{
-					last.height = pgeo.height - last.y - this.spacing - this.marginBottom;
+					last.height = pgeo.height - last.y - this.spacing - this.marginBottom -
+						startSize.height - footerSize.height;
 				}
 				
 				this.setChildGeometry(lastChild, last);
@@ -564,14 +566,22 @@ mxStackLayout.prototype.setChildGeometry = function(child, geo)
 mxStackLayout.prototype.updateParentGeometry = function(parent, pgeo, last)
 {
 	var horizontal = this.isHorizontal();
-	var model = this.graph.getModel();	
+	var model = this.graph.getModel();
+
+	// Keeps the parent's title and footer regions (the title on any side
+	// depending on direction and flip styles, the footer opposite the
+	// title for swimlanes and at the bottom for other containers) clear
+	// of the last child when they are on the stack axis
+	var startSize = this.graph.getActualStartSize(parent, true);
+	var footerSize = this.graph.getActualFooterSize(parent, true);
 
 	var pgeo2 = pgeo.clone();
-	
+
 	if (horizontal)
 	{
-		var tmp = last.x + last.width + this.marginRight + this.border;
-		
+		var tmp = last.x + last.width + this.marginRight + this.border +
+			startSize.width + footerSize.width;
+
 		if (this.resizeParentMax)
 		{
 			pgeo2.width = Math.max(pgeo2.width, tmp);
@@ -583,8 +593,9 @@ mxStackLayout.prototype.updateParentGeometry = function(parent, pgeo, last)
 	}
 	else
 	{
-		var tmp = last.y + last.height + this.marginBottom + this.border;
-		
+		var tmp = last.y + last.height + this.marginBottom + this.border +
+			startSize.height + footerSize.height;
+
 		if (this.resizeParentMax)
 		{
 			pgeo2.height = Math.max(pgeo2.height, tmp);

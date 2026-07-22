@@ -66,9 +66,9 @@
 			this.createVertexTemplateEntry(sr + 'shape=mxgraph.rack.general.1u_rack_server;', 160, 15, '', 'Server', null, null, dt + 'server'),
 			this.createVertexTemplateEntry(sr + 'shape=mxgraph.rackGeneral.horCableDuct;', 160, 15, '', 'Horizontal Cable Duct', null, null, dt + 'horizontal cable duct'),
 			this.createVertexTemplateEntry(sr + 'shape=mxgraph.rackGeneral.horRoutingBank;', 160, 20, '', 'Horizontal Routing Bank', null, null, dt + 'horizontal routing bank'),
-			this.createVertexTemplateEntry(sr + 'shape=mxgraph.rackGeneral.neatPatch;', 160, 30, '', 'Neat-Patch', null, null, dt + 'neat patch'),
+			this.createVertexTemplateEntry(sr + 'shape=mxgraph.rackGeneral.neatPatch;bodyColor=#666666;', 160, 30, '', 'Neat-Patch', null, null, dt + 'neat patch'),
 			this.createVertexTemplateEntry(sr + 'shape=mxgraph.rackGeneral.shelf;container=1;collapsible=0', 160, 15, '', 'Shelf', null, null, dt + 'shelf'),
-			this.createVertexTemplateEntry(sr + 'shape=mxgraph.rackGeneral.channelBase;', 200, 30, '', 'Channel Base', null, null, dt + 'channel base'),
+			this.createVertexTemplateEntry(sr + 'shape=mxgraph.rackGeneral.channelBase;footColor=#000000;', 200, 30, '', 'Channel Base', null, null, dt + 'channel base'),
 			this.createVertexTemplateEntry('shape=mxgraph.rackGeneral.cabinetLeg;html=1;shadow=0;dashed=0;fillColor=#444444;strokeColor=#444444;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;verticalAlign=top;', 50, 50, '', 'Cabinet Leg', null, null, dt + 'cabinet leg support'),
 
 			//stencils

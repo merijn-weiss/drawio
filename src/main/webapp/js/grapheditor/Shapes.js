@@ -7,6 +7,58 @@
  */
 (function()
 {
+	// Adds support for conditional label bounds in stencils. A stencil may
+	// contain labelBounds nodes with an if attribute that contains the name
+	// of a style key and x, y, w and h attributes in stencil coordinates,
+	// eg. <labelBounds if="boundedLbl" x="0" y="10" w="78" h="47"/>. The
+	// first node whose style key is 1 in the current cell style defines
+	// the label bounds for the shape. Direction and flip styles are
+	// handled in mxShape.getLabelBounds via mxUtils.getDirectedBounds.
+	var shapeGetLabelMargins = mxShape.prototype.getLabelMargins;
+	mxShape.prototype.getLabelMargins = function(rect)
+	{
+		if (this.stencil != null && this.stencil.desc != null &&
+			this.style != null)
+		{
+			if (this.stencil.labelBounds == null)
+			{
+				var nodes = this.stencil.desc.getElementsByTagName('labelBounds');
+				var temp = [];
+
+				for (var i = 0; i < nodes.length; i++)
+				{
+					temp.push({condition: nodes[i].getAttribute('if'),
+						x: Number(nodes[i].getAttribute('x') || 0),
+						y: Number(nodes[i].getAttribute('y') || 0),
+						w: Number(nodes[i].getAttribute('w') || this.stencil.w0),
+						h: Number(nodes[i].getAttribute('h') || this.stencil.h0)});
+				}
+
+				this.stencil.labelBounds = temp;
+			}
+
+			for (var i = 0; i < this.stencil.labelBounds.length; i++)
+			{
+				var lb = this.stencil.labelBounds[i];
+
+				if (lb.condition == null ||
+					mxUtils.getValue(this.style, lb.condition, '0') == '1')
+				{
+					var aspect = this.stencil.computeAspect(this.style,
+						rect.x, rect.y, rect.width, rect.height);
+					var x0 = aspect.x - rect.x + lb.x * aspect.width;
+					var y0 = aspect.y - rect.y + lb.y * aspect.height;
+
+					return new mxRectangle(x0, y0,
+						rect.width - x0 - lb.w * aspect.width,
+						rect.height - y0 - lb.h * aspect.height);
+				}
+			}
+		}
+
+		return shapeGetLabelMargins.apply(this, arguments);
+	};
+
 	function TableLineShape(line, stroke, strokewidth)
 	{
 		mxShape.call(this);
@@ -257,7 +309,18 @@
 		var fixedHeader = mxUtils.getValue(this.style,
 			mxConstants.STYLE_FIXED_HEADER, this.fixedHeaderDefault);
 
-		if ((start == 0 && !fixedHeader) || this.outline)
+		if (start == 0 && this.isRounded && !this.outline)
+		{
+			// Headerless rounded table: PartialRectangleShape has no arc
+			// support and the swimlane path derives its arc from the title
+			// size (0 here), so both paint square corners. Paint the
+			// rounded background directly with the rectangle arc.
+			var r = mxShape.prototype.getArcSize.call(this, w, h);
+			c.begin();
+			c.roundrect(x, y, w, h, r, r);
+			c.fillAndStroke();
+		}
+		else if ((start == 0 && !fixedHeader) || this.outline)
 		{
 			PartialRectangleShape.prototype.paintVertexShape.apply(this, arguments);
 		}
@@ -343,6 +406,55 @@
 	};
 	
 	mxCellRenderer.registerShape('tableRow', TableRowShape);
+
+	// Repaints the grid lines a filled swimlane-shaped table cell (table, table
+	// row or lane) would otherwise hide with its fill. The table draws the lines
+	// centered on the cell boundaries and below its child cells, so the fill
+	// covers its half of them (see Graph.paintTableCellLines). mxSwimlane has
+	// translated the canvas to the shape origin, so the cell bounds are 0, 0,
+	// w, h here. TableShape/TableRowShape reach this via the super call.
+	var mxSwimlanePaintVertexShape = mxSwimlane.prototype.paintVertexShape;
+	mxSwimlane.prototype.paintVertexShape = function(c, x, y, w, h)
+	{
+		mxSwimlanePaintVertexShape.apply(this, arguments);
+
+		if (this.state != null && !this.outline)
+		{
+			var graph = this.state.view.graph;
+			var filled = (this.fill != null && this.fill != mxConstants.NONE) ||
+				(this.laneFill != null && this.laneFill != mxConstants.NONE);
+
+			if (filled && graph.paintTableCellLines != null)
+			{
+				var cell = this.state.cell;
+
+				// A table row only fills its title strip, so the separators are
+				// only covered there. Restricting the repaint to the strip leaves
+				// the body lines to the lane cells and avoids drawing across
+				// rowspan gaps the table left in the body.
+				if (graph.isTableRow != null && graph.isTableRow(cell))
+				{
+					var start = this.getTitleSize();
+
+					if (this.isHorizontal())
+					{
+						graph.paintTableCellLines(c, cell, 0, 0, w,
+							Math.min(start, h), this.stroke, this.strokewidth);
+					}
+					else
+					{
+						graph.paintTableCellLines(c, cell, 0, 0,
+							Math.min(start, w), h, this.stroke, this.strokewidth);
+					}
+				}
+				else
+				{
+					graph.paintTableCellLines(c, cell, 0, 0, w, h,
+						this.stroke, this.strokewidth);
+				}
+			}
+		}
+	};
 
 	// Cube Shape, supports size style
 	function CubeShape()
@@ -2504,6 +2616,237 @@
 	// Replaces existing actor shape
 	mxCellRenderer.registerShape('umlControl', UmlControlShape);
 
+	// Sequence-diagram participant icon shapes (mermaid `participant Foo
+	// @{"type":"boundary"}` etc.). The standalone umlBoundary/umlControl/
+	// umlEntity shapes stretch to fill their bounding box, which inside a
+	// 150px-wide lifeline header produces a giant ellipse. The seq*
+	// variants paint the existing icon at a fixed pixel size centered
+	// horizontally so it reads as a small circle (~44 px) above the
+	// participant label, matching mermaid v11's drawActorTypeBoundary /
+	// drawActorTypeControl / drawActorTypeEntity output.
+	function makeSeqIcon(IconCtor, iconSize)
+	{
+		function S() { mxShape.call(this); };
+		mxUtils.extend(S, mxShape);
+		S.prototype.iconSize = iconSize;
+		S.prototype.paintBackground = function(c, x, y, w, h)
+		{
+			var size = Math.min(this.iconSize, w, h);
+			var cx = x + (w - size) / 2;
+			// Some icon shapes override paintVertexShape directly (e.g.
+			// UmlEntityShape extends mxEllipse and adds the bottom line
+			// in paintVertexShape — it has no paintBackground). Prefer
+			// the override when present, fall back to the
+			// paintBackground/paintForeground pair otherwise.
+			if (IconCtor.prototype.hasOwnProperty('paintVertexShape'))
+			{
+				IconCtor.prototype.paintVertexShape.call(this, c, cx, y, size, size);
+			}
+			else
+			{
+				IconCtor.prototype.paintBackground.call(this, c, cx, y, size, size);
+				if (typeof IconCtor.prototype.paintForeground === 'function')
+				{
+					IconCtor.prototype.paintForeground.call(this, c, cx, y, size, size);
+				}
+			}
+		};
+		return S;
+	};
+
+	// Mermaid's drawActorTypeBoundary renders a wider non-square icon:
+	// a 20-px-tall vertical bar with a 40-px horizontal handler joining
+	// it to a 44-px-diameter circle on the right. Total width ≈ 84,
+	// total height = circle diameter = 44 (centered vertically). The
+	// generic UmlBoundaryShape is a single square cell that bakes the
+	// handler at w/6, which collapses the visible handler to ~7 px when
+	// hosted inside makeSeqIcon's 44×44 square — visibly different from
+	// the ref. The custom shape below mirrors mermaid's proportions.
+	function SeqBoundaryShape() { mxShape.call(this); };
+	mxUtils.extend(SeqBoundaryShape, mxShape);
+	SeqBoundaryShape.prototype.iconSize = 44;
+	SeqBoundaryShape.prototype.paintBackground = function(c, x, y, w, h)
+	{
+		var size = Math.min(this.iconSize, w, h);
+		var circleR = size / 2;
+		// Handler ~ size*0.9 — close to mermaid's 40 px on a 44 px icon.
+		var handlerW = size * 0.9;
+		// Bar ~ size*0.45 (mermaid: 20 on 44).
+		var barH = size * 0.45;
+		// Mermaid centers the CIRCLE on the lifeline (cx = actor.centerX).
+		// The bar+handler extend to the LEFT of the circle. Anchor the
+		// circle's center on the cell's horizontal center so the lifeline
+		// — drawn at x+w/2 by UmlLifeline — passes through the circle's
+		// midpoint. Previously the whole shape (bar+handler+circle) was
+		// centered on the cell, putting the circle ~handlerW/2 right of
+		// the lifeline, which read as misaligned.
+		var circleCx = x + w / 2;
+		var circleX = circleCx - circleR;
+		var cy = y + size / 2;
+		// Handler ends just inside the circle's left edge so the line
+		// visually meets the circle (mermaid: handler 40 wide, circle r=22,
+		// handler-end is ~7 px past circle's left edge).
+		var handlerEndX = circleX + handlerW * 0.175;
+		var leftX = handlerEndX - handlerW;
+
+		// Vertical bar at the left
+		c.begin();
+		c.moveTo(leftX, cy - barH / 2);
+		c.lineTo(leftX, cy + barH / 2);
+		c.end();
+		c.stroke();
+
+		// Horizontal handler from bar to circle
+		c.begin();
+		c.moveTo(leftX, cy);
+		c.lineTo(handlerEndX, cy);
+		c.end();
+		c.stroke();
+
+		// Circle centered on the cell's horizontal center
+		c.ellipse(circleX, y, size, size);
+		c.fillAndStroke();
+	};
+	mxCellRenderer.registerShape('seqBoundary', SeqBoundaryShape);
+	mxCellRenderer.registerShape('seqControl', makeSeqIcon(UmlControlShape, 44));
+	mxCellRenderer.registerShape('seqEntity', makeSeqIcon(UmlEntityShape, 44));
+
+	// Mermaid sequence-diagram queue actor type — horizontal cylinder
+	// rendered as a stadium pill with an inner arc on the right showing
+	// depth. Mirrors drawActorTypeQueue in mermaid.js: rx = ry/(2.5+h/50)
+	// where ry = h/2.
+	function SeqQueueShape() { mxShape.call(this); };
+	mxUtils.extend(SeqQueueShape, mxShape);
+	SeqQueueShape.prototype.paintBackground = function(c, x, y, w, h)
+	{
+		var ry = h / 2;
+		var rx = ry / (2.5 + h / 50);
+		c.save();
+		c.translate(x, y);
+
+		c.begin();
+		c.moveTo(rx, 0);
+		c.lineTo(w - rx, 0);
+		c.arcTo(rx, ry, 0, 0, 1, w - rx, h);
+		c.lineTo(rx, h);
+		c.arcTo(rx, ry, 0, 0, 1, rx, 0);
+		c.close();
+		c.fillAndStroke();
+		c.restore();
+	};
+	SeqQueueShape.prototype.paintForeground = function(c, x, y, w, h)
+	{
+		// Wrap in save/restore: paintBackground already accumulated a
+		// translate(x, y) on the canvas and mxShape.paintVertexShape does
+		// NOT save/restore between bg/fg, so without this guard the
+		// foreground curve was committed at (2x, 2y) — visible in
+		// docs-sequence-32 where the bottom queue's depth indicator
+		// landed at y≈355 instead of inside the y=182–247 bottom box.
+		var ry = h / 2;
+		var rx = ry / (2.5 + h / 50);
+		c.save();
+		c.translate(x, y);
+
+		c.begin();
+		c.moveTo(w - rx, 0);
+		c.arcTo(rx, ry, 0, 0, 0, w - rx, h);
+		c.stroke();
+		c.restore();
+	};
+	mxCellRenderer.registerShape('seqQueue', SeqQueueShape);
+
+	// Mermaid sequence-diagram collections actor type — two stacked
+	// rectangles with the back rect offset by (+6, -6) px (top-right)
+	// so the "stack of papers" look extends up-and-to-the-right of the
+	// labelled front rect.
+	function SeqCollectionsShape() { mxShape.call(this); };
+	mxUtils.extend(SeqCollectionsShape, mxShape);
+	SeqCollectionsShape.prototype.paintBackground = function(c, x, y, w, h)
+	{
+		var off = 6;
+		c.rect(x + off, y - off, w, h);
+		c.fillAndStroke();
+		c.rect(x, y, w, h);
+		c.fillAndStroke();
+	};
+	mxCellRenderer.registerShape('seqCollections', SeqCollectionsShape);
+
+	// Mermaid sequence-diagram database actor type — vertical cylinder
+	// painted at w/3 size (mirrors mermaid drawActorTypeDatabase: w4 = h3
+	// = w/3, rx = w4/2, ry = rx/(2.5+w4/50)). Cylinder centered horizontally;
+	// label sits below in the remaining height.
+	function SeqDatabaseShape() { mxShape.call(this); };
+	mxUtils.extend(SeqDatabaseShape, mxShape);
+	SeqDatabaseShape.prototype.paintBackground = function(c, x, y, w, h)
+	{
+		var iconW = w / 3;
+		var iconH = w / 3;
+		var rx = iconW / 2;
+		var ry = rx / (2.5 + iconW / 50);
+		var cx = x + (w - iconW) / 2;
+
+		// Mermaid path: M(0,ry) a(rx,ry,...,w,0) a(rx,ry,...,-w,0) l(0,h-2ry)
+		// a(rx,ry,...,w,0) l(0,-(h-2ry)). First two arcs draw the top "lid"
+		// (full ellipse), sides + bottom arc complete the cylinder.
+		c.translate(cx, y);
+
+		c.begin();
+		c.moveTo(0, ry);
+		c.arcTo(rx, ry, 0, 0, 0, iconW, ry);
+		c.arcTo(rx, ry, 0, 0, 0, 0, ry);
+		c.lineTo(0, iconH - ry);
+		c.arcTo(rx, ry, 0, 0, 0, iconW, iconH - ry);
+		c.lineTo(iconW, ry);
+		c.fillAndStroke();
+	};
+	mxCellRenderer.registerShape('seqDatabase', SeqDatabaseShape);
+
+	// Mermaid sequence-diagram actor (`actor Foo` — stick figure). The
+	// stock umlActor stretches with the cell, producing a 75-px-wide
+	// head + arms in a 150 px lifeline header. Mermaid renders a fixed
+	// ~50 x 60 px stick figure: head circle r=15 at the top, torso 20 px,
+	// arms 36 px wide at mid-torso, legs splaying to 17 px below torso.
+	function SeqActorStickShape() { mxShape.call(this); };
+	mxUtils.extend(SeqActorStickShape, mxShape);
+	SeqActorStickShape.prototype.paintBackground = function(c, x, y, w, h)
+	{
+		var headR = 15;
+		var torsoH = 20;
+		var armsW = 36;
+		var legsH = 15;
+		var legsW = 32;
+		var iconH = headR * 2 + torsoH + legsH;
+		var cx = x + w / 2;
+		// Mermaid's stick figure starts ~5 px above the actor cell top
+		// (head overflows upward) and ends well above the cell bottom,
+		// leaving the bottom band free for the label. Anchor to the top
+		// of the cell so callers can size cell.height = iconH + labelH
+		// and put the label in the empty bottom — this matches the ref
+		// instead of centering the figure (which makes the label
+		// overlap the legs when cell.h == iconH).
+		var topY = y;
+		var headCY = topY + headR;
+		var torsoTop = headCY + headR;
+		var torsoBot = torsoTop + torsoH;
+		var armsY = torsoTop + torsoH / 2;
+		var legsBot = torsoBot + legsH;
+
+		c.ellipse(cx - headR, headCY - headR, headR * 2, headR * 2);
+		c.fillAndStroke();
+
+		c.begin();
+		c.moveTo(cx, torsoTop);
+		c.lineTo(cx, torsoBot);
+		c.moveTo(cx - armsW / 2, armsY);
+		c.lineTo(cx + armsW / 2, armsY);
+		c.moveTo(cx, torsoBot);
+		c.lineTo(cx - legsW / 2, legsBot);
+		c.moveTo(cx, torsoBot);
+		c.lineTo(cx + legsW / 2, legsBot);
+		c.stroke();
+	};
+	mxCellRenderer.registerShape('seqActorStick', SeqActorStickShape);
+
 	// UML Lifeline Shape
 	function UmlLifeline()
 	{
@@ -2519,27 +2862,50 @@
 		return false;
 	};
 
+	// lifelineMirror=1 repeats the head (participant box or icon plus a
+	// painted copy of the label) at the foot of the cell, so a single
+	// lifeline cell renders both participant ends of a UML sequence
+	// column. Off by default for backward compatibility.
+	UmlLifeline.prototype.isMirrored = function()
+	{
+		return mxUtils.getValue(this.style, 'lifelineMirror', '0') == '1';
+	};
+
+	// Head (and mirrored foot) height. With lifelineMirror=1 the head is
+	// clamped to half the cell height so head and foot never overlap.
+	UmlLifeline.prototype.getHeadSize = function(h)
+	{
+		return Math.max(0, Math.min(this.isMirrored() ? h / 2 : h,
+			parseFloat(mxUtils.getValue(this.style, 'size', this.size))));
+	};
+
 	UmlLifeline.prototype.getLabelBounds = function(rect)
 	{
-		var size = Math.max(0, Math.min(rect.height, parseFloat(
-			mxUtils.getValue(this.style, 'size', this.size)) * this.scale));
-		
+		var size = Math.max(0, Math.min(this.isMirrored() ? rect.height / 2 : rect.height,
+			parseFloat(mxUtils.getValue(this.style, 'size', this.size)) * this.scale));
+
 		return new mxRectangle(rect.x, rect.y, rect.width, size);
 	};
 
 	UmlLifeline.prototype.paintBackground = function(c, x, y, w, h)
 	{
-		var size = Math.max(0, Math.min(h, parseFloat(mxUtils.getValue(this.style, 'size', this.size))));
+		var size = this.getHeadSize(h);
+		var mirror = this.isMirrored();
 		var participant = mxUtils.getValue(this.style, 'participant');
-		
+
 		if (participant == null || this.state == null)
 		{
 			mxRectangleShape.prototype.paintBackground.call(this, c, x, y, w, size);
+
+			if (mirror)
+			{
+				mxRectangleShape.prototype.paintBackground.call(this, c, x, y + h - size, w, size);
+			}
 		}
 		else
 		{
 			var ctor = this.state.view.graph.cellRenderer.getShape(participant);
-			
+
 			if (ctor != null && ctor != UmlLifeline)
 			{
 				var shape = new ctor();
@@ -2547,26 +2913,117 @@
 				c.save();
 				shape.paintVertexShape(c, x, y, w, size);
 				c.restore();
+
+				if (mirror)
+				{
+					c.save();
+					shape.paintVertexShape(c, x, y + h - size, w, size);
+					c.restore();
+				}
 			}
 		}
-		
-		if (size < h)
+
+		var lineEnd = mirror ? h - size : h;
+
+		if (size < lineEnd)
 		{
 			c.setDashed(mxUtils.getValue(this.style, 'lifelineDashed', '1') == '1');
 			c.begin();
 			c.moveTo(x + w / 2, y + size);
-			c.lineTo(x + w / 2, y + h);
+			c.lineTo(x + w / 2, y + lineEnd);
 			c.end();
 			c.stroke();
 		}
 	};
 	UmlLifeline.prototype.paintForeground = function(c, x, y, w, h)
 	{
-		var size = Math.max(0, Math.min(h, parseFloat(mxUtils.getValue(this.style, 'size', this.size))));
-		mxRectangleShape.prototype.paintForeground.call(this, c, x, y, w, Math.min(h, size));
+		// When a custom participant shape (seqQueue, seqCollections,
+		// seqDatabase, …) is rendering inside the head area, IT owns
+		// the outline — overlaying the default rectangle stroke leaves
+		// a stray rect around the icon (visible on docs-sequence-32's
+		// queue-typed Alice top vs the matching bottom box).
+		var participant = mxUtils.getValue(this.style, 'participant');
+		var size = this.getHeadSize(h);
+		var mirror = this.isMirrored();
+
+		if (participant == null)
+		{
+			mxRectangleShape.prototype.paintForeground.call(this, c, x, y, w, Math.min(h, size));
+
+			if (mirror)
+			{
+				mxRectangleShape.prototype.paintForeground.call(this, c, x, y + h - size, w, size);
+			}
+		}
+
+		if (mirror)
+		{
+			this.paintMirrorLabel(c, x, y + h - size, w, size);
+		}
+	};
+
+	// Paints a copy of the cell's label into the mirrored foot box. The
+	// regular (editable) label stays in the head via getLabelBounds; the
+	// copy follows the style's align/verticalAlign/spacing keys so the
+	// foot text lands exactly like the head text (e.g. typed sequence
+	// actors use verticalAlign=bottom;spacingBottom=4 to sit below the
+	// icon, capsule types center it).
+	UmlLifeline.prototype.paintMirrorLabel = function(c, x, y, w, h)
+	{
+		var label = (this.state != null) ?
+			this.state.view.graph.getLabel(this.state.cell) : null;
+
+		// Remember what was painted so the renderer invalidates the shape
+		// when only the value changes (see isShapeInvalid override below).
+		this.mirrorLabelValue = label;
+
+		if (label == null || label == '')
+		{
+			return;
+		}
+
+		c.setFontColor(mxUtils.getValue(this.style, mxConstants.STYLE_FONTCOLOR, 'black'));
+		c.setFontBackgroundColor(mxUtils.getValue(this.style, mxConstants.STYLE_LABEL_BACKGROUNDCOLOR, null));
+		c.setFontBorderColor(mxUtils.getValue(this.style, mxConstants.STYLE_LABEL_BORDERCOLOR, null));
+		c.setFontFamily(mxUtils.getValue(this.style, mxConstants.STYLE_FONTFAMILY, mxConstants.DEFAULT_FONTFAMILY));
+		c.setFontSize(parseFloat(mxUtils.getValue(this.style, mxConstants.STYLE_FONTSIZE, mxConstants.DEFAULT_FONTSIZE)));
+		c.setFontStyle(parseInt(mxUtils.getValue(this.style, mxConstants.STYLE_FONTSTYLE, 0)));
+
+		var align = mxUtils.getValue(this.style, mxConstants.STYLE_ALIGN, mxConstants.ALIGN_CENTER);
+		var valign = mxUtils.getValue(this.style, mxConstants.STYLE_VERTICAL_ALIGN, mxConstants.ALIGN_MIDDLE);
+		var spacing = parseInt(mxUtils.getValue(this.style, mxConstants.STYLE_SPACING, 2));
+		var spacingTop = parseFloat(mxUtils.getValue(this.style, mxConstants.STYLE_SPACING_TOP, 0)) + spacing;
+		var spacingBottom = parseFloat(mxUtils.getValue(this.style, mxConstants.STYLE_SPACING_BOTTOM, 0)) + spacing;
+		var spacingLeft = parseFloat(mxUtils.getValue(this.style, mxConstants.STYLE_SPACING_LEFT, 0)) + spacing;
+		var spacingRight = parseFloat(mxUtils.getValue(this.style, mxConstants.STYLE_SPACING_RIGHT, 0)) + spacing;
+
+		// Top/bottom anchors carry the same 1 px inset mxText applies to
+		// its label bounds, so the copy lines up with a real cell label.
+		var tx = (align == mxConstants.ALIGN_LEFT) ? x + spacingLeft :
+			((align == mxConstants.ALIGN_RIGHT) ? x + w - spacingRight : x + w / 2);
+		var ty = (valign == mxConstants.ALIGN_TOP) ? y + spacingTop + 1 :
+			((valign == mxConstants.ALIGN_BOTTOM) ? y + h - spacingBottom - 1 : y + h / 2);
+
+		var wrap = mxUtils.getValue(this.style, mxConstants.STYLE_WHITE_SPACE, null) == 'wrap';
+		var format = mxUtils.getValue(this.style, 'html', '0') == '1' ? 'html' : '';
+
+		c.text(tx, ty, wrap ? w - spacingLeft - spacingRight : 0, 0, label,
+			align, valign, wrap, format, null, false, 0, null);
 	};
 
 	mxCellRenderer.registerShape('umlLifeline', UmlLifeline);
+
+	// Shape repaints are skipped when only the cell value changes, which
+	// would leave the painted foot copy of a lifelineMirror label stale
+	// after in-place edits. Only shapes that painted a mirror label carry
+	// mirrorLabelValue, so the extra check is a no-op everywhere else.
+	var cellRendererIsShapeInvalid = mxCellRenderer.prototype.isShapeInvalid;
+	mxCellRenderer.prototype.isShapeInvalid = function(state, shape)
+	{
+		return cellRendererIsShapeInvalid.apply(this, arguments) ||
+			(shape.mirrorLabelValue !== undefined && shape.mirrorLabelValue !=
+				state.view.graph.getLabel(state.cell));
+	};
 	
 	// UML Frame Shape
 	function UmlFrame()
@@ -2661,12 +3118,19 @@
 	mxPerimeter.LifelinePerimeter = function (bounds, vertex, next, orthogonal)
 	{
 		var size = UmlLifeline.prototype.size;
-		
+		var max = bounds.y + bounds.height;
+
 		if (vertex != null)
 		{
 			size = mxUtils.getValue(vertex.style, 'size', size) * vertex.view.scale;
+
+			// Connections stay on the body line, off the mirrored foot box
+			if (mxUtils.getValue(vertex.style, 'lifelineMirror', '0') == '1')
+			{
+				max -= size;
+			}
 		}
-		
+
 		var sw = (parseFloat(vertex.style[mxConstants.STYLE_STROKEWIDTH] || 1) * vertex.view.scale / 2) - 1;
 
 		if (next.x < bounds.getCenterX())
@@ -2674,8 +3138,8 @@
 			sw += 1;
 			sw *= -1;
 		}
-		
-		return new mxPoint(bounds.getCenterX() + sw, Math.min(bounds.y + bounds.height,
+
+		return new mxPoint(bounds.getCenterX() + sw, Math.min(max,
 				Math.max(bounds.y + size, next.y)));
 	};
 	
@@ -3966,6 +4430,20 @@
 			else
 			{
 				c.setStrokeColor(this.stroke);
+			}
+		}
+
+		// Repaints the table grid lines hidden by the cell fill (see
+		// Graph.paintTableCellLines). No-op unless this is a filled table cell.
+		if (this.state != null && !this.outline &&
+			this.fill != null && this.fill != mxConstants.NONE)
+		{
+			var graph = this.state.view.graph;
+
+			if (graph.paintTableCellLines != null)
+			{
+				graph.paintTableCellLines(c, this.state.cell, x, y, w, h,
+					this.stroke, this.strokewidth);
 			}
 		}
 	};
@@ -5649,7 +6127,10 @@
 
 	PipeShape.prototype.getFlowAnimationPath = function()
 	{
-		return mxShape.prototype.getFlowAnimationPath.call(this, 2);
+		// The second line stroke (inner pipe) only exists when a fillColor
+		// is set - fall back to the casing stroke for hollow pipes.
+		return mxShape.prototype.getFlowAnimationPath.call(this, 2) ||
+			mxShape.prototype.getFlowAnimationPath.call(this);
 	};
 
 	PipeShape.prototype.origPaintEdgeShape = PipeShape.prototype.paintEdgeShape;
@@ -6332,6 +6813,11 @@
 			if (txtDecor.length > 0)
 			{
 				text.setAttribute('text-decoration', txtDecor.join(' '));
+
+				if ((fontStyle & mxConstants.FONT_UNDERLINE_DOTTED) == mxConstants.FONT_UNDERLINE_DOTTED)
+				{
+					text.style.textDecorationStyle = 'dotted';
+				}
 			}
 
 			// Alignment
@@ -6861,6 +7347,126 @@
 	};
 
 	mxCellRenderer.registerShape('mermaidBlockArrow', MermaidBlockArrowShape);
+
+	// Sankey flow band used by the mermaid sankey renderer. d3-sankey
+	// draws each link as the cubic `M x0,y0 C mx,y0 mx,y1 x1,y1`
+	// (mx = horizontal midpoint between the terminals) stroked at the
+	// band thickness. mxGraph cannot put a fill gradient on an edge
+	// stroke, so this shape paints the equivalent ribbon outline
+	// instead: the curve is sampled and offset perpendicular to its
+	// tangent by ±width/2 (matching SVG stroke geometry), closed with
+	// the butt caps at the ends, and filled — fillColor/gradientColor
+	// with gradientDirection=east reproduce mermaid's source→target
+	// link gradient. Style `width` is the band thickness.
+	function MermaidSankeyLinkShape()
+	{
+		mxConnector.call(this);
+	};
+
+	mxUtils.extend(MermaidSankeyLinkShape, mxConnector);
+
+	MermaidSankeyLinkShape.prototype.defaultWidth = 10;
+
+	MermaidSankeyLinkShape.prototype.getEdgeWidth = function()
+	{
+		return Math.max(1, mxUtils.getNumber(this.style, 'width', this.defaultWidth));
+	};
+
+	// The band is a pure fill — skip the half-pixel crisp-stroke offset
+	// so it lands on exact model coordinates.
+	MermaidSankeyLinkShape.prototype.getSvgScreenOffset = function()
+	{
+		return 0;
+	};
+
+	MermaidSankeyLinkShape.prototype.augmentBoundingBox = function(bbox)
+	{
+		mxShape.prototype.augmentBoundingBox.apply(this, arguments);
+
+		// The band's x-extent ends exactly at the terminals (the end
+		// tangents are horizontal), so only grow vertically.
+		var grow = (this.getEdgeWidth() / 2 + this.strokewidth) * this.scale;
+		bbox.y -= grow;
+		bbox.height += 2 * grow;
+	};
+
+	MermaidSankeyLinkShape.prototype.paintEdgeShape = function(c, pts)
+	{
+		var p0 = pts[0];
+		var pe = pts[pts.length - 1];
+
+		if (p0 == null || pe == null)
+		{
+			return;
+		}
+
+		var x0 = p0.x, y0 = p0.y;
+		var x1 = pe.x, y1 = pe.y;
+		var mx = (x0 + x1) / 2;
+		var hw = this.getEdgeWidth() / 2;
+
+		// Control points are (mx, y0) and (mx, y1), so the derivative
+		// reduces to x'(t) = 3u²(mx-x0) + 3t²(x1-mx), y'(t) = 6ut(y1-y0).
+		var n = 32;
+		var side1 = [];
+		var side2 = [];
+
+		for (var i = 0; i <= n; i++)
+		{
+			var t = i / n;
+			var u = 1 - t;
+			var x = u * u * u * x0 + 3 * u * u * t * mx + 3 * u * t * t * mx + t * t * t * x1;
+			var y = u * u * u * y0 + 3 * u * u * t * y0 + 3 * u * t * t * y1 + t * t * t * y1;
+			var dx = 3 * u * u * (mx - x0) + 3 * t * t * (x1 - mx);
+			var dy = 6 * u * t * (y1 - y0);
+			var len = Math.sqrt(dx * dx + dy * dy);
+
+			if (len == 0)
+			{
+				dx = 1;
+				dy = 0;
+				len = 1;
+			}
+
+			var nx = -dy / len * hw;
+			var ny = dx / len * hw;
+
+			side1.push(new mxPoint(x + nx, y + ny));
+			side2.push(new mxPoint(x - nx, y - ny));
+		}
+
+		c.begin();
+		c.moveTo(side1[0].x, side1[0].y);
+
+		for (var i = 1; i <= n; i++)
+		{
+			c.lineTo(side1[i].x, side1[i].y);
+		}
+
+		for (var i = n; i >= 0; i--)
+		{
+			c.lineTo(side2[i].x, side2[i].y);
+		}
+
+		c.close();
+
+		// fillAndStroke nulls c.node, so grab the emitted <path> first.
+		var bandNode = c.node;
+		c.fillAndStroke();
+
+		// Mermaid composites overlapping bands with multiply so
+		// crossings darken. Only SVG canvases expose the emitted
+		// element; canvas2d/XML exports render without the blend.
+		if (bandNode != null && bandNode.setAttribute != null &&
+			bandNode.parentNode != null)
+		{
+			var prevStyle = bandNode.getAttribute('style');
+			bandNode.setAttribute('style', (prevStyle != null && prevStyle != '' ?
+				prevStyle + ';' : '') + 'mix-blend-mode:multiply');
+		}
+	};
+
+	mxCellRenderer.registerShape('mermaidSankeyLink', MermaidSankeyLinkShape);
 
 	// Handlers are only added if mxVertexHandler is defined (ie. not in embedded graph)
 	if (typeof mxVertexHandler !== 'undefined')
@@ -7827,7 +8433,7 @@
 				}, false)];
 			}
 		};
-		
+
 		// Exposes custom handles
 		Graph.createHandle = createHandle;
 		Graph.handleFactory = handleFactory;

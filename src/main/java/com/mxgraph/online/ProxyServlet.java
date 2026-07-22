@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.UnknownHostException;
@@ -62,12 +63,13 @@ public class ProxyServlet extends HttpServlet
 			HttpServletResponse response) throws ServletException, IOException
 	{
 		String urlParam = request.getParameter("url");
+		InetAddress validatedAddr;
 
 		if (!"1".equals(System.getenv("ENABLE_DRAWIO_PROXY")))
 		{
 			response.setStatus(HttpServletResponse.SC_NOT_FOUND);
 		}
-		else if (Utils.sanitizeUrl(urlParam))
+		else if ((validatedAddr = Utils.validatedAddress(urlParam)) != null)
 		{
 			// build the UML source from the compressed request parameter
 			String ref = request.getHeader("referer");
@@ -87,7 +89,7 @@ public class ProxyServlet extends HttpServlet
 				response.setCharacterEncoding("UTF-8");
 
 				URL url = new URL(urlParam);
-				URLConnection connection = url.openConnection();
+				URLConnection connection = Utils.openPinnedConnection(url, validatedAddr);
 				connection.setConnectTimeout(TIMEOUT);
 				connection.setReadTimeout(TIMEOUT);
 				
@@ -120,14 +122,15 @@ public class ProxyServlet extends HttpServlet
 					while (counter++ <= 6 && (int)(status / 10) == 30) //Any redirect status 30x
 					{
 						String redirectUrl = connection.getHeaderField("Location");
+						InetAddress redirectAddr = Utils.validatedAddress(redirectUrl);
 
-						if (!Utils.sanitizeUrl(redirectUrl))
+						if (redirectAddr == null)
 						{
 							break;
 						}
 
 						url = new URL(redirectUrl);
-						connection = url.openConnection();
+						connection = Utils.openPinnedConnection(url, redirectAddr);
 						((HttpURLConnection) connection)
 								.setInstanceFollowRedirects(false);
 						connection.setConnectTimeout(TIMEOUT);

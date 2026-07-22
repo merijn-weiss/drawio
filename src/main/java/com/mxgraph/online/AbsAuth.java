@@ -283,8 +283,13 @@ abstract public class AbsAuth extends HttpServlet implements AbsComm
 			{
 				setStatus(HttpServletResponse.SC_BAD_REQUEST, response);
 			}
-			//Non GAE runtimes are excluded from state check. TODO Change GAE stub to return null from CacheFactory
-			else if (IS_GAE && (stateToken == null || !stateToken.equals(cookieToken)))
+			//Reject OAuth callbacks whose state token does not match the one
+			//issued for this browser session (CSRF protection). Fail closed when
+			//no state was cached - e.g. it expired or the state cookie was not
+			//returned (such as a third-party/iframe context where the browser
+			//strips it; those flows must use a top-level/popup auth or a
+			//partitioned cookie rather than weakening this check).
+			else if (stateToken == null || cookieToken == null || !stateToken.equals(cookieToken))
 			{
 				setStatus(HttpServletResponse.SC_UNAUTHORIZED, response);
 			}
