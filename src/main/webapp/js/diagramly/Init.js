@@ -32,7 +32,10 @@ window.DRAWIO_BASE_URL = window.DRAWIO_BASE_URL || ((/.*\.draw\.io$/.test(window
 window.DRAWIO_SERVER_URL = window.DRAWIO_SERVER_URL || window.location.origin +
 	window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/';
 window.DRAWIO_LIGHTBOX_URL = window.DRAWIO_LIGHTBOX_URL || 'https://viewer.diagrams.net';
-window.EXPORT_URL = window.EXPORT_URL || 'https://convert.diagrams.net/node/export';
+// Defaults only if unset so that a pre-configuration can set null to disable
+// server-side export (see EditorUi.isRemoteExportEnabled)
+window.EXPORT_URL = (typeof window.EXPORT_URL === 'undefined') ?
+	'https://convert.diagrams.net/node/export' : window.EXPORT_URL;
 window.DRAW_MATH_URL = window.DRAW_MATH_URL || 'math4/es5';
 window.VSS_CONVERT_URL = window.VSS_CONVERT_URL || 'https://convert.diagrams.net/VsdConverter/api/converter';
 window.REALTIME_URL = window.REALTIME_URL || window.DRAWIO_SERVER_URL + 'cache';

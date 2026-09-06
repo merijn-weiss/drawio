@@ -1,3 +1,33 @@
+06-SEP-2026: 31.4.4
+
+- Adds the Atlassian 2025 shape set core: glyph stencils and tile wrapper
+- Adds the Atlassian sidebar palettes, agent marks and connection points
+- Reworks glyph scaling in the new Atlassian library (square-canonical, per-icon hex calibration, proportional tile switching) and removes unused   logo images [jgraph/drawio#5730]
+- Improves logo lockups in the new Atlassian shape library [jgraph/drawio#5730]
+- Deduplicates the generated Atlassian sidebar module with shared style-prefix variables [jgraph/drawio#5730]
+-  Deduplicates search tags and refreshes stale comments in the new Atlassian library [jgraph/drawio#5730]
+- Moves per-icon data from styles onto the Atlassian stencil attributes [jgraph/drawio#5730]
+- Hardens the Atlassian wrapper against degenerate box data [jgraph/drawio#5730]
+- Guards the Atlassian wrapper's lockup layout and tile aspect against NaN [jgraph/drawio#5730]
+- Hides the PlantUML and Mermaid round-trip identity attributes in tooltips
+- Strips the characters the URL parser drops before the font scheme check [GHSA-fjgc-8xgj-rvh4]
+
+05-SEP-2026: 31.4.3
+
+- Updates stable channel to 31.4.1
+- Fixes SVG attachment images rendering blank in Confluence diagrams by using the correct data URI MIME type [DID-20051]
+- Retries transient network failures for GETs in the Confluence Cloud page IDs import and logs real failure totals [DID-19637]
+- Rejects IPv6 transition prefixes in the server SSRF guard [GHSA-xj4f-x55f-699c]
+- Stops stale image callbacks drawing ghost copies of Confluence attachment images after fit-on-load [jgraph/drawio-dev#658]
+- Fixes local print preview head CSS: closes the malformed shadow-suppression rule that swallowed the MathJax print rule and configured font CSS, writes app CSS into the style element unescaped with the style end tag neutralized, rewrites Google font URLs on pages 2+ and suppresses the unnamed @page rule when named page CSS is in use
+- Removes unused code
+- Derives export to PDF via print and server-side image export from EXPORT_URL instead of hand-set flags, treats null, empty and the public build placeholder as no export service and fails the canvas-unavailable fallbacks instead of posting to a dead URL [jgraph/drawio-dev#660]
+- Adds reindexInst3 resource for the Jira re-indexing page note that indexing pauses while the computer is asleep or offline [jgraph/drawio-jira-forge#1]
+- Gives the Google API loader the page's CSP nonce in the Drive editor
+- Update vendored drawio-plantuml bundle to commit 0fdd6ad
+- Updates plantuml build
+- Restricts font sources to http(s), data: and configured URLs [GHSA-fjgc-8xgj-rvh4]
+
 31-AUG-2026: 31.4.2
 
 - Keeps the CryptoJS build tooling out of the public repo [jgraph/drawio-dev#640]

@@ -6645,6 +6645,36 @@ Graph.prototype.editAfterInsert = false;
 Graph.prototype.builtInProperties = ['label', 'tooltip', 'placeholders', 'placeholder', 'note'];
 
 /**
+ * Defines the property name prefixes to be ignored in tooltips. The PlantUML
+ * and Mermaid converters stamp round-trip identity onto every generated cell
+ * (plantUmlId / plantUmlBaseStyle / plantUmlBaseValue and the mermaid
+ * equivalents, plus plantUmlData / mermaidData on the wrapper group). Those
+ * attributes must stay in the model - EditorUi.replaceLockedGroupChildren and
+ * mergeMermaidStyleDelta re-parse them - but they are internal bookkeeping,
+ * so hovering a shape of an inserted diagram must not dump them as a tooltip.
+ * Matched by prefix so attributes added by a later bundle stay hidden too.
+ */
+Graph.prototype.builtInPropertyPrefixes = ['plantUml', 'mermaid'];
+
+/**
+ * Returns true if the given property name starts with one of the prefixes in
+ * builtInPropertyPrefixes and is therefore ignored in tooltips.
+ */
+Graph.prototype.isBuiltInPropertyPrefix = function(name)
+{
+	for (var i = 0; i < this.builtInPropertyPrefixes.length; i++)
+	{
+		if (name.substring(0, this.builtInPropertyPrefixes[i].length) ==
+			this.builtInPropertyPrefixes[i])
+		{
+			return true;
+		}
+	}
+
+	return false;
+};
+
+/**
  * Specifies if icons should be shown on cells with a note. Default is
  * true (the icon is the affordance for reading the note).
  */
@@ -13861,7 +13891,8 @@ Graph.prototype.getTooltipForCell = function(cell)
 
 		if (tip == null)
 		{
-			var ignored = this.builtInProperties;
+			// Copies the shared list as the link handling below appends to it
+			var ignored = this.builtInProperties.slice();
 			var attrs = cell.value.attributes;
 			var temp = [];
 			tip = '';
@@ -13876,7 +13907,8 @@ Graph.prototype.getTooltipForCell = function(cell)
 			for (var i = 0; i < attrs.length; i++)
 			{
 				if (((Graph.translateDiagram && attrs[i].nodeName == 'label') ||
-					mxUtils.indexOf(ignored, attrs[i].nodeName) < 0) &&
+					(mxUtils.indexOf(ignored, attrs[i].nodeName) < 0 &&
+					!this.isBuiltInPropertyPrefix(attrs[i].nodeName))) &&
 					attrs[i].nodeValue.length > 0)
 				{
 					temp.push({name: attrs[i].nodeName, value: attrs[i].nodeValue});

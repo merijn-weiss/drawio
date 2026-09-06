@@ -767,6 +767,82 @@ public class Utils
 	}
 
 	/**
+	 * Returns true if the address lies in one of the IPv6 transition prefixes
+	 * that embed an IPv4 address: 6to4 (2002::/16, RFC 3056, deprecated by
+	 * RFC 7526), Teredo (2001::/32, RFC 4380), the NAT64 Well-Known Prefix
+	 * (64:ff9b::/96, RFC 6052) and its local-use companion (64:ff9b:1::/48,
+	 * RFC 8215), the deprecated IPv4-compatible form (::/96) and the
+	 * IPv4-mapped form (::ffff:0:0/96, normally already unwrapped to an
+	 * Inet4Address by the JDK, kept for completeness).
+	 *
+	 * The private-range checks in {@link #validatedAddress(String)} only see
+	 * the outer IPv6 address, so e.g. 64:ff9b::a9fe:a9fe passes them while a
+	 * NAT64 translator on the server's network would turn it into a connection
+	 * to 169.254.169.254. Rather than extracting and re-checking the embedded
+	 * IPv4 (each mechanism encodes it differently and Teredo inverts it), the
+	 * whole prefix is rejected: none of these is ever a legitimate host for a
+	 * resource a diagram fetches. A network-specific NAT64 prefix (RFC 6052
+	 * section 2.2) cannot be recognised here and remains the translator's
+	 * job - RFC 6052 section 3.1 requires it to drop non-global embedded
+	 * addresses.
+	 *
+	 * @param address the resolved address to test
+	 * @return true if the address is in an IPv4-embedding transition prefix
+	 */
+	private static boolean isIPv6TransitionAddress(InetAddress address)
+	{
+		if (address instanceof Inet6Address)
+		{
+			byte[] b = address.getAddress();
+
+			if (b.length != 16)
+			{
+				return false;
+			}
+
+			// 6to4 2002::/16
+			if ((b[0] & 0xFF) == 0x20 && (b[1] & 0xFF) == 0x02)
+			{
+				return true;
+			}
+
+			// Teredo 2001:0000::/32
+			if ((b[0] & 0xFF) == 0x20 && (b[1] & 0xFF) == 0x01
+					&& b[2] == 0 && b[3] == 0)
+			{
+				return true;
+			}
+
+			// NAT64 well-known prefix 64:ff9b::/96 and local-use 64:ff9b:1::/48
+			if (b[0] == 0 && (b[1] & 0xFF) == 0x64
+					&& (b[2] & 0xFF) == 0xFF && (b[3] & 0xFF) == 0x9B)
+			{
+				boolean wellKnown = true;
+
+				for (int i = 4; i < 12 && wellKnown; i++)
+				{
+					wellKnown = (b[i] == 0);
+				}
+
+				return wellKnown || (b[4] == 0 && (b[5] & 0xFF) == 0x01);
+			}
+
+			// IPv4-compatible ::/96 and IPv4-mapped ::ffff:0:0/96
+			boolean leadingZero = true;
+
+			for (int i = 0; i < 10 && leadingZero; i++)
+			{
+				leadingZero = (b[i] == 0);
+			}
+
+			return leadingZero && ((b[10] == 0 && b[11] == 0)
+					|| ((b[10] & 0xFF) == 0xFF && (b[11] & 0xFF) == 0xFF));
+		}
+
+		return false;
+	}
+
+	/**
 	 * Resolves and validates the host of the given URL exactly once and returns
 	 * the resolved address, or null if the URL is not permitted (malformed,
 	 * unknown host, non-http(s), disallowed port, or pointing at a private,
@@ -837,6 +913,7 @@ public class Utils
 						|| hostAddress.startsWith("198.19.")
 						|| isSharedCgnatIPv4(address)
 						|| isUniqueLocalIPv6(address)
+						|| isIPv6TransitionAddress(address)
 						|| host.endsWith(".arpa");
 	
 				return ((protocol.equals("http") || protocol.equals("https"))

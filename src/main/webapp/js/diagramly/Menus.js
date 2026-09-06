@@ -640,7 +640,7 @@
 		editorUi.actions.put('exportPdf', new Action('formatPdf' + '...', function()
 		{
 			editorUi.showPrintDialog(mxResources.get('formatPdf'),
-				(!EditorUi.isElectronApp && (editorUi.isOffline() || editorUi.printPdfExport)) ?
+				(!EditorUi.isElectronApp && editorUi.isPrintPdfExport()) ?
 					null : mxUtils.bind(this, function(preview, args)
 					{
 						var pageCount = (editorUi.pages != null) ? editorUi.pages.length : 1;
@@ -998,7 +998,7 @@
 						}
 					}), true, defaultEditable, format, true);
 			}
-			else if (!editorUi.isOffline() && (!mxClient.IS_IOS || !navigator.standalone))
+			else if (editorUi.isRemoteExportEnabled() && (!mxClient.IS_IOS || !navigator.standalone))
 			{
 				editorUi.showRemoteExportDialog(mxResources.get('export'), null, mxUtils.bind(this,
 					function(ignoreSelection, editable, transparent, scale, border)
@@ -3165,7 +3165,7 @@
 			}
 			
 			// Disabled for standalone mode in iOS because new tab cannot be closed
-			else if (!editorUi.isOffline() && (!mxClient.IS_IOS || !navigator.standalone))
+			else if (editorUi.isRemoteExportEnabled() && (!mxClient.IS_IOS || !navigator.standalone))
 			{
 				this.addMenuItems(menu, ['exportPng', 'exportJpg'], parent);
 			}
@@ -3177,13 +3177,13 @@
 
 			this.addMenuItems(menu, ['exportSvg', '-'], parent);
 			
-			// Redirects export to PDF to print in Chrome App
-			if (editorUi.isOffline() || editorUi.printPdfExport)
+			// Redirects export to PDF to print if no export service is available
+			if (editorUi.isPrintPdfExport())
 			{
 				this.addMenuItems(menu, ['exportPdf'], parent);
 			}
 			// Disabled for standalone mode in iOS because new tab cannot be closed
-			else if (!editorUi.isOffline() && (!mxClient.IS_IOS || !navigator.standalone))
+			else if (!mxClient.IS_IOS || !navigator.standalone)
 			{
 				this.addMenuItems(menu, ['exportPdf'], parent);
 			}

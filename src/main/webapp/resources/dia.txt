@@ -1120,6 +1120,7 @@ startExp=Start Export
 refreshDrawIndex=Refresh draw.io Diagrams Index
 reindexInst1=Click the "Start Indexing" button to refresh draw.io diagrams index.
 reindexInst2=Please note that the indexing procedure will take some time and the browser window must remain open until the indexing is completed.
+reindexInst3=Indexing pauses while the computer is asleep or offline and resumes when the connection returns, so keep the computer awake until "Re-indexing finished" is shown.
 startIndexing=Start Indexing
 confAPageFoundFetch=Page "{1}" found. Fetching
 confAAllDiagDone=All {1} diagrams processed. Process finished.

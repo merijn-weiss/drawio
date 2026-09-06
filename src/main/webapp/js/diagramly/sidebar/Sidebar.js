@@ -176,6 +176,7 @@
            	                           {id: 'floorplan', libs: ['floorplan']},
            	                           {id: 'bootstrap', libs: ['bootstrap']},
            	                           {id: 'atlassian', libs: ['atlassian']},
+           	                           {id: 'atlassian2', prefix: 'atlassian2', libs: ['Apps', 'Work Types', 'Logos']},
 	                                   {id: 'fluid_power', libs: ['fluid_power']},
 	                                   {id: 'gmdl', prefix: 'gmdl', libs: Sidebar.prototype.gmdl},
            	                           {id: 'archimate4', prefix: 'archimate4', libs: Sidebar.prototype.archimate4},
@@ -509,7 +510,8 @@
             			{title: mxResources.get('software'),
             			entries: [{title: 'Active Directory', id: 'active_directory', image: IMAGE_PATH + '/sidebar-active_directory.png'},
 								{title: mxResources.get('android'), id: 'android', image: IMAGE_PATH + '/sidebar-android.png'},
-								{title: 'Atlassian', id: 'atlassian', image: IMAGE_PATH + '/sidebar-atlassian.png'},
+								{title: 'Atlassian', id: 'atlassian2', image: IMAGE_PATH + '/sidebar-atlassian2.png'},
+								{title: 'Atlassian (legacy)', id: 'atlassian', image: IMAGE_PATH + '/sidebar-atlassian.png'},
 								{title: mxResources.get('bootstrap'), id: 'bootstrap', image: IMAGE_PATH + '/sidebar-bootstrap.png'},
 								{title: 'C4', id: 'c4', image: IMAGE_PATH + '/sidebar-c4.png'},
 								{title: 'Data Flow Diagram', id: 'dfd', image: IMAGE_PATH + '/sidebar-dfd.png'},
@@ -1584,6 +1586,7 @@
 		this.addActiveDirectoryPalette();
 		this.addAndroidPalette();
 		this.addAtlassianPalette();
+		this.addAtlassian2Palette();
 		this.addBootstrapPalette();
 		this.addDFDPalette();
 		this.addErPalette();

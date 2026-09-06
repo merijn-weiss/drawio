@@ -848,8 +848,8 @@
 	EditorUi.prototype.currentFile = null;
 
 	/**
-	 * Specifies if PDF export should be done via print dialog. Default is
-	 * false which uses the PhantomJS backend to create the PDF.
+	 * Forces PDF export via the print dialog. Default is false, which uses
+	 * the export service if one is available (see isPrintPdfExport).
 	 */
 	EditorUi.prototype.printPdfExport = false;
 	
@@ -1105,6 +1105,28 @@
 		// ignored in the desktop app where all resources are local
 		return this.isOfflineApp() || (!navigator.onLine && !EditorUi.isElectronApp) ||
 			(!ignoreStealth && (urlParams['stealth'] == '1' || urlParams['lockdown'] == '1'));
+	};
+
+	/**
+	 * Returns true if a server-side export service is configured and the app
+	 * is not offline. EXPORT_URL must be an absolute HTTP(S) or root-relative
+	 * URL. Null, empty and other values (such as the placeholder in the
+	 * PreConfig.js of the public build) mean that no service is available.
+	 */
+	EditorUi.prototype.isRemoteExportEnabled = function()
+	{
+		return !this.isOffline() && typeof EXPORT_URL === 'string' &&
+			/^(https?:\/\/|\/)/i.test(EXPORT_URL);
+	};
+
+	/**
+	 * Returns true if PDF export should use the print dialog instead of the
+	 * export service. This is the case if printPdfExport is set or if no
+	 * export service is available.
+	 */
+	EditorUi.prototype.isPrintPdfExport = function()
+	{
+		return this.printPdfExport || !this.isRemoteExportEnabled();
 	};
 
 	/**
@@ -10417,6 +10439,10 @@
 		   	{
 		   		err({message: mxResources.get('unknownError')});
 		   	}), null, true, (retina) ? 2 : 1, null, shadow, null, null, Editor.defaultBorder);
+		}
+		else if (!this.isRemoteExportEnabled())
+		{
+			err({message: mxResources.get('notAvailable')});
 		}
 		else
 		{
@@ -21475,7 +21501,7 @@
 					if (!args.shadows)
 					{
 						css += 'g[style*="filter: drop-shadow("] {\n' +
-							'  filter: none !important;{\n' +
+							'  filter: none !important;\n' +
 							'}\n';
 					}
 
@@ -21650,7 +21676,7 @@
 						if (Graph.isCssFontUrl(fontUrl))
 						{
 							pv.wnd.document.writeln('<link rel="stylesheet" href="' +
-								mxUtils.htmlEntities(fontUrl) +
+								mxUtils.htmlEntities(Graph.rewriteGoogleFontUrl(fontUrl)) +
 								'" charset="UTF-8" type="text/css">');
 						}
 						else
@@ -24074,6 +24100,10 @@
 									}
 
 									graphReady();
+								}
+								else if (!this.isRemoteExportEnabled())
+								{
+									processUri(null);
 								}
 								else
 								{
@@ -26957,6 +26987,10 @@
 							editorUi.exportImage(s, false, true,
 								false, false, b, true, false, 'jpeg', grid);
 						}
+					}
+					else if (!editorUi.isRemoteExportEnabled())
+					{
+						editorUi.handleError({message: mxResources.get('notAvailable')});
 					}
 					else 
 					{

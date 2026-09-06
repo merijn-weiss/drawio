@@ -2831,6 +2831,7 @@
 			if (config.defaultFonts != null)
 			{
 				Menus.prototype.defaultFonts = config.defaultFonts
+				Editor.addAllowedFontUrls(config.defaultFonts);
 			}
 
 			if (config.presetColors != null)
@@ -3159,6 +3160,7 @@
 			{
 				Menus.prototype.defaultFonts = config.customFonts.
 					concat(Menus.prototype.defaultFonts);
+				Editor.addAllowedFontUrls(config.customFonts);
 			}
 			
 			if (config.customPresetColors != null)
@@ -4042,6 +4044,35 @@
 	};
 
 	/**
+	 * Allows the given font URL to point at the local filesystem. Only for
+	 * URLs that come from the configuration, see Graph.isValidFontUrl.
+	 */
+	Editor.addAllowedFontUrl = function(url)
+	{
+		if (typeof url === 'string' && url.length > 0)
+		{
+			Graph.allowedFontUrls[url] = true;
+		}
+	};
+
+	/**
+	 * Allows the font URLs in a configured font list (customFonts, defaultFonts).
+	 */
+	Editor.addAllowedFontUrls = function(fonts)
+	{
+		if (Array.isArray(fonts))
+		{
+			for (var i = 0; i < fonts.length; i++)
+			{
+				if (fonts[i] != null && typeof fonts[i] === 'object')
+				{
+					Editor.addAllowedFontUrl(fonts[i].fontUrl);
+				}
+			}
+		}
+	};
+
+	/**
 	 * Adds the global fontCss configuration.
 	 */
 	Editor.configureFontCss = function(fontCss)
@@ -4049,6 +4080,22 @@
 		if (fontCss != null)
 		{
 			Editor.prototype.fontCss = fontCss;
+
+			// The configured font CSS is trusted, so its URLs are allowed
+			// even where they point at local files
+			var urls = fontCss.split('url(');
+
+			for (var i = 1; i < urls.length; i++)
+			{
+				var end = urls[i].indexOf(')');
+
+				if (end > 0)
+				{
+					Editor.addAllowedFontUrl(Editor.trimCssUrl(
+						urls[i].substring(0, end)));
+				}
+			}
+
 			var t = document.getElementsByTagName('script')[0];
 			
 			if (t != null && t.parentNode != null)
@@ -8657,6 +8704,53 @@
 	Graph.customFontElements = Object.create(null);
 
 	/**
+	 * Font URLs that are allowed to point at the local filesystem. Populated
+	 * from the configuration (customFonts, defaultFonts, fontCss) by
+	 * Editor.addAllowedFontUrl. Null prototype as the keys are URLs.
+	 */
+	Graph.allowedFontUrls = Object.create(null);
+
+	/**
+	 * Returns true if the given font URL may be loaded. Font URLs come from
+	 * untrusted diagram content: a cell style's fontSource, a label's
+	 * data-font-src attribute and the file's extFonts attribute all end up
+	 * here. The desktop app resolves file:// URLs and absolute paths through
+	 * the main process, so an unchecked font URL is a read of an arbitrary
+	 * local file whose bytes are then embedded in the export. Only http(s),
+	 * data: and relative URLs are accepted, plus the local paths named in the
+	 * configuration.
+	 */
+	Graph.isValidFontUrl = function(url)
+	{
+		if (typeof url !== 'string' || url.length == 0)
+		{
+			return false;
+		}
+
+		if (Graph.allowedFontUrls[url])
+		{
+			return true;
+		}
+
+		// The check must run on the string the URL parser will see, not the
+		// raw one: leading and trailing C0 controls and spaces are stripped
+		// and tab, LF and CR are removed anywhere in the URL, so " file:..."
+		// and "file<tab>:..." would otherwise read as relative URLs here and
+		// still be fetched as file: URLs. Spaces inside the URL are kept as
+		// they are legal in a relative path.
+		var test = url.replace(/^[\x00-\x20]+/, '').replace(
+			/[\x00-\x20]+$/, '').replace(/[\t\n\r]/g, '');
+
+		// Anything with a scheme other than http(s) and data: is refused,
+		// which covers file: and Windows drive letters (C:\...), and so is
+		// anything starting with a slash or backslash, which covers absolute
+		// paths (/etc/passwd), UNC paths and protocol-relative URLs. What is
+		// left is relative URLs, which resolve against the app itself.
+		return /^https?:\/\//i.test(test) || /^data:/i.test(test) ||
+			(!/^[a-zA-Z][a-zA-Z0-9+.\-]*:/.test(test) && !/^[\\\/]/.test(test));
+	};
+
+	/**
 	 * Returns true if the given font URL references a Google font.
 	 */
 	Graph.isGoogleFontUrl = function(url)
@@ -8749,7 +8843,7 @@
 	 */
 	Graph.addFont = function(name, url, callback, elementLookup)
 	{
-		if (name != null && name.length > 0 && url != null && url.length > 0)
+		if (name != null && name.length > 0 && Graph.isValidFontUrl(url))
 		{
 			elementLookup = (elementLookup != null) ?
 				elementLookup : Graph.customFontElements;
@@ -9525,21 +9619,30 @@
 	Graph.prototype.getCustomFonts = function(lookup)
 	{
 		lookup = (lookup != null) ? lookup : Graph.customFontElements;
-		var fonts = this.extFonts;
+		var fonts = [];
 
-		if (fonts != null)
+		// This is the single funnel for embedExtFonts and getExtFontCss, which
+		// fetch the font and inline it in the export, so the fonts that came
+		// from the file (extFonts) are filtered here too
+		if (this.extFonts != null)
 		{
-			fonts = fonts.slice();
-		}
-		else
-		{
-			fonts = [];
+			for (var i = 0; i < this.extFonts.length; i++)
+			{
+				if (Graph.isValidFontUrl(this.extFonts[i].url))
+				{
+					fonts.push(this.extFonts[i]);
+				}
+			}
 		}
 
 		for (var key in lookup)
 		{
 			var font = lookup[key];
-			fonts.push({name: font.name, url: font.url});
+
+			if (Graph.isValidFontUrl(font.url))
+			{
+				fonts.push({name: font.name, url: font.url});
+			}
 		}
 
 		return fonts;
@@ -12001,6 +12104,7 @@
 	mxStencilRegistry.libraries['eip'] = [SHAPES_PATH + '/mxEip.js', STENCIL_PATH + '/eip.xml'];
 	mxStencilRegistry.libraries['networks'] = [SHAPES_PATH + '/mxNetworks.js', STENCIL_PATH + '/networks.xml'];
 	mxStencilRegistry.libraries['networks2'] = [SHAPES_PATH + '/mxNetworks2.js', STENCIL_PATH + '/networks2.xml'];
+	mxStencilRegistry.libraries['atlassian2'] = [SHAPES_PATH + '/mxAtlassian2.js', STENCIL_PATH + '/atlassian2.xml'];
 	mxStencilRegistry.libraries['aws3d'] = [SHAPES_PATH + '/mxAWS3D.js', STENCIL_PATH + '/aws3d.xml'];
 	mxStencilRegistry.libraries['aws4'] = [SHAPES_PATH + '/mxAWS4.js', STENCIL_PATH + '/aws4.xml'];
 	mxStencilRegistry.libraries['aws4b'] = [SHAPES_PATH + '/mxAWS4.js', STENCIL_PATH + '/aws4.xml'];
