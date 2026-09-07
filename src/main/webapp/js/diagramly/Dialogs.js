@@ -1454,7 +1454,7 @@ var ParseDialog = function(editorUi, title, defaultType)
 			// demand), so the dialog stays open until it succeeds (see okBtn).
 			if (editorUi.spinner.spin(document.body, mxResources.get('inserting')))
 			{
-				var insertPlantUml = mxUtils.bind(this, function(insertXml)
+				var insertPlantUml = mxUtils.bind(this, function(insertXml, warnings)
 				{
 					editorUi.spinner.stop();
 					editorUi.hideDialog();
@@ -1474,6 +1474,10 @@ var ParseDialog = function(editorUi, title, defaultType)
 					}
 
 					graph.scrollCellToVisible(graph.getSelectionCell());
+
+					// Reports what the converter could not use, after the
+					// insert is complete: the diagram stays inserted
+					editorUi.showPlantUmlWarnings(warnings);
 				});
 
 				var onPlantUmlError = mxUtils.bind(this, function(e)
@@ -1492,9 +1496,9 @@ var ParseDialog = function(editorUi, title, defaultType)
 				}
 				else
 				{
-					editorUi.parsePlantUmlDiagram(text, null, mxUtils.bind(this, function(xml)
+					editorUi.parsePlantUmlDiagram(text, null, mxUtils.bind(this, function(xml, warnings)
 					{
-						insertPlantUml(mxPlantUmlToDrawio.wrapGroup(xml, text, null));
+						insertPlantUml(mxPlantUmlToDrawio.wrapGroup(xml, text, null), warnings);
 					}), onPlantUmlError);
 				}
 			}
@@ -2146,7 +2150,14 @@ var ParseDialog = function(editorUi, title, defaultType)
 				else
 				{
 					editorUi.parsePlantUmlDiagram(textarea.value, null,
-						showPreview, onError);
+						function(xml, warnings)
+					{
+						showPreview(xml);
+
+						// Reports what the converter could not use, after the
+						// preview is up: the tooltip stays open
+						editorUi.showPlantUmlWarnings(warnings);
+					}, onError);
 				}
 			}
 		});

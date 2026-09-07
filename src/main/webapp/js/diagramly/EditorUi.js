@@ -13284,6 +13284,13 @@
 	/**
 	 * Parses the given PlantUML source with the native converter and returns
 	 * diagram XML via `success`. Loads the converter bundle on demand.
+	 *
+	 * `success` is called as (xml, warnings), where warnings is the converter's
+	 * list of user-facing strings for input it could not use (a dropped line, an
+	 * ignored directive). They are soft: the XML is complete and usable, so
+	 * callers that are user-initiated pass them to showPlantUmlWarnings, and
+	 * background callers ignore them. Always an array, empty for bundles
+	 * predating the warnings channel.
 	 */
 	EditorUi.prototype.parsePlantUmlDiagram = function(data, config, success, error)
 	{
@@ -13305,7 +13312,18 @@
 			{
 				try
 				{
-					success(mxPlantUmlToDrawio.parseText(data, config));
+					var xml = mxPlantUmlToDrawio.parseText(data, config);
+
+					// Soft diagnostics for lines the converter dropped or
+					// directives it ignored. Read directly after the parse so a
+					// later parse cannot overwrite them, and handed to the
+					// caller rather than shown here: the silent refresh paths
+					// (eg. refreshMermaidImage) must not raise a notice.
+					// Bundles older than the warnings channel have no
+					// lastWarnings, which yields an empty list.
+					success(xml, (typeof mxPlantUmlToDrawio.lastWarnings !== 'undefined' &&
+						mxPlantUmlToDrawio.lastWarnings != null) ?
+						mxPlantUmlToDrawio.lastWarnings.slice() : []);
 				}
 				catch (e)
 				{
@@ -13329,10 +13347,47 @@
 	 */
 	EditorUi.prototype.parsePlantUmlImage = function(text, success, error)
 	{
-		this.parsePlantUmlDiagram(text, null, mxUtils.bind(this, function(xml)
+		this.parsePlantUmlDiagram(text, null, mxUtils.bind(this, function(xml, warnings)
 		{
-			success(this.createMermaidImageXml(text, null, xml, null, null, 'plantUmlData'));
+			// The warnings are about the source, not the representation, so
+			// they pass through to the caller unchanged
+			success(this.createMermaidImageXml(text, null, xml, null, null,
+				'plantUmlData'), warnings);
 		}), error);
+	};
+
+	/**
+	 * Maximum number of PlantUML parse warnings listed by showPlantUmlWarnings
+	 * before the rest are summarized.
+	 */
+	EditorUi.prototype.maxPlantUmlWarnings = 10;
+
+	/**
+	 * Shows the given PlantUML parse warnings (see parsePlantUmlDiagram) in the
+	 * non-modal, auto-fading alert. The parse succeeded and the diagram is
+	 * already inserted or previewed, so this only informs: it must never block
+	 * or undo that, which is why it is not routed through handleError/showError.
+	 * No-op for an empty list, and where showAlert is unavailable.
+	 */
+	EditorUi.prototype.showPlantUmlWarnings = function(warnings)
+	{
+		if (warnings != null && warnings.length > 0 && this.showAlert != null)
+		{
+			var shown = warnings.slice(0, this.maxPlantUmlWarnings);
+
+			if (warnings.length > shown.length)
+			{
+				shown.push(mxResources.get('andNMore',
+					[warnings.length - shown.length]));
+			}
+
+			// showAlert writes its argument as HTML and the warnings quote the
+			// user's own source (the dropped line), so they are escaped here.
+			// The alert is styled white-space:pre-wrap, so the newlines break
+			// the lines without any markup of our own.
+			this.showAlert(mxUtils.htmlEntities(mxResources.get('plantUmlWarnings') +
+				'\n' + shown.join('\n')));
+		}
 	};
 
 	/**
@@ -15330,7 +15385,7 @@
 	    		// insert paths
 	    		var config = isGroup ? obj.config : null;
 
-	    		ui.parsePlantUmlDiagram(text, config, function(xml)
+	    		ui.parsePlantUmlDiagram(text, config, function(xml, warnings)
 	    		{
 	    			ui.spinner.stop();
 
@@ -15388,6 +15443,11 @@
 	    				{
 	    					graph.getModel().endUpdate();
 	    				}
+
+	    				// Reports what the converter could not use, once the
+	    				// apply succeeded: the cell keeps the new content. A
+	    				// failed apply reports its own error instead
+	    				ui.showPlantUmlWarnings(warnings);
 	    			}
 	    			catch (e)
 	    			{
@@ -15402,10 +15462,14 @@
 				if (ui.spinner.spin(document.body, mxResources.get('loading')))
 				{
 					ui.parsePlantUmlDiagram(text, isGroup ? obj.config : null,
-						function(xml)
+						function(xml, warnings)
 					{
 						ui.spinner.stop();
 						ui.showPreviewTooltip(xml, evt);
+
+						// Reports what the converter could not use, after the
+						// preview is up: the tooltip stays open
+						ui.showPlantUmlWarnings(warnings);
 					}, function(e)
 					{
 						ui.spinner.stop();
