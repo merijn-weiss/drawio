@@ -22809,6 +22809,95 @@
 	};
 
 	/**
+	 * Returns a validated copy of the given viewbox, or null. A viewbox is
+	 * {x, y, width, height} in graph (model) coordinates plus an optional
+	 * border in screen pixels; a JSON string is accepted too. This is the
+	 * object used by the viewbox URL parameter, the embed protocol's load
+	 * option and its viewbox action, so all three take the same value.
+	 * Rejects anything that would feed NaN or a zero size into fitWindow.
+	 */
+	EditorUi.parseViewBox = function(value)
+	{
+		try
+		{
+			if (typeof value === 'string')
+			{
+				value = JSON.parse(value);
+			}
+
+			if (value != null && typeof value === 'object')
+			{
+				var x = parseFloat(value.x);
+				var y = parseFloat(value.y);
+				var w = parseFloat(value.width);
+				var h = parseFloat(value.height);
+				var b = (value.border != null && value.border !== '') ?
+					parseFloat(value.border) : null;
+
+				if (isFinite(x) && isFinite(y) && isFinite(w) && isFinite(h) &&
+					w > 0 && h > 0 && (b == null || (isFinite(b) && b >= 0)))
+				{
+					return {x: x, y: y, width: w, height: h, border: b};
+				}
+			}
+		}
+		catch (e)
+		{
+			// ignore invalid JSON
+		}
+
+		return null;
+	};
+
+	/**
+	 * Returns the parsed viewbox URL parameter, or null if it is absent or
+	 * invalid (see EditorUi.parseViewBox).
+	 */
+	EditorUi.getViewBoxParam = function()
+	{
+		var vb = null;
+
+		if (urlParams['viewbox'] != null)
+		{
+			try
+			{
+				vb = EditorUi.parseViewBox(decodeURIComponent(urlParams['viewbox']));
+			}
+			catch (e)
+			{
+				// malformed percent-encoding
+			}
+
+			if (vb == null)
+			{
+				console.error('Ignoring invalid viewbox URL parameter');
+			}
+		}
+
+		return vb;
+	};
+
+	/**
+	 * Shows the given viewbox (see EditorUi.parseViewBox) in the graph
+	 * container. Regular fitWindow only zooms in chromeless mode (no
+	 * scrollbars to pan), so that mode goes through fitBoundsCssTransform
+	 * like the viewbox animation step does.
+	 */
+	EditorUi.prototype.applyViewBox = function(vb)
+	{
+		var graph = this.editor.graph;
+
+		if (graph.useCssTransforms)
+		{
+			graph.fitBoundsCssTransform(vb, vb.border);
+		}
+		else
+		{
+			graph.fitWindow(vb, vb.border);
+		}
+	};
+
+	/**
 	 * Adds the buttons for embedded mode.
 	 */
 	EditorUi.prototype.createLoadMessage = function(eventName)
@@ -23704,7 +23793,15 @@
 						// Accepts a custom-layout array or any shorthand
 						// accepted by resolveLayoutList (preset names,
 						// 'libavoid'), same as the load "layout" option.
-						this.executeLayoutSpec(data.layouts);
+						// Reports completion with the common state fields so
+						// the host can follow up with a fit or viewbox action
+						// once the cells have moved.
+						this.executeLayoutSpec(data.layouts, mxUtils.bind(this, function()
+						{
+							var msg = this.createLoadMessage('layout');
+							msg.message = data;
+							parent.postMessage(JSON.stringify(msg), '*');
+						}));
 
 						return;
 					}
@@ -23956,6 +24053,24 @@
 						graph.maxFitScale = prev;
 
 						var msg = this.createLoadMessage('fit');
+						msg.message = data;
+						parent.postMessage(JSON.stringify(msg), '*');
+
+						return;
+					}
+					else if (data.action == 'viewbox')
+					{
+						// Same object as the viewbox URL parameter and the
+						// load option (see EditorUi.parseViewBox); an invalid
+						// value leaves the view unchanged but still replies
+						var vb = EditorUi.parseViewBox(data.viewbox);
+
+						if (vb != null)
+						{
+							this.applyViewBox(vb);
+						}
+
+						var msg = this.createLoadMessage('viewbox');
 						msg.message = data;
 						parent.postMessage(JSON.stringify(msg), '*');
 
@@ -24468,7 +24583,30 @@
 
 						this.embedExitPoint = null;
 
-						if (data.scale != null)
+						// viewbox: shows the given diagram region after loading
+						// (same {x, y, width, height, border} object as the
+						// viewbox URL parameter, see EditorUi.parseViewBox).
+						// Takes precedence over scale and fit and over the
+						// page's stored initial view. The URL parameter is the
+						// fallback when the message carries none of the three
+						// view options, so a host can set the initial view in
+						// the iframe URL alone (jgraph/drawio#4763).
+						var viewbox = EditorUi.parseViewBox(data.viewbox);
+
+						if (viewbox == null && data.viewbox == null &&
+							data.scale == null && data.fit == null)
+						{
+							viewbox = EditorUi.getViewBoxParam();
+						}
+
+						if (viewbox != null)
+						{
+							afterLoad = mxUtils.bind(this, function()
+							{
+								this.applyViewBox(viewbox);
+							});
+						}
+						else if (data.scale != null)
 						{
 							var customScale = data.scale;
 							var scaleBorder = (data.scaleBorder != null) ?
