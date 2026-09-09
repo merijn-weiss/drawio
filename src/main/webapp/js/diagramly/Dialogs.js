@@ -1454,7 +1454,7 @@ var ParseDialog = function(editorUi, title, defaultType)
 			// demand), so the dialog stays open until it succeeds (see okBtn).
 			if (editorUi.spinner.spin(document.body, mxResources.get('inserting')))
 			{
-				var insertPlantUml = mxUtils.bind(this, function(insertXml)
+				var insertPlantUml = mxUtils.bind(this, function(insertXml, warnings)
 				{
 					editorUi.spinner.stop();
 					editorUi.hideDialog();
@@ -1474,6 +1474,10 @@ var ParseDialog = function(editorUi, title, defaultType)
 					}
 
 					graph.scrollCellToVisible(graph.getSelectionCell());
+
+					// Reports what the converter could not use, after the
+					// insert is complete: the diagram stays inserted
+					editorUi.showPlantUmlWarnings(warnings);
 				});
 
 				var onPlantUmlError = mxUtils.bind(this, function(e)
@@ -1492,9 +1496,9 @@ var ParseDialog = function(editorUi, title, defaultType)
 				}
 				else
 				{
-					editorUi.parsePlantUmlDiagram(text, null, mxUtils.bind(this, function(xml)
+					editorUi.parsePlantUmlDiagram(text, null, mxUtils.bind(this, function(xml, warnings)
 					{
-						insertPlantUml(mxPlantUmlToDrawio.wrapGroup(xml, text, null));
+						insertPlantUml(mxPlantUmlToDrawio.wrapGroup(xml, text, null), warnings);
 					}), onPlantUmlError);
 				}
 			}
@@ -1546,7 +1550,8 @@ var ParseDialog = function(editorUi, title, defaultType)
 				{
 					editorUi.parseMermaidDiagram(text, null, mxUtils.bind(this, function(xml)
 					{
-						insertMermaid(mxMermaidToDrawio.wrapGroup(xml, text, null));
+						insertMermaid(mxMermaidToDrawio.wrapGroup(xml, text,
+							EditorUi.getInsertMermaidConfig()));
 					}), onMermaidError);
 				}
 			}
@@ -2133,17 +2138,26 @@ var ParseDialog = function(editorUi, title, defaultType)
 
 				if (defaultType == 'mermaid')
 				{
-					// The image output parses with the legacy config, like
-					// parseMermaidImage, so the preview matches the insert
+					// Matches the insert: the diagram (and a configured image)
+					// render with the default config (null resolves to
+					// EditorUi.defaultMermaidConfig in getMermaidConfig); an
+					// unconfigured image keeps the legacy look, like parseMermaidImage
 					editorUi.parseMermaidDiagram(textarea.value,
-						(typeSelect.value == 'mermaidImage') ?
+						(typeSelect.value == 'mermaidImage' && !EditorUi.isMermaidConfigured()) ?
 							mxUtils.clone(EditorUi.legacyMermaidConfig) : null,
 						showPreview, onError);
 				}
 				else
 				{
 					editorUi.parsePlantUmlDiagram(textarea.value, null,
-						showPreview, onError);
+						function(xml, warnings)
+					{
+						showPreview(xml);
+
+						// Reports what the converter could not use, after the
+						// preview is up: the tooltip stays open
+						editorUi.showPlantUmlWarnings(warnings);
+					}, onError);
 				}
 			}
 		});
@@ -2492,7 +2506,7 @@ var NewDialog = function(editorUi, compact, showName, callback, createOnly, canc
 		tabs.style.height = '30px';
 		outer.appendChild(tabs);
 		
-		var templatesTab = mxUtils.button(mxResources.get('Templates', null, 'Templates'), function()
+		var templatesTab = mxUtils.button(mxResources.get('templates'), function()
 		{
 			list.style.display = '';
 			searchBox.style.display = '';
@@ -2553,7 +2567,7 @@ var NewDialog = function(editorUi, compact, showName, callback, createOnly, canc
 				}
 				else if (docList.length == 0 && importListsCount == 0)
 				{
-					div.innerText = mxResources.get('noDiagrams', null, 'No Diagrams Found');
+					div.innerText = mxResources.get('noDiagrams');
 				}
 				else
 				{
@@ -2594,7 +2608,7 @@ var NewDialog = function(editorUi, compact, showName, callback, createOnly, canc
 		
 		if (recentDocsCallback)
 		{
-			var recentTab = mxUtils.button(mxResources.get('Recent', null, 'Recent'), function()
+			var recentTab = mxUtils.button(mxResources.get('recent'), function()
 			{
 				getExtTemplates();
 			});
@@ -3420,7 +3434,9 @@ var NewDialog = function(editorUi, compact, showName, callback, createOnly, canc
 		
 		if (NewDialog.tagsList[templateFile] == null)
 		{
-			var tagsList = {};
+			// Null prototype: tags come from the template index and from custom
+			// template titles supplied by the embedding page
+			var tagsList = Object.create(null);
 			
 			for (var cat in categories)
 			{
@@ -3780,7 +3796,79 @@ var NewDialog = function(editorUi, compact, showName, callback, createOnly, canc
 		{
 			realUrl = PROXY_URL + '?url=' + encodeURIComponent(realUrl);
 		}
-		
+
+		function addTemplateEntry(entry, clibs)
+		{
+			var url = entry.url;
+
+			if (url != null)
+			{
+				var category = entry.section;
+				var subCategory = entry.subsection;
+
+				if (category == null)
+				{
+					var slash = url.indexOf('/');
+					category = url.substring(0, slash);
+
+					if (subCategory == null)
+					{
+						var nextSlash = url.indexOf('/', slash + 1);
+
+						if (nextSlash > -1)
+						{
+							subCategory = url.substring(slash + 1, nextSlash);
+						}
+					}
+				}
+
+				if (EditorUi.enabledTemplateSections == null ||
+					mxUtils.indexOf(EditorUi.enabledTemplateSections, category) >= 0)
+				{
+					var list = categories[category];
+
+					if (list == null)
+					{
+						list = [];
+						categories[category] = list;
+					}
+
+					var tempLibs = entry.clibs;
+
+					if (clibs[tempLibs] != null)
+					{
+						tempLibs = clibs[tempLibs];
+					}
+
+					var tempObj = {url: entry.url, libs: entry.libs,
+						title: entry.title, tooltip: entry.name || entry.url,
+						preview: entry.preview, clibs: tempLibs, tags: entry.tags};
+					list.push(tempObj);
+
+					if (subCategory != null)
+					{
+						var subCats = subCategories[category];
+
+						if (subCats == null)
+						{
+							subCats = {};
+							subCategories[category] = subCats;
+						}
+
+						var subCatList = subCats[subCategory];
+
+						if (subCatList == null)
+						{
+							subCatList = [];
+							subCats[subCategory] = subCatList;
+						}
+
+						subCatList.push(tempObj);
+					}
+				}
+			}
+		};
+
 		function loadDrawioTemplates()
 		{
 			mxUtils.get(realUrl, function(req)
@@ -3824,81 +3912,32 @@ var NewDialog = function(editorUi, compact, showName, callback, createOnly, canc
 							}
 							else
 							{
-								var url = node.getAttribute('url');
-								
-								if (url != null)
-								{
-									var category = node.getAttribute('section');
-									var subCategory = node.getAttribute('subsection');
-									
-									if (category == null)
-									{
-										var slash = url.indexOf('/');
-										category = url.substring(0, slash);
-										
-										if (subCategory == null)
-										{
-											var nextSlash = url.indexOf('/', slash + 1);
-											
-											if (nextSlash > -1)
-											{
-												subCategory = url.substring(slash + 1, nextSlash);
-											}
-										}
-									}
-									
-									if (EditorUi.enabledTemplateSections == null ||
-										mxUtils.indexOf(EditorUi.enabledTemplateSections, category) >= 0)
-									{
-										var list = categories[category];
-										
-										if (list == null)
-										{
-											list = [];
-											categories[category] = list;
-										}
-										
-										var tempLibs = node.getAttribute('clibs');
-										
-										if (clibs[tempLibs] != null)
-										{
-											tempLibs = clibs[tempLibs];
-										}
-										
-										var tempObj = {url: node.getAttribute('url'), libs: node.getAttribute('libs'),
-											title: node.getAttribute('title'), tooltip: node.getAttribute('name') || node.getAttribute('url'),
-											preview: node.getAttribute('preview'), clibs: tempLibs, tags: node.getAttribute('tags')};
-										list.push(tempObj);
-											
-										if (subCategory != null)
-										{
-											var subCats = subCategories[category];
-											
-											if (subCats == null)
-											{
-												subCats = {};
-												subCategories[category] = subCats;
-											}
-											
-											var subCatList = subCats[subCategory];
-											
-											if (subCatList == null)
-											{
-												subCatList = [];
-												subCats[subCategory] = subCatList;
-											}
-											
-											subCatList.push(tempObj);
-										}
-									}
-								}
+								addTemplateEntry({url: node.getAttribute('url'),
+									section: node.getAttribute('section'),
+									subsection: node.getAttribute('subsection'),
+									libs: node.getAttribute('libs'),
+									clibs: node.getAttribute('clibs'),
+									title: node.getAttribute('title'),
+									name: node.getAttribute('name'),
+									preview: node.getAttribute('preview'),
+									tags: node.getAttribute('tags')}, clibs);
 							}
 						}
-						
+
 						node = node.nextSibling;
 					}
-					
-				
+
+					if (Array.isArray(EditorUi.customTemplates))
+					{
+						for (var i = 0; i < EditorUi.customTemplates.length; i++)
+						{
+							if (EditorUi.customTemplates[i] != null)
+							{
+								addTemplateEntry(EditorUi.customTemplates[i], clibs);
+							}
+						}
+					}
+
 				spinner.stop();
 					initUi();
 				}
@@ -4035,7 +4074,8 @@ var NewDialog = function(editorUi, compact, showName, callback, createOnly, canc
 	this.container = outer;
 };
 
-NewDialog.tagsList = {};
+// Null prototype: keyed by the configured templateFile URL
+NewDialog.tagsList = Object.create(null);
 
 /**
  * 
@@ -4215,7 +4255,9 @@ var SaveDialog = function(editorUi, title, saveFn, disabledModes, data, mimeType
 	{
 		var option = null;
 
-		if ((disabledModes == null || mxUtils.indexOf(disabledModes, mode) < 0) &&
+		// Dropbox storage is deprecated, no longer offered as a save target
+		if (mode != App.MODE_DROPBOX &&
+			(disabledModes == null || mxUtils.indexOf(disabledModes, mode) < 0) &&
 			(folderPickerMode == null || mode == folderPickerMode) &&
 			(enabledModes == null || mxUtils.indexOf(enabledModes, mode) >= 0))
 		{
@@ -4438,11 +4480,6 @@ var SaveDialog = function(editorUi, title, saveFn, disabledModes, data, mimeType
 		if (editorUi.m365 != null)
 		{
 			addStorageEntry(App.MODE_M365, null, null, null, null, 'pick');
-		}
-
-		if (editorUi.dropbox != null)
-		{
-			addStorageEntry(App.MODE_DROPBOX, 'Apps' + editorUi.dropbox.appPath);
 		}
 
 		addStorageEntry(App.MODE_GITHUB, null, null, null, null, 'pick');
@@ -4908,21 +4945,6 @@ var CreateDialog = function(editorUi, title, createFn, cancelFn, dlgTitle, btnLa
 			}
 
 			addLogo(IMAGE_PATH + '/onedrive-logo.svg', mxResources.get('m365'), App.MODE_M365, 'm365');
-		}
-
-		if (typeof window.DropboxClient === 'function')
-		{
-			var dropboxOption = document.createElement('option');
-			dropboxOption.setAttribute('value', App.MODE_DROPBOX);
-			mxUtils.write(dropboxOption, mxResources.get('dropbox'));
-			serviceSelect.appendChild(dropboxOption);
-			
-			if (editorUi.mode == App.MODE_DROPBOX)
-			{
-				dropboxOption.setAttribute('selected', 'selected');
-			}
-			
-			addLogo(IMAGE_PATH + '/dropbox-logo.svg', mxResources.get('dropbox'), App.MODE_DROPBOX, 'dropbox');
 		}
 
 		if (editorUi.gitHub != null)
@@ -5904,12 +5926,12 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn, showPages, showN
 			if (actionValue == null)
 			{
 				mxUtils.write(actionSummary,
-					mxResources.get('action', null, 'Action'));
-				editActionBtn.textContent = mxResources.get('insert', null, 'Insert');
+					mxResources.get('action'));
+				editActionBtn.textContent = mxResources.get('insert');
 				return;
 			}
 
-			editActionBtn.textContent = mxResources.get('edit', null, 'Edit');
+			editActionBtn.textContent = mxResources.get('edit');
 
 			try
 			{
@@ -5933,7 +5955,7 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn, showPages, showN
 					if (first == 'animation' && json.actions[0].animation.steps != null)
 					{
 						var sc = json.actions[0].animation.steps.length;
-						var name = mxResources.get('effects', null, 'Effects');
+						var name = mxResources.get('effects');
 						label = name + ' (' + sc + ')';
 					}
 					else if (first != '')
@@ -5954,7 +5976,7 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn, showPages, showN
 					}
 					else
 					{
-						label = mxResources.get('action', null, 'Action');
+						label = mxResources.get('action');
 					}
 				}
 
@@ -5963,7 +5985,7 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn, showPages, showN
 			catch (e)
 			{
 				mxUtils.write(actionSummary, '(' +
-					mxResources.get('invalid', null, 'invalid') + ')');
+					mxResources.get('invalid') + ')');
 			}
 		};
 
@@ -6750,7 +6772,7 @@ SelectorChips.create = function(graph, editorUi)
 			if (isWildcard())
 			{
 				chip.classList.add('geSelChipAll');
-				mxUtils.write(chip, mxResources.get('allCells', null, 'All cells'));
+				mxUtils.write(chip, mxResources.get('allCells'));
 			}
 			else if (count == 0)
 			{
@@ -6787,7 +6809,7 @@ SelectorChips.create = function(graph, editorUi)
 			var items = [];
 
 			items.push({
-				label: mxResources.get('useSelection', null, 'Use selection'),
+				label: mxResources.get('useSelection'),
 				// Function form — re-evaluated when the popover hears a
 				// canvas selection change, so this item enables/disables
 				// live as the user picks cells without closing the menu.
@@ -6804,7 +6826,7 @@ SelectorChips.create = function(graph, editorUi)
 			if (opts.allowWildcard)
 			{
 				items.push({
-					label: mxResources.get('allCells', null, 'All cells'),
+					label: mxResources.get('allCells'),
 					active: isWildcard(),
 					onClick: function()
 					{
@@ -6852,7 +6874,7 @@ SelectorChips.create = function(graph, editorUi)
 				items.push({separator: true});
 
 				items.push({
-					label: mxResources.get('reset', null, 'Reset'),
+					label: mxResources.get('reset'),
 					danger: true,
 					onClick: function()
 					{
@@ -6922,13 +6944,13 @@ SelectorChips.create = function(graph, editorUi)
 			if (count == 0)
 			{
 				chip.classList.add('geSelChipEmpty');
-				mxUtils.write(chip, mxResources.get('tags', null, 'Tags'));
+				mxUtils.write(chip, mxResources.get('tags'));
 			}
 			else
 			{
 				mxUtils.write(chip, count + ' ' + (count == 1 ?
-					mxResources.get('tag', null, 'Tag') :
-					mxResources.get('tags', null, 'Tags')));
+					mxResources.get('tag') :
+					mxResources.get('tags')));
 				chip.title = v.join('\n');
 			}
 		};
@@ -6988,13 +7010,13 @@ SelectorChips.create = function(graph, editorUi)
 			{
 				chip.classList.add('geSelChipEmpty');
 				mxUtils.write(chip,
-					mxResources.get('layers', null, 'Layers'));
+					mxResources.get('layers'));
 			}
 			else
 			{
 				mxUtils.write(chip, count + ' ' + (count == 1 ?
-					mxResources.get('layer', null, 'Layer') :
-					mxResources.get('layers', null, 'Layers')));
+					mxResources.get('layer') :
+					mxResources.get('layers')));
 
 				// Hover title with resolved layer names — same UX as the
 				// tags chip, which lists tag values on hover.
@@ -7078,20 +7100,20 @@ SelectorChips.create = function(graph, editorUi)
 				var modeLabel = document.createElement('span');
 				modeLabel.className = 'geTagPickerModeLabel';
 				mxUtils.write(modeLabel,
-					mxResources.get('match', null, 'Match') + ':');
+					mxResources.get('match') + ':');
 				modeBar.appendChild(modeLabel);
 
 				var modeAnd = document.createElement('button');
 				modeAnd.type = 'button';
 				modeAnd.className = 'geTagPickerModeBtn';
-				mxUtils.write(modeAnd, mxResources.get('matchAll', null, 'All'));
+				mxUtils.write(modeAnd, mxResources.get('matchAll'));
 				modeAnd.title = mxResources.get('matchAllHint', null,
 					'Match cells that have every selected tag (AND)');
 
 				var modeOr = document.createElement('button');
 				modeOr.type = 'button';
 				modeOr.className = 'geTagPickerModeBtn';
-				mxUtils.write(modeOr, mxResources.get('matchAny', null, 'Any'));
+				mxUtils.write(modeOr, mxResources.get('matchAny'));
 				modeOr.title = mxResources.get('matchAnyHint', null,
 					'Match cells that have at least one selected tag (OR)');
 
@@ -7189,7 +7211,7 @@ SelectorChips.create = function(graph, editorUi)
 			var resetBtn = document.createElement('button');
 			resetBtn.type = 'button';
 			resetBtn.className = 'geActionMenuItem geActionMenuItemDanger';
-			mxUtils.write(resetBtn, mxResources.get('reset', null, 'Reset'));
+			mxUtils.write(resetBtn, mxResources.get('reset'));
 			resetBtn.addEventListener('click', function(e)
 			{
 				e.preventDefault();
@@ -7218,7 +7240,7 @@ SelectorChips.create = function(graph, editorUi)
 			refreshFooter();
 		}
 
-		openPopover(anchor, mxResources.get('tags', null, 'Tags'), body);
+		openPopover(anchor, mxResources.get('tags'), body);
 	}
 
 	// Returns the layers (top-level children of the model root) along
@@ -7336,7 +7358,7 @@ SelectorChips.create = function(graph, editorUi)
 		var resetBtn = document.createElement('button');
 		resetBtn.type = 'button';
 		resetBtn.className = 'geActionMenuItem geActionMenuItemDanger';
-		mxUtils.write(resetBtn, mxResources.get('reset', null, 'Reset'));
+		mxUtils.write(resetBtn, mxResources.get('reset'));
 		resetBtn.addEventListener('click', function(e)
 		{
 			e.preventDefault();
@@ -7361,7 +7383,7 @@ SelectorChips.create = function(graph, editorUi)
 		};
 		refreshFooter();
 
-		openPopover(anchor, mxResources.get('selectLayers', null, 'Layers'), body);
+		openPopover(anchor, mxResources.get('selectLayers'), body);
 	}
 
 	// Generic anchored popover. The caller owns the body element; this
@@ -7747,16 +7769,20 @@ CustomActionDialog.SCHEMAS = {
 	// so we don't need to ship a dedicated `viewbox` translation across
 	// every locale — the picker, step list, and link summary all honor
 	// `schema.labelKey` when present.
+	// The selector makes the viewbox dynamic: with cells/tags/layers set,
+	// the box is derived from the resolved cells' bounds at execution time
+	// and the static x/y/width/height (`staticOnly` fields, grayed out
+	// while a selector is active) are ignored [jgraph/drawio#4584].
 	viewbox:     {label: 'View',          labelKey: 'view',
-		icon: '⊞', noSelector: true,
+		icon: '⊞', selector: true, allowLayers: true,
 		fields: [{name: 'x',      type: 'number', placeholder: 'x', width: 36, label: '',
-			title: 'X'},
+			title: 'X', staticOnly: true},
 		         {name: 'y',      type: 'number', placeholder: 'y', width: 36, label: '',
-			title: 'Y'},
+			title: 'Y', staticOnly: true},
 		         {name: 'width',  type: 'number', placeholder: 'w', width: 36, label: '',
-			titleKey: 'width', title: 'Width'},
+			titleKey: 'width', title: 'Width', staticOnly: true},
 		         {name: 'height', type: 'number', placeholder: 'h', width: 36, label: '',
-			titleKey: 'height', title: 'Height'},
+			titleKey: 'height', title: 'Height', staticOnly: true},
 		         {name: 'border', type: 'number', placeholder: 'b', width: 36, label: '',
 			titleKey: 'border', title: 'Border'},
 		         {name: 'smooth', type: 'checkbox',
@@ -10034,50 +10060,46 @@ var AdaptiveColorsWindow = function(editorUi, x, y, w, h)
 	var div = document.createElement('div');
 	div.style.userSelect = 'none';
 	div.style.overflow = 'hidden';
+	div.style.boxSizing = 'border-box';
+	div.style.padding = '12px';
 	div.style.height = '100%';
 
+	// This window lives under document.body and does not inherit the
+	// editor's color scheme in every theme - track it explicitly so
+	// the light-dark() colors of the controls follow the editor
+	var updateColorScheme = function()
+	{
+		div.style.colorScheme = (Editor.isDarkMode != null &&
+			Editor.isDarkMode()) ? 'dark' : 'light';
+	};
+
+	updateColorScheme();
+	editorUi.addListener('darkModeChanged', updateColorScheme);
+
 	var section = document.createElement('div');
-	section.style.display = 'flex';
-	section.style.alignItems = 'center';
-	section.style.justifyContent = 'center';
-	section.style.paddingTop = '20px';
+	section.className = 'geDialogSection';
 
-	var labelCheckbox = document.createElement('input');
-	labelCheckbox.setAttribute('type', 'checkbox');
-	labelCheckbox.style.marginRight = '4px';
-	labelCheckbox.checked = true;
+	var backgroundCheckbox = editorUi.addCheckbox(section,
+		mxResources.get('background'), true, null, null,
+		null, null, null, true);
+	var labelCheckbox = editorUi.addCheckbox(section,
+		mxResources.get('labels'), true, null, null,
+		null, null, null, true);
+	div.appendChild(section);
 
-	var backgroundCheckbox = document.createElement('input');
-	backgroundCheckbox.setAttribute('type', 'checkbox');
-	backgroundCheckbox.style.marginRight = '4px';
-	backgroundCheckbox.checked = true;
-
-	var btn = mxUtils.button(mxResources.get('removeIt', [mxResources.get('userDefined')]), mxUtils.bind(this, function()
+	var btn = mxUtils.button(mxResources.get('removeIt', [mxResources.get('userDefined')]), function()
 	{
 		editorUi.removeUserDefinedDarkColors((graph.isSelectionEmpty()) ?
 			graph.getVerticesAndEdges() : graph.getSelectionCells(),
 			labelCheckbox.checked, backgroundCheckbox.checked);
-	}));
+	});
 
-	btn.setAttribute('title', 'Convert Colors');
 	btn.className = 'geBtn gePrimaryBtn';
-	section.appendChild(btn);
-	div.appendChild(section);
+	btn.style.boxSizing = 'border-box';
+	btn.style.margin = '0';
+	btn.style.width = '100%';
+	div.appendChild(btn);
 
-	section = section.cloneNode(false);
-	section.appendChild(backgroundCheckbox);
-	section.style.paddingTop = '8px';
-
-	mxUtils.write(section, mxResources.get('background'));
-	div.appendChild(section);
-
-	section = section.cloneNode(false);
-	section.appendChild(labelCheckbox);
-	section.style.paddingTop = '8px';
-	
-	mxUtils.write(section, mxResources.get('labels'));
-	div.appendChild(section);
-	
 	this.window = new mxWindow(mxResources.get('adaptiveColors'), div, x, y, w, h, true, true);
 	this.window.destroyOnClose = false;
 	this.window.setMinimizable(false);
@@ -10172,7 +10194,7 @@ var ChatWindow = function(editorUi, x, y, w, h)
 	convBar.style.display = 'flex';
 	convBar.style.flexDirection = 'column';
 	convBar.style.flexShrink = '0';
-	convBar.style.width = '130px';
+	convBar.style.width = '150px';
 	convBar.style.boxSizing = 'border-box';
 	convBar.style.padding = '8px 6px 20px 6px';
 	convBar.style.borderRight = '1px solid light-dark(#e5e5e5, #505050)';
@@ -10223,12 +10245,29 @@ var ChatWindow = function(editorUi, x, y, w, h)
 			conv.active = (conv == currentConv);
 			conv.item.style.backgroundColor = (conv.active) ?
 				itemActiveBg : 'transparent';
+
+			// Delete stays visible once there is something to delete as
+			// hover-only affordances are unreachable on touch devices
+			conv.del.style.display = (conv.el.firstChild != null) ?
+				'' : 'none';
 		}
 	};
 
 	var selectConversation = function(conv)
 	{
 		currentConv = conv;
+
+		// Keeps at most one empty conversation - the placeholder left
+		// behind when switching away holds no state and is discarded
+		for (var i = conversations.length - 1; i >= 0; i--)
+		{
+			if (conversations[i] != conv &&
+				conversations[i].el.firstChild == null)
+			{
+				removeConversation(conversations[i]);
+			}
+		}
+
 		hist.innerHTML = '';
 		hist.appendChild(conv.el);
 		hist.scrollTop = hist.scrollHeight;
@@ -10237,15 +10276,17 @@ var ChatWindow = function(editorUi, x, y, w, h)
 		inp.focus();
 	};
 
+	// Untitled conversations show the composer placeholder as a hint
+	// rather than repeating the New Chat button label
 	var setConversationTitle = function(conv, title)
 	{
 		conv.title = title;
 		conv.label.innerHTML = '';
 		mxUtils.write(conv.label, (title != null) ?
-			title : mxResources.get('newChat'));
+			title : mxResources.get('describeYourDiagram'));
 		conv.label.style.fontStyle = (title != null) ? '' : 'italic';
 		conv.item.setAttribute('title', (title != null) ?
-			title : mxResources.get('newChat'));
+			title : mxResources.get('describeYourDiagram'));
 	};
 
 	var removeConversation = function(conv)
@@ -10311,13 +10352,13 @@ var ChatWindow = function(editorUi, x, y, w, h)
 		del.style.width = '13px';
 		del.style.flexShrink = '0';
 		del.style.cursor = 'pointer';
-		del.style.opacity = '0';
+		del.style.opacity = '0.6';
+		del.style.display = 'none';
 		item.appendChild(del);
+		conv.del = del;
 
 		mxEvent.addListener(item, 'mouseenter', function()
 		{
-			del.style.opacity = '0.6';
-
 			if (!conv.active)
 			{
 				item.style.backgroundColor = itemHoverBg;
@@ -10326,8 +10367,6 @@ var ChatWindow = function(editorUi, x, y, w, h)
 
 		mxEvent.addListener(item, 'mouseleave', function()
 		{
-			del.style.opacity = '0';
-
 			if (!conv.active)
 			{
 				item.style.backgroundColor = 'transparent';
@@ -11353,6 +11392,17 @@ var ChatWindow = function(editorUi, x, y, w, h)
 				item.setAttribute('title', opts.infoLabel);
 			}
 
+			// Hints that the response was cut off and the diagram shows
+			// only the part that was received
+			if (opts.partial)
+			{
+				var partialHint = document.createElement('div');
+				partialHint.style.opacity = '0.7';
+				partialHint.style.fontSize = '11px';
+				mxUtils.write(partialHint, mxResources.get('partialResponse'));
+				target.appendChild(partialHint);
+			}
+
 			var buttons = document.createElement('div');
 			buttons.style.display = 'flex';
 
@@ -11479,7 +11529,29 @@ var ChatWindow = function(editorUi, x, y, w, h)
 
 		if (mermaid == null)
 		{
-			renderResponseData(target, Editor.extractGraphModelFromText(text), opts);
+			var data = Editor.extractGraphModelFromText(text);
+
+			// A response cut off mid-model has no closing tag so nothing
+			// was extracted: repair the truncation and re-extract so the
+			// complete prefix of the diagram still renders, with a hint
+			// that the response is partial
+			if (data[1] == '' && text.indexOf('<mxGraphModel') >= 0)
+			{
+				var repaired = Editor.repairTruncatedXml(text);
+
+				if (repaired != null)
+				{
+					var parsed = Editor.extractGraphModelFromText(repaired);
+
+					if (parsed[1] != '')
+					{
+						opts.partial = true;
+						data = parsed;
+					}
+				}
+			}
+
+			renderResponseData(target, data, opts);
 
 			if (opts.recordTurn != null)
 			{
@@ -11495,7 +11567,7 @@ var ChatWindow = function(editorUi, x, y, w, h)
 					// Wraps in an editable mermaid group (carries the source
 					// for double-click edit), as the insert dialog does
 					renderResponseData(target, ['', mxMermaidToDrawio.wrapGroup(
-						xml, mermaid, null), ''], opts);
+						xml, mermaid, EditorUi.getInsertMermaidConfig()), ''], opts);
 
 					if (opts.recordTurn != null)
 					{
@@ -11636,6 +11708,9 @@ var ChatWindow = function(editorUi, x, y, w, h)
 		waiting.className = 'geSidebar';
 		conv.el.appendChild(waiting);
 
+		// The conversation may just have received its first content
+		updateConvItems();
+
 		var fail = function(e)
 		{
 			waiting.innerHTML = '';
@@ -11679,6 +11754,9 @@ var ChatWindow = function(editorUi, x, y, w, h)
 		bubble.style.backgroundColor = 'light-dark(var(--highlight-color), var(--dark-soft-color))';
 		mxUtils.write(bubble, (prompt != '') ? prompt : chip.label);
 		conv.el.appendChild(bubble);
+
+		// The conversation may just have received its first content
+		updateConvItems();
 
 		if (chip != null && prompt != '')
 		{
@@ -12031,14 +12109,14 @@ var ChatWindow = function(editorUi, x, y, w, h)
 				showWaiting();
 
 				editorUi.generateOpenAiMermaidDiagram(full,
-					function(xml)
+					function(xml, partial)
 					{
 						try
 						{
 							var dt = Date.now() - t0;
 							renderResponseData(waiting, ['', xml, ''],
 								{prompt: prompt, applyCtx: applyCtx,
-								retryFn: processMessage,
+								retryFn: processMessage, partial: partial,
 								onInsert: onInsert, onApplied: onApplied,
 								infoLabel: (urlParams['test'] == 1) ?
 									backend.label + ' (' + dt + ' ms)' : null});
@@ -12207,7 +12285,7 @@ var ChatWindow = function(editorUi, x, y, w, h)
 
 	this.window = new mxWindow(mxResources.get('generate'),
 		div, x, y, w, h, true, true);
-	this.window.minimumSize = new mxRectangle(0, 0, 260, 200);
+	this.window.minimumSize = new mxRectangle(0, 0, 280, 200);
 	this.window.destroyOnClose = false;
 	this.window.setMaximizable(false);
 	this.window.setResizable(true);
@@ -12377,7 +12455,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 		// Default title — page-mode opens via Edit > Page Setup > Edit;
 		// the section there is labelled "Animation", so reuse that
 		// resource to keep the wording consistent.
-		return mxResources.get('animation', null, 'Animation');
+		return mxResources.get('animation');
 	};
 
 	var div = document.createElement('div');
@@ -12403,7 +12481,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 		{
 			titleLabel.textContent = '';
 			mxUtils.write(titleLabel,
-				mxResources.get('title', null, 'Title') + ':');
+				mxResources.get('title') + ':');
 		};
 		applyTitleLabel();
 		staticRefreshers.push(applyTitleLabel);
@@ -12417,8 +12495,8 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 			'color:light-dark(var(--strong-text-color), var(--dark-strong-text-color))';
 		var applyTitlePlaceholder = function()
 		{
-			titleInput.placeholder = mxResources.get('optional', null, 'optional');
-			titleInput.title = mxResources.get('title', null, 'Title');
+			titleInput.placeholder = mxResources.get('optional');
+			titleInput.title = mxResources.get('title');
 		};
 		applyTitlePlaceholder();
 		staticRefreshers.push(applyTitlePlaceholder);
@@ -12465,7 +12543,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 		var applyLoopText = function()
 		{
 			loopText.textContent = '';
-			mxUtils.write(loopText, mxResources.get('loop', null, 'Loop'));
+			mxUtils.write(loopText, mxResources.get('loop'));
 		};
 		applyLoopText();
 		staticRefreshers.push(applyLoopText);
@@ -12603,7 +12681,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 			}
 		}
 
-		return mxResources.get('error', null, 'Error') + ': ' + msg;
+		return mxResources.get('error') + ': ' + msg;
 	};
 
 	// Validates the current textarea content and updates the inline error.
@@ -12863,7 +12941,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 		// still works unless a real cell is literally named "all".
 		if (ref == '*' || (ref == 'all' && graph.getModel().getCell('all') == null))
 		{
-			return mxResources.get('allCells', null, 'All cells');
+			return mxResources.get('allCells');
 		}
 
 		var cell = graph.getModel().getCell(ref);
@@ -12907,7 +12985,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 
 			if (hasWildcard)
 			{
-				parts.push(mxResources.get('allCells', null, 'All cells'));
+				parts.push(mxResources.get('allCells'));
 			}
 
 			if (ids.length > 0)
@@ -12925,7 +13003,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 
 		if (Array.isArray(sel.tags) && sel.tags.length > 0)
 		{
-			parts.push(mxResources.get('tag', null, 'Tag') + ': ' +
+			parts.push(mxResources.get('tag') + ': ' +
 				sel.tags.join(', '));
 		}
 
@@ -12942,7 +13020,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 				}
 				else layerNames.push(sel.layers[i]);
 			}
-			parts.push(mxResources.get('layer', null, 'Layer') + ': ' +
+			parts.push(mxResources.get('layer') + ': ' +
 				layerNames.join(', '));
 		}
 
@@ -13165,7 +13243,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 		handle.style.cssText = 'flex:0 0 14px;text-align:center;font-size:14px;' +
 			'line-height:1;color:light-dark(#86868b,#86868b);cursor:grab;' +
 			'user-select:none';
-		handle.title = mxResources.get('reorder', null, 'Drag to reorder');
+		handle.title = mxResources.get('reorder');
 		handle.textContent = '⋮⋮';
 
 		handle.addEventListener('mousedown', function()
@@ -13408,8 +13486,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 				// used elsewhere in drawio. Appended at the call site so
 				// the resource string ("Select layers") can be reused as
 				// a popover title without the ellipsis.
-				label: mxResources.get('selectLayers',
-					null, 'Select layers') + '…',
+				label: mxResources.get('selectLayers') + '…',
 				disabled: function()
 				{
 					return graph.getModel().getChildCount(
@@ -13633,7 +13710,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 	// Renders one schema field into the step row. Mirrors appendField in
 	// CustomActionDialog but uses the AnimationDialog's inline styling so
 	// the row layout stays tight and consistent with existing step types.
-	var renderStepField = function(row, idx, key, spec, isPrimary)
+	var renderStepField = function(row, idx, key, spec, isPrimary, disabled)
 	{
 		// getter/setter for nested {key: {field: value}} (object actions)
 		// or top-level (primary actions like wait). Uses syncOnly() (not
@@ -13834,6 +13911,14 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 
 		if (title) inp.title = title;
 
+		// Overridden field (see the `staticOnly` handling in makeStepRow) —
+		// same visual treatment as the disabled Reset button.
+		if (disabled)
+		{
+			inp.disabled = true;
+			inp.style.opacity = '0.4';
+		}
+
 		var commit = function()
 		{
 			var v = inp.value;
@@ -13890,7 +13975,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 		selectCb.type = 'checkbox';
 		selectCb.setAttribute('data-step-select', '1');
 		selectCb.checked = selectedSteps.has(idx);
-		selectCb.title = mxResources.get('select', null, 'Select');
+		selectCb.title = mxResources.get('select');
 		selectCb.style.cssText = 'flex:0 0 auto;margin:0;' +
 			'accent-color:light-dark(var(--focus-color), var(--dark-focus-color))';
 		selectCb.addEventListener('click', function(e)
@@ -14017,9 +14102,19 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 
 			if (schema != null && Array.isArray(schema.fields))
 			{
+				// `staticOnly` fields (viewbox x/y/w/h) are ignored by the
+				// engine while a cells/tags/layers selector is active (the
+				// box then derives from the cells' bounds) — gray them out
+				// so the inputs reflect that they're overridden.
+				var hasSelector = sel != null &&
+					((Array.isArray(sel.cells) && sel.cells.length > 0) ||
+					 (Array.isArray(sel.tags) && sel.tags.length > 0) ||
+					 (Array.isArray(sel.layers) && sel.layers.length > 0));
+
 				for (var f = 0; f < schema.fields.length; f++)
 				{
-					renderStepField(row, idx, key, schema.fields[f], false);
+					renderStepField(row, idx, key, schema.fields[f], false,
+						schema.fields[f].staticOnly === true && hasSelector);
 				}
 			}
 
@@ -14036,7 +14131,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 				// (see Graph.prototype.executeAnimations).
 				var durInput = inlineNumberInput(sel.delay,
 					{min: 0, step: 100, width: 55, placeholder: '900'});
-				durInput.title = mxResources.get('duration', null, 'Duration (ms)');
+				durInput.title = mxResources.get('duration');
 				durInput.addEventListener('change', function()
 				{
 					var ms = parseFloat(durInput.value);
@@ -14067,7 +14162,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 				useCurrentBtn.className = 'geBtn';
 				useCurrentBtn.style.cssText = 'flex:0 0 auto;' +
 					'padding:2px 8px;font-size:11px;min-width:0';
-				useCurrentBtn.textContent = mxResources.get('useCurrent', null, 'Use Current');
+				useCurrentBtn.textContent = mxResources.get('useCurrent');
 				useCurrentBtn.title = useCurrentBtn.textContent;
 				useCurrentBtn.addEventListener('click', function(e)
 				{
@@ -14083,6 +14178,15 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 					s.width = vp.width;
 					s.height = vp.height;
 					if (s.border == null) s.border = vp.border;
+					// Converting to static: an active selector would keep
+					// overriding the captured numbers at execution time, so
+					// it is cleared (re-add cells via the chips to go back
+					// to a dynamic viewbox).
+					delete s.cells;
+					delete s.tags;
+					delete s.tagsMatch;
+					delete s.layers;
+					delete s.excludeCells;
 					refresh();  // re-render so inputs reflect the new numbers
 				});
 				row.appendChild(useCurrentBtn);
@@ -14095,7 +14199,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 		// inserted between selector chips and fields already pushes
 		// the right side of the row out to the edge.)
 		var previewIconBtn = makeIconButton('▶',
-			mxResources.get('preview', null, 'Preview'),
+			mxResources.get('preview'),
 			true, function()
 			{
 				startPreviewSession();
@@ -14217,7 +14321,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 	var applyAddPlaceholder = function()
 	{
 		placeholderOpt.textContent =
-			mxResources.get('add', null, 'Add') + '…';
+			mxResources.get('add') + '…';
 	};
 	applyAddPlaceholder();
 	staticRefreshers.push(applyAddPlaceholder);
@@ -14277,7 +14381,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 	var deleteAllOpt = document.createElement('option');
 	deleteAllOpt.value = '__deleteAll__';
 	deleteAllOpt.className = 'geDeleteOpt';
-	deleteAllOpt.textContent = mxResources.get('deleteAll', null, 'Delete All');
+	deleteAllOpt.textContent = mxResources.get('deleteAll');
 	pickerL10n.push({el: deleteAllOpt, prop: 'textContent',
 		key: 'deleteAll', fallback: 'Delete All'});
 	dangerGroup.appendChild(deleteAllOpt);
@@ -14449,8 +14553,11 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 
 			// Viewbox defaults to the current viewport — same UX as the
 			// CustomActionDialog picker, so picking "Viewbox" is a
-			// one-click snapshot of what you see right now.
-			if (key == 'viewbox')
+			// one-click snapshot of what you see right now. With cells
+			// picked (canvas selection) the action is dynamic instead —
+			// the box derives from the cells' bounds at execution time —
+			// so no static numbers are stored.
+			if (key == 'viewbox' && sel.cells == null)
 			{
 				var vp = captureCurrentViewport();
 				if (sel.x == null) sel.x = vp.x;
@@ -14496,7 +14603,9 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 		// Cell-targeting actions default to the current canvas selection
 		// if any cells are picked, else to the "*" wildcard (all cells).
 		// No alert when selection is empty — the wildcard fallback makes
-		// the picker always succeed.
+		// the picker always succeed. Exception: viewbox with an empty
+		// selection stays a static snapshot of the current viewport (see
+		// buildStepObject) rather than a fit-everything wildcard.
 		var refs = null;
 
 		if (schema.selector)
@@ -14504,7 +14613,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 			var selectionCells = graph.getSelectionCells();
 			refs = (selectionCells.length > 0) ?
 				selectionCells.map(function(c) { return c.id; }) :
-				[Editor.ANIMATION_ALL];
+				((key == 'viewbox') ? null : [Editor.ANIMATION_ALL]);
 		}
 
 		var step = buildStepObject(key, refs);
@@ -14709,7 +14818,7 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 
 	// Reset — restores the canvas to its pre-preview state and stops
 	// any running playback. Disabled until a preview session is open.
-	var resetBtn = mxUtils.button(mxResources.get('reset', null, 'Reset'),
+	var resetBtn = mxUtils.button(mxResources.get('reset'),
 		function()
 		{
 			stopPlayer();
@@ -14719,11 +14828,11 @@ var AnimationDialog = function(editorUi, x, y, w, h, opts)
 	resetBtn.className = 'geBtn';
 	staticRefreshers.push(function()
 	{
-		var t = mxResources.get('reset', null, 'Reset');
+		var t = mxResources.get('reset');
 		resetBtn.textContent = t;
 		resetBtn.title = t;
 	});
-	resetBtn.title = mxResources.get('reset', null, 'Reset');
+	resetBtn.title = mxResources.get('reset');
 	resetBtnRef = resetBtn;
 	updateResetBtn();
 	actions.appendChild(resetBtn);
@@ -17189,31 +17298,20 @@ var LibraryDialog = function(editorUi, name, library, initialImages, file, mode,
 		    			null : img.substring(0, img.lastIndexOf('.')).replace(/_/g, ' '));
 				}));
 			}
-			else if (file != null && new XMLHttpRequest().upload && editorUi.isRemoteFileFormat(data, file.name))
+			else if (file != null && editorUi.isGliffyData(data, file.name))
 			{
-				if (editorUi.isExternalDataComms())
-				{
-					editorUi.parseFile(file, mxUtils.bind(this, function(xhr)
-					{
-						if (xhr.readyState == 4)
-						{
-							editorUi.spinner.stop();
-							
-							if (xhr.status >= 200 && xhr.status <= 299)
-							{
-								var xml = xhr.responseText;
-								addButton(xml, mimeType, x, y, w, h, img, 'fixed', (mxEvent.isAltDown(evt)) ?
-									null : img.substring(0, img.lastIndexOf('.')).replace(/_/g, ' '));
-								div.scrollTop = div.scrollHeight;
-							}
-						}
-					}));
-				}
-				else
+				editorUi.importGliffy(data, mxUtils.bind(this, function(xml)
 				{
 					editorUi.spinner.stop();
-					editorUi.showError(mxResources.get('error'), mxResources.get('notInOffline'));
-				}
+					addButton(xml, mimeType, x, y, w, h, img, 'fixed', (mxEvent.isAltDown(evt)) ?
+						null : img.substring(0, img.lastIndexOf('.')).replace(/_/g, ' '));
+					div.scrollTop = div.scrollHeight;
+				}), mxUtils.bind(this, function(err)
+				{
+					editorUi.spinner.stop();
+					editorUi.showError(mxResources.get('error'), (err != null && err.status == 413) ?
+						mxResources.get('diagramTooLarge') : mxResources.get('unknownError'));
+				}), file.name);
 			}
 			else
 			{
@@ -17889,7 +17987,7 @@ var FontDialog = function(editorUi, curFontname, curUrl, curType, fn)
 	sysSection.className = 'geDialogSection';
 
 	var sysFontRadio = editorUi.addCheckbox(sysSection,
-		mxResources.get('sysFonts', null, 'System Fonts'),
+		mxResources.get('sysFonts'),
 		false, null, null, null, true, 'current-fontdialog', true);
 
 	var sysFontInput = document.createElement('input');
@@ -17920,7 +18018,7 @@ var FontDialog = function(editorUi, curFontname, curUrl, curType, fn)
 	}
 
 	var sysFontRow = addFormRow(sysSection,
-		mxResources.get('fontname', null, 'Font Name'), sysFontInput);
+		mxResources.get('fontname'), sysFontInput);
 
 	if (datalist != null)
 	{
@@ -17934,7 +18032,7 @@ var FontDialog = function(editorUi, curFontname, curUrl, curType, fn)
 	googleSection.className = 'geDialogSection';
 
 	var googleFontRadio = editorUi.addCheckbox(googleSection,
-		mxResources.get('googleFonts', null, 'Google Fonts'),
+		mxResources.get('googleFonts'),
 		false, null, null, null, true, 'current-fontdialog', true);
 
 	if (!editorUi.isOffline() || EditorUi.isElectronApp)
@@ -17953,7 +18051,7 @@ var FontDialog = function(editorUi, curFontname, curUrl, curType, fn)
 
 	googleFontInput.className = 'dlg_fontName_g';
 	addFormRow(googleSection,
-		mxResources.get('fontname', null, 'Font Name'), googleFontInput);
+		mxResources.get('fontname'), googleFontInput);
 
 	if (urlParams['isGoogleFontsEnabled'] != '0')
 	{
@@ -17965,7 +18063,7 @@ var FontDialog = function(editorUi, curFontname, curUrl, curType, fn)
 	webSection.className = 'geDialogSection';
 
 	var webFontRadio = editorUi.addCheckbox(webSection,
-		mxResources.get('webfonts', null, 'Web Fonts'),
+		mxResources.get('webfonts'),
 		false, null, null, null, true, 'current-fontdialog', true);
 
 	var webFontInput = document.createElement('input');
@@ -17985,14 +18083,14 @@ var FontDialog = function(editorUi, curFontname, curUrl, curType, fn)
 
 	webFontInput.className = 'dlg_fontName_w';
 	addFormRow(webSection,
-		mxResources.get('fontname', null, 'Font Name'), webFontInput);
+		mxResources.get('fontname'), webFontInput);
 
 	var webFontUrlInput = document.createElement('input');
 	webFontUrlInput.setAttribute('type', 'text');
 	webFontUrlInput.setAttribute('value', curUrl || '');
 	webFontUrlInput.className = 'dlg_fontUrl';
 	addFormRow(webSection,
-		mxResources.get('fontUrl', null, 'Font URL'), webFontUrlInput);
+		mxResources.get('fontUrl'), webFontUrlInput);
 
 	if (Editor.enableWebFonts)
 	{
@@ -18390,6 +18488,7 @@ var FilePropertiesDialog = function(editorUi, publicLink)
 		file.getTitle() : editorUi.defaultFilename;
 	var isPng = /(\.png)$/i.test(filename);
 	var isSvg = /(\.svg)$/i.test(filename);
+	var isPdf = /(\.pdf)$/i.test(filename);
 	var apply = function(success, error)
 	{
 		success();
@@ -18435,6 +18534,37 @@ var FilePropertiesDialog = function(editorUi, publicLink)
 	// specific options above the common options
 	var settingsSection = document.createElement('div');
 	settingsSection.className = 'geDialogSection';
+
+	// Notes are added to saved PDF files as sticky note annotations
+	// by the local export pipeline which only exists in the desktop app
+	if (isPdf && EditorUi.isElectronApp)
+	{
+		var initialNotes = editorUi.getPdfFileProperties(editorUi.fileNode).notes;
+
+		var notesInput = editorUi.addCheckbox(settingsSection, mxResources.get('notes'),
+			initialNotes, null, null, null, null, null, true);
+
+		this.init = this.init || function()
+		{
+			notesInput.focus();
+		};
+
+		addApply(function(success, error)
+		{
+			if (editorUi.fileNode != null && initialNotes != notesInput.checked)
+			{
+				editorUi.fileNode.setAttribute('notes',
+					(notesInput.checked) ? 'true' : 'false');
+
+				if (file != null)
+				{
+					file.fileChanged();
+				}
+			}
+
+			success();
+		});
+	}
 
 	if (isPng || isSvg)
 	{
@@ -19046,37 +19176,89 @@ var ConnectionPointsDialog = function(editorUi, cell)
 		var addBtn = mxUtils.button(mxResources.get('add'), function()
 		{
 			var count = parseInt(pCount.value);
-			count = count < 1? 1 : (count > 100? 100 : count);
+			count = isNaN(count)? 1 : (count < 1? 1 : (count > 100? 100 : count));
 			pCount.value = count;
 			var side = sideSelect.value;
 			var geo = mainCell.geometry;
-			var cells = [];
+			var horizontal = side == 'top' || side == 'bottom';
+
+			// New points go into the gaps between the existing points on the
+			// edge - an even spread lands exactly on the default constraints
+			// of most shapes where identical points are invisible and then
+			// removed as duplicates on apply
+			var fractions = [0, 1];
+
+			for (var id in editingGraph.model.cells)
+			{
+				var cp = editingGraph.model.cells[id];
+
+				if (!cp.cp) continue;
+
+				var constraint = getConstraintFromCPoint(cp);
+
+				if ((side == 'left' && constraint.x == 0) ||
+					(side == 'right' && constraint.x == 1) ||
+					(side == 'top' && constraint.y == 0) ||
+					(side == 'bottom' && constraint.y == 1))
+				{
+					// Style points can carry non-numeric or out of range
+					// values so invalid fractions are ignored
+					var f = parseFloat(horizontal? constraint.x : constraint.y);
+
+					if (isFinite(f) && f > 0 && f < 1)
+					{
+						fractions.push(f);
+					}
+				}
+			}
+
+			fractions.sort(function(a, b)
+			{
+				return a - b;
+			});
+
+			var gaps = [];
+
+			for (var i = 1; i < fractions.length; i++)
+			{
+				if (fractions[i] > fractions[i - 1])
+				{
+					gaps.push({start: fractions[i - 1],
+						len: fractions[i] - fractions[i - 1], count: 0});
+				}
+			}
 
 			for (var i = 0; i < count; i++)
 			{
-				var x, y;
+				var best = gaps[0];
 
-				switch(side)
+				for (var j = 1; j < gaps.length; j++)
 				{
-					case 'left':
-						x = geo.x;
-						y = geo.y + (i + 1) * geo.height / (count + 1);
-						break;
-					case 'right':
-						x = geo.x + geo.width;
-						y = geo.y + (i + 1) * geo.height / (count + 1);
-						break;
-					case 'top':
-						x = geo.x + (i + 1) * geo.width / (count + 1);
-						y = geo.y;
-						break;
-					case 'bottom':
-						x = geo.x + (i + 1) * geo.width / (count + 1);
-						y = geo.y + geo.height;
-						break;
+					if (gaps[j].len / (gaps[j].count + 1) >
+						best.len / (best.count + 1))
+					{
+						best = gaps[j];
+					}
 				}
 
-				cells.push(createCPoint(x - CP_HLF_SIZE, y - CP_HLF_SIZE));
+				best.count++;
+			}
+
+			var cells = [];
+
+			for (var i = 0; i < gaps.length; i++)
+			{
+				for (var j = 1; j <= gaps[i].count; j++)
+				{
+					var f = parseFloat((gaps[i].start +
+						j * gaps[i].len / (gaps[i].count + 1)).toFixed(6));
+					var fx = horizontal? f : (side == 'left'? 0 : 1);
+					var fy = horizontal? (side == 'top'? 0 : 1) : f;
+
+					cells.push(createCPoint(geo.x + fx * geo.width - CP_HLF_SIZE,
+						geo.y + fy * geo.height - CP_HLF_SIZE,
+						new mxConnectionConstraint(new mxPoint(fx, fy), false)));
+				}
 			}
 
 			editingGraph.setSelectionCells(cells);
@@ -19147,11 +19329,15 @@ var ConnectionPointsDialog = function(editorUi, cell)
 
 			var dx = parseInt(dxInput.value) || 0;
 			var dy = parseInt(dyInput.value) || 0;
-			var constObj = new mxConnectionConstraint(new mxPoint(parseFloat((x / 100).toFixed(6)),
-				parseFloat((y / 100).toFixed(6))), false, null, dx, dy);
-			var cp = editingGraph.getConnectionPoint(state, constObj);
-
 			var cell = editingGraph.getSelectionCell();
+
+			// Points on the shape outline keep following it when their
+			// numbers are edited, dragged points have become fixed points
+			var perimeter = (cell != null && cell.constObj != null) ?
+				cell.constObj.perimeter : false;
+			var constObj = new mxConnectionConstraint(new mxPoint(parseFloat((x / 100).toFixed(6)),
+				parseFloat((y / 100).toFixed(6))), perimeter, null, dx, dy);
+			var cp = editingGraph.getConnectionPoint(state, constObj);
 
 			if (cell != null)
 			{
@@ -19169,7 +19355,12 @@ var ConnectionPointsDialog = function(editorUi, cell)
 		{
 			if (cp.constObj)
 			{
-				return {x: cp.constObj.point.x, y: cp.constObj.point.y, dx: cp.constObj.dx, dy: cp.constObj.dy};
+				// The perimeter flag must survive the round trip or default
+				// points that are projected onto the outline, eg. the sloped
+				// sides of a trapezoid, end up on the bounding box after an
+				// apply without any changes [jgraph/drawio#4821]
+				return {x: cp.constObj.point.x, y: cp.constObj.point.y,
+					perimeter: cp.constObj.perimeter, dx: cp.constObj.dx, dy: cp.constObj.dy};
 			}
 
 			// Two decimal places (mxUtils.format) are not enough precision as
@@ -19200,7 +19391,7 @@ var ConnectionPointsDialog = function(editorUi, cell)
 				y = 1;
 			}
 
-			return {x: x, y: y, dx: parseInt(dx), dy: parseInt(dy)};
+			return {x: x, y: y, perimeter: false, dx: parseInt(dx), dy: parseInt(dy)};
 		};
 
 		function fillCPointProp(evt)
@@ -19250,6 +19441,25 @@ var ConnectionPointsDialog = function(editorUi, cell)
 		mxEvent.addListener(dxInput, 'change', applyPointProp);
 		mxEvent.addListener(dyInput, 'change', applyPointProp);
 
+		// Groups and other non-connectable cells never show their own
+		// connection points in the editor so edits are a silent no-op
+		// unless the cell is also made connectable [jgraph/drawio#5733]
+		var initialConnectable = editorUi.editor.graph.isCellConnectable(cell);
+		var connectableCb = document.createElement('input');
+		connectableCb.setAttribute('type', 'checkbox');
+		connectableCb.style.verticalAlign = 'middle';
+		connectableCb.style.marginRight = '6px';
+		connectableCb.checked = initialConnectable;
+
+		function applyConnectable()
+		{
+			if (connectableCb.checked != initialConnectable)
+			{
+				editorUi.editor.graph.setCellStyles('connectable',
+					(connectableCb.checked) ? '1' : '0', [cell]);
+			}
+		};
+
 		var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
 		{
 			destroy();
@@ -19257,7 +19467,7 @@ var ConnectionPointsDialog = function(editorUi, cell)
 		});
 
 		cancelBtn.className = 'geBtn';
-		
+
 		var applyBtn = mxUtils.button(mxResources.get('apply'), function()
 		{
 			var cells = editingGraph.model.cells, points = [], constraints = [];
@@ -19271,35 +19481,77 @@ var ConnectionPointsDialog = function(editorUi, cell)
 				constraints.push(getConstraintFromCPoint(cp));
 			}
 
-			//Find and remove identical points
-			constraints.sort(function(a, b) 
+			// Returns the location of a point on the shape in the editor
+			function isSameLocation(a, b)
 			{
-				return (a.x != b.x) ? a.x - b.x : ((a.y != b.y) ? a.y - b.y : 
-						((a.dx != b.dx) ? a.dx - b.dx : a.dy - b.dy)); //Sort based on x then y, dx and dy
+				var p1 = editingGraph.getConnectionPoint(state, new mxConnectionConstraint(
+					new mxPoint(a.x, a.y), a.perimeter, null, a.dx, a.dy));
+				var p2 = editingGraph.getConnectionPoint(state, new mxConnectionConstraint(
+					new mxPoint(b.x, b.y), b.perimeter, null, b.dx, b.dy));
+
+				return p1.x == p2.x && p1.y == p2.y;
+			};
+
+			// Sorts by x, y, dx, dy and perimeter so identical points are
+			// adjacent with the perimeter point first
+			constraints.sort(function(a, b)
+			{
+				return (a.x != b.x) ? a.x - b.x : ((a.y != b.y) ? a.y - b.y :
+					((a.dx != b.dx) ? a.dx - b.dx : ((a.dy != b.dy) ? a.dy - b.dy :
+					(b.perimeter ? 1 : 0) - (a.perimeter ? 1 : 0))));
 			});
 
 			for (var i = 0; i < constraints.length; i++)
 			{
-				if (i > 0 && constraints[i].x == constraints[i - 1].x && constraints[i].y == constraints[i - 1].y 
-						  && constraints[i].dx == constraints[i - 1].dx && constraints[i].dy == constraints[i - 1].dy)
+				var c = constraints[i];
+
+				// Skips identical points - equal coordinates with a different
+				// perimeter flag are only identical where the outline is the
+				// bounding box, so the point that follows the outline is kept
+				if (i > 0 && c.x == constraints[i - 1].x && c.y == constraints[i - 1].y &&
+					c.dx == constraints[i - 1].dx && c.dy == constraints[i - 1].dy &&
+					(c.perimeter == constraints[i - 1].perimeter ||
+					isSameLocation(c, constraints[i - 1])))
 				{
-					continue; //Skip this identical point
+					continue;
 				}
 
-				points.push('[' + constraints[i].x + ',' + constraints[i].y + ',0,' + 
-					constraints[i].dx + ',' + constraints[i].dy + ']');
+				points.push('[' + c.x + ',' + c.y + ',' + ((c.perimeter) ? '1' : '0') +
+					',' + c.dx + ',' + c.dy + ']');
 			}
 
-			editorUi.editor.graph.setCellStyles('points', '[' + points.join(',') + ']', [cell]);
+			var editorGraph = editorUi.editor.graph;
+			editorGraph.getModel().beginUpdate();
+			try
+			{
+				editorGraph.setCellStyles('points', '[' + points.join(',') + ']', [cell]);
+				applyConnectable();
+			}
+			finally
+			{
+				editorGraph.getModel().endUpdate();
+			}
+
 			destroy();
 			editorUi.hideDialog();
 		});
-		
+
 		applyBtn.className = 'geBtn gePrimaryBtn';
-		
+
 		var resetBtn = mxUtils.button(mxResources.get('reset'), function()
 		{
-			editorUi.editor.graph.setCellStyles('points', null, [cell]);
+			var editorGraph = editorUi.editor.graph;
+			editorGraph.getModel().beginUpdate();
+			try
+			{
+				editorGraph.setCellStyles('points', null, [cell]);
+				applyConnectable();
+			}
+			finally
+			{
+				editorGraph.getModel().endUpdate();
+			}
+
 			destroy();
 			editorUi.hideDialog();
 		});
@@ -19316,6 +19568,13 @@ var ConnectionPointsDialog = function(editorUi, cell)
 			buttons.appendChild(editorUi.createHelpIcon(
 				'https://www.drawio.com/doc/faq/shape-connection-points-customise'));
 		}
+
+		var connectableLabel = document.createElement('label');
+		connectableLabel.style.cssFloat = 'left';
+		connectableLabel.style.marginTop = '8px';
+		connectableLabel.appendChild(connectableCb);
+		mxUtils.write(connectableLabel, mxResources.get('connectable', null, 'Connectable'));
+		buttons.appendChild(connectableLabel);
 
 		if (editorUi.editor.cancelFirst)
 		{

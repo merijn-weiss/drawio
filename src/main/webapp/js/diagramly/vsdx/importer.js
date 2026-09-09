@@ -935,41 +935,38 @@ var com;
 
 							// Add Shape properties
 							var props = shape.getProperties();
-							
+
 							for (var i = 0; i < props.length; i++)
 							{
 								try
 								{
-									graph.setAttributeForCell(v1, props[i].key, props[i].val);
+									// Property keys are arbitrary Visio labels. They must be
+									// reduced to valid XML attribute names here: browsers'
+									// setAttribute accepts names that strict XML parsers
+									// reject (e.g. parentheses), and a single bad attribute
+									// makes the whole encoded model unparseable
+									var sanitizedKey = com.mxgraph.io.mxVsdxCodec.sanitizeAttributeName(props[i].key);
+									var sanitizedVal = props[i].val != null ? props[i].val.trim() : null;
+
+									if (sanitizedKey != null && sanitizedVal != null && sanitizedVal != '')
+									{
+										// Find unused attribute name (append -2, -3, ... if needed)
+										var finalKey = sanitizedKey;
+										var suffix = 2;
+										var valueElem = (v1.value != null && typeof(v1.value) == 'object') ? v1.value : null;
+
+										while (valueElem != null && valueElem.hasAttribute(finalKey))
+										{
+											finalKey = sanitizedKey + '-' + suffix;
+											suffix++;
+										}
+
+										graph.setAttributeForCell(v1, finalKey, sanitizedVal);
+									}
 								}
 								catch(e)
 								{
-									// Sanitize attribute name: trim and replace spaces with dashes
-									try
-									{
-										var sanitizedKey = props[i].key.trim().replace(/\s+/g, '-');
-										var sanitizedVal = props[i].val != null ? props[i].val.trim() : props[i].val;
-
-                                        if (sanitizedVal != '')
-                                        {
-                                            // Find unused attribute name (append -2, -3, ... if needed)
-                                            var finalKey = sanitizedKey;
-                                            var suffix = 2;
-                                            var valueElem = (v1.value != null && typeof(v1.value) == 'object') ? v1.value : null;
-
-                                            while (valueElem != null && valueElem.hasAttribute(finalKey))
-                                            {
-                                                finalKey = sanitizedKey + '-' + suffix;
-                                                suffix++;
-                                            }
-
-                                            graph.setAttributeForCell(v1, finalKey, sanitizedVal);
-                                        }
-									}
-									catch(e2)
-									{
-										console.log('Attribute: "', props[i].key, '" with value "', props[i].val, '" not allowed in HTML');
-									}
+									console.log('Attribute: "', props[i].key, '" with value "', props[i].val, '" not allowed');
 								}
 							}
 							
@@ -1765,6 +1762,42 @@ var com;
                     }
                 };
                 /**
+                 * Reduces an arbitrary string (e.g. a Visio property label like
+                 * "Input Voltage (V)") to a valid XML attribute name, or null if
+                 * nothing usable remains. Do not rely on setAttribute to reject bad
+                 * names: browsers accept names (parentheses etc.) that XMLSerializer
+                 * happily writes but no strict XML parser will read back.
+                 */
+                mxVsdxCodec.sanitizeAttributeName = function (name) {
+                    if (name == null)
+                	{
+                        return null;
+                	}
+
+                    // Whitespace runs become dashes, all other characters outside the
+                    // XML NCName grammar are dropped (colons too: they would create
+                    // undeclared namespace prefixes), repeated dashes collapse, and
+                    // leading/trailing dashes and dots are trimmed
+                    var key = name.trim().replace(/\s+/g, '-')
+                        .replace(/[^A-Za-z0-9._\-]/g, '')
+                        .replace(/-{2,}/g, '-')
+                        .replace(/^[-.]+|[-.]+$/g, '');
+
+                    if (key.length == 0)
+                	{
+                        return null;
+                	}
+
+                    // Names must not start with a digit, dot or dash, and the "xml"
+                    // prefix is reserved by the XML spec
+                    if (/^[0-9.\-]/.test(key) || /^xml/i.test(key))
+                	{
+                        key = '_' + key;
+                	}
+
+                    return key;
+                };
+                /**
                  * Post processes groups to remove leaf vertices that render nothing
                  * @param group
                  * @param {mxGraph} graph
@@ -1794,13 +1827,16 @@ var com;
                     
                     //Check for -ve width/height cells and correct it
                     var geo = cell.geometry;
-                    
+
                     if (geo != null)
                 	{
+                    	var dx = 0, dy = 0;
+
                     	if (geo.height < 0)
                 		{
                     		geo.height = Math.abs(geo.height);
                     		geo.y -= geo.height;
+                    		dy = geo.height;
                     		cell.style += ';flipV=1;';
                 		}
 
@@ -1808,7 +1844,25 @@ var com;
                 		{
                     		geo.width = Math.abs(geo.width);
                     		geo.x -= geo.width;
+                    		dx = geo.width;
                     		cell.style += ';flipH=1;';
+                		}
+
+                    	// Normalizing moves the cell's origin while child geometries
+                    	// are relative to it (not to the box), so shift the children
+                    	// back to keep their absolute positions (e.g. line labels on
+                    	// connectors with Width=EndX-BeginX < 0, see issue 5228)
+                    	if (dx != 0 || dy != 0)
+                		{
+                    		for (var ci = 0; ci < model.getChildCount(cell); ci++)
+                    		{
+                    			var childGeo = model.getChildAt(cell, ci).geometry;
+
+                    			if (childGeo != null)
+                    			{
+                    				childGeo.translate(dx, dy);
+                    			}
+                    		}
                 		}
                 	}
                     
@@ -1900,6 +1954,9 @@ var com;
 	                                        if (shape.isVertex()) {
 	                                            /* clear */ this_1.edgeShapeMap.entries = [];
 	                                            /* clear */ this_1.parentsMap.entries = [];
+	                                            // Cleared per master so applyUncroppedImages below cannot
+	                                            // match a shape ID registered by an earlier master
+	                                            /* clear */ this_1.vertexMap.entries = [];
 	                                            cell = this_1.addShape(shapeGraph, shape, shapeGraph.getDefaultParent(), 0, 1169);
 	                                            {
 	                                                var array131 = (function (m) { if (m.entries == null)
@@ -1920,7 +1977,12 @@ var com;
 	                                        else {
 	                                            cell = this_1.addUnconnectedEdge(shapeGraph, null, shape, 1169);
 	                                        }
-	                                        
+
+	                                        // Masters are encoded synchronously: the async crop pass
+	                                        // pages get (postImportPage) never runs for them, so apply
+	                                        // deferred images uncropped instead of losing them
+	                                        this_1.applyUncroppedImages(shape, 0);
+
 	                                        hasCells |= (cell != null);
                                         }
                                         
@@ -2080,7 +2142,34 @@ var com;
 
                 	return {width: maxX - minX, height: maxY - minY}
                 };
-                
+
+                /**
+                 * Appends deferred (to-be-cropped) images to master cells uncropped.
+                 * Pages resolve toBeCroppedImg asynchronously in postImportPage, but
+                 * masters are encoded synchronously right after being built, so a
+                 * deferred image would otherwise be dropped from the library shape
+                 * (and the imageless cell then pruned by sanitiseGraph).
+                 */
+                mxVssxCodec.prototype.applyUncroppedImages = function (shape, pageId) {
+                    var toCrop = shape.toBeCroppedImg;
+                    if (toCrop != null && toCrop.iType != null && toCrop.iData != null) {
+                        var cell = (function (m, k) { if (m.entries == null)
+                            m.entries = []; for (var i = 0; i < m.entries.length; i++)
+                            if (m.entries[i].key.equals != null && m.entries[i].key.equals(k) || m.entries[i].key === k) {
+                                return m.entries[i].value;
+                            } return null; })(this.vertexMap, new com.mxgraph.io.vsdx.ShapePageId(pageId, shape.getId()));
+                        if (cell != null && cell.style != null && cell.style.indexOf(';image=') < 0) {
+                            cell.style += ';image=data:image/' + toCrop.iType + ',' + toCrop.iData;
+                        }
+                    }
+                    var children = shape.getChildShapes();
+                    if (children != null && children.entries != null) {
+                        for (var i = 0; i < children.entries.length; i++) {
+                            this.applyUncroppedImages(children.entries[i].value, pageId);
+                        }
+                    }
+                };
+
                 mxVssxCodec.prototype.transPoint = function (p, srcP) {
                     if (p != null) {
                         p.x = (p.x - srcP.x);
@@ -2392,19 +2481,19 @@ var com;
                          * Map with the document's colors.<br/>
                          * The key is the index number and the value is the hex representation of the color.
                          */
-                        /*private*/ this.colorElementMap = ({});
+                        /*private*/ this.colorElementMap = (Object.create(null));
                         /**
                          * Map with the document's fonts.<br/>
                          * The key is the ID and the value is the name of the font.
                          */
-                        /*private*/ this.fontElementMap = ({});
+                        /*private*/ this.fontElementMap = (Object.create(null));
                     }
                     mxPropertiesManager.__static_initialize = function () { if (!mxPropertiesManager.__static_initialized) {
                         mxPropertiesManager.__static_initialized = true;
                         mxPropertiesManager.__static_initializer_0();
                     } };
                     mxPropertiesManager.defaultColors_$LI$ = function () { mxPropertiesManager.__static_initialize(); if (mxPropertiesManager.defaultColors == null)
-                        mxPropertiesManager.defaultColors = ({}); return mxPropertiesManager.defaultColors; };
+                        mxPropertiesManager.defaultColors = (Object.create(null)); return mxPropertiesManager.defaultColors; };
                     ;
                     mxPropertiesManager.__static_initializer_0 = function () {
                         /* put */ (mxPropertiesManager.defaultColors_$LI$()["0"] = "#000000");
@@ -3295,7 +3384,7 @@ var com;
                          */
                         this.Id = null;
                         this.masterShape = null;
-                        this.childShapes = ({});
+                        this.childShapes = (Object.create(null));
                         this.master = null;
                         this.master = m;
                         this.Id = m.getAttribute(com.mxgraph.io.vsdx.mxVsdxConstants.ID) || "";
@@ -3513,11 +3602,11 @@ var com;
                          * Map of master objects indexed by their ID. Before you think you're being clever by making
                          * the index an Integer as for pages, don't, there are reasons.
                          */
-                        this.masters = ({});
+                        this.masters = (Object.create(null));
                         /**
                          * Map stylesheets indexed by their ID
                          */
-                        this.stylesheets = ({});
+                        this.stylesheets = (Object.create(null));
                         /**
                          * Map themes indexed by their index
                          */
@@ -4234,7 +4323,7 @@ var com;
                         /*private*/ this.themeIndex = -1;
                         /*private*/ this.themeVariantClr = 0;
                         /*private*/ this.themeVariantStl = 0;
-                        /*private*/ this.baseColors = ({});
+                        /*private*/ this.baseColors = (Object.create(null));
                         /*private*/ this.variantsColors = (function (dims) { var allocate = function (dims) { if (dims.length == 0) {
                             return undefined;
                         }
@@ -4318,7 +4407,7 @@ var com;
                         mxVsdxTheme.__static_initializer_1();
                     } };
                     mxVsdxTheme.themesIds_$LI$ = function () { mxVsdxTheme.__static_initialize(); if (mxVsdxTheme.themesIds == null)
-                        mxVsdxTheme.themesIds = ({}); return mxVsdxTheme.themesIds; };
+                        mxVsdxTheme.themesIds = (Object.create(null)); return mxVsdxTheme.themesIds; };
                     ;
                     mxVsdxTheme.__static_initializer_0 = function () {
                         /* put */ (mxVsdxTheme.themesIds_$LI$()["Office"] = 33);
@@ -9576,6 +9665,14 @@ var com;
                                 return o1 === o2;
                             } })(iType, "Bitmap")) {
                                 compression = compression.toLowerCase();
+
+                                // CompressionType is file content that ends up inside the
+                                // cell style (image=data:image/<type>,...): only pass
+                                // through known bitmap types so a crafted value cannot
+                                // smuggle style keys or a foreign URL scheme
+                                if (!/^(png|jpg|jpeg|gif|tiff|bmp)$/.test(compression)) {
+                                    compression = "png";
+                                }
                             }
                             else if ((function (o1, o2) { if (o1 && o1.equals) {
                                 return o1.equals(o2);
@@ -9699,7 +9796,7 @@ var com;
                                     var ix = row.getAttribute("IX") || "";
                                     if (!(ix.length === 0)) {
                                         if (this.fields == null) {
-                                            this.fields = ({});
+                                            this.fields = (Object.create(null));
                                         }
                                         var del = row.getAttribute("Del");
                                         if ((function (o1, o2) { if (o1 && o1.equals) {
@@ -10504,6 +10601,17 @@ var com;
                                 if (_this.childShapes.entries.length == 1)
                                 {
                                     var child = _this.childShapes.entries[0].value;
+
+                                    // A shape without any text element cannot be the
+                                    // edge-with-label pattern: keep the group (this is the
+                                    // same outcome the null text produced via the catch
+                                    // below, minus the console noise)
+                                    if ((!_this.fields && _this.text == null) ||
+                                        (!child.fields && child.text == null))
+                                    {
+                                        return hasChildren;
+                                    }
+
                                     var edgeTxt = _this.fields? Object.values(_this.fields).join('') : _this.text.textContent;
                                     var childTxt = child.fields? Object.values(child.fields).join('') : child.text.textContent;
 
@@ -10893,7 +11001,7 @@ var com;
                      * @param {*} children the text Elements
                      */
                     VsdxShape.prototype.initLabels = function (children) {
-                        this.paragraphs = ({});
+                        this.paragraphs = (Object.create(null));
                         var ch = null;
                         var pg = null;
                         var fld = null;
@@ -12155,9 +12263,17 @@ var com;
                                     var imgHeight = parseFloat(this.getValue(this.getCellElement$java_lang_String('ImgHeight'), "0"));
                                     var width = parseFloat(this.getValue(this.getCellElement$java_lang_String('Width'), "0"));
                                     var height = parseFloat(this.getValue(this.getCellElement$java_lang_String('Height'), "0"));
-                                    
-                                    if (imgOffsetX != 0 || imgOffsetY != 0 ||
-                                        imgWidth != width || imgHeight != height)
+
+                                    // Values are inches: stencils in the wild carry FP noise (e.g.
+                                    // ImgHeight differing from Height in the 13th decimal), and an
+                                    // exact compare sends those into the async crop path, which
+                                    // degrades the image and never runs at all for library masters.
+                                    // Zero/negative image extents cannot be cropped (div by zero).
+                                    var cropEps = 1e-6;
+
+                                    if (imgWidth > 0 && imgHeight > 0 &&
+                                        (Math.abs(imgOffsetX) > cropEps || Math.abs(imgOffsetY) > cropEps ||
+                                        Math.abs(imgWidth - width) > cropEps || Math.abs(imgHeight - height) > cropEps))
                                 	{
                                     	this.toBeCroppedImg = {
                                 			imgOffsetX: imgOffsetX, 

@@ -224,8 +224,10 @@ OUTPUT FILES (in src/main/webapp/js/):
 				<file name="Sidebar-Android.js" />
 				<file name="Sidebar-ArchiMate.js" />
 				<file name="Sidebar-ArchiMate3.js" />
+				<file name="Sidebar-ArchiMate4.js" />
 				<file name="Sidebar-Arrows2.js" />
 				<file name="Sidebar-Atlassian.js" />
+				<file name="Sidebar-Atlassian2.js" />
 				<file name="Sidebar-AWS.js" />
 				<file name="Sidebar-AWS3.js" />
 				<file name="Sidebar-AWS3D.js" />
@@ -463,7 +465,6 @@ OUTPUT FILES (in src/main/webapp/js/):
 				<file name="Pages.js" />
 				<file name="Trees.js" />
 				<file name="Minimal.js" />
-				<file name="DistanceGuides.js" />
 				<file name="mxRuler.js" />
 				<file name="mxFreehand.js" />
 				<file name="DrawioUser.js" />
@@ -507,6 +508,9 @@ OUTPUT FILES (in src/main/webapp/js/):
 			</sources>
 			<sources dir="${war.dir}/js/diagramly/graphml">
 				<file name="mxGraphMlCodec.js" />
+			</sources>
+			<sources dir="${war.dir}/js/diagramly/miro">
+				<file name="MiroImporter.js" />
 			</sources>
 		</jscomp>
 
@@ -631,7 +635,6 @@ OUTPUT FILES (in src/main/webapp/js/):
 				<file name="Pages.js" />
 				<file name="Trees.js" />
 				<file name="Minimal.js" />
-				<file name="DistanceGuides.js" />
 				<file name="mxRuler.js" />
 				<file name="mxFreehand.js" />
 				<file name="P2PCollab.js" />

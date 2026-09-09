@@ -57,6 +57,23 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		elem = elem || document;
 		return elem.querySelectorAll(selector);
 	};
+
+	// Shared items and shortcuts to items in other drives have their
+	// name and file/folder facets nested inside the remoteItem facet
+	function getItemName(item)
+	{
+		return item.name || (item.remoteItem != null? item.remoteItem.name : null);
+	};
+
+	function getItemFolder(item)
+	{
+		return item.folder || (item.remoteItem != null? item.remoteItem.folder : null);
+	};
+
+	function getItemFile(item)
+	{
+		return item.file || (item.remoteItem != null? item.remoteItem.file : null);
+	};
 	
 	var html = 
 			'<div class="odCatsList">' +
@@ -415,7 +432,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 			spinner.stop();
 		};
 		
-		if (file == null || file.folder || /\.drawiolib$/.test(file.name)) 
+		if (file == null || getItemFolder(file) != null || /\.drawiolib$/.test(getItemName(file)))
 		{
 			showRenderMsg(mxResources.get('noPreview'));
 			return;
@@ -520,7 +537,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 		}
 		else
 		{
-			var isFolder = selectedFile.folder;
+			var isFolder = getItemFolder(selectedFile) != null;
 			selectedFile = selectedFile.remoteItem? selectedFile.remoteItem : selectedFile; //handle remote items which is accessed indirectly
 			var folderDI = (selectedFile.parentReference? selectedFile.parentReference.driveId : null) || selectedDriveId;
 			var id = selectedFile.id;
@@ -582,7 +599,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 					continue;
 				}
 				
-				var title = item.displayName || item.name;
+				var title = item.displayName || getItemName(item);
 				var tooltip = mxUtils.htmlEntities(item.description || title);
 						
 				if (isSharepointSites)
@@ -590,7 +607,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 					item.folder = isSharepointSites == 2? {isRoot: true} : true;
 				}
 				
-				var isFolder = item.folder !=  null;
+				var isFolder = getItemFolder(item) != null;
 				
 				if (foldersOnly && !isFolder)
 				{
@@ -658,7 +675,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 				emptyMsg.className = 'odEmptyFolder';
 				emptyMsg.innerHTML = mxUtils.htmlEntities(isSharepointSites == 1 && searchTxt?
 					mxResources.get('noResultsFor', [searchTxt], 'No results for \'' + searchTxt + '\'') :
-					mxResources.get('folderEmpty', null, 'Folder is empty!'));
+					mxResources.get('folderEmpty'));
 				filesList.appendChild(emptyMsg);
 			}
 			else
@@ -687,7 +704,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
         switch(driveId)
         {
         	case 'recent':
-        		breadcrumb = [{name: mxResources.get('recent', null, 'Recent'), driveId: driveId}];
+        		breadcrumb = [{name: mxResources.get('recent'), driveId: driveId}];
         		var recentList = getRecentList() || {};
         		var list = [];
         		
@@ -701,11 +718,11 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
         		return;
         	case 'shared':
         		url = '/me/drive/sharedWithMe';
-        		breadcrumb = [{name: mxResources.get('sharedWithMe', null, 'Shared With Me'), driveId: driveId}];
+        		breadcrumb = [{name: mxResources.get('sharedWithMe'), driveId: driveId}];
         		break;
         	case 'sharepoint':
         		url = '/sites?search=' + (searchTxt != null? encodeURIComponent(searchTxt) : '');
-        		breadcrumb = [{name: mxResources.get('sharepointSites', null, 'Sharepoint Sites'), driveId: driveId}];
+        		breadcrumb = [{name: mxResources.get('sharepointSites'), driveId: driveId}];
         		isSharepointSites = 1;
         		break;
         	case 'site':
@@ -719,7 +736,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
         		break;
         	case 'search': //TODO file search doesn't return any results, find out why then enable the searchBox for file folders also
         		driveId = selectedDriveId;
-        		breadcrumb = [{driveId: driveId, name: mxResources.get('back', null, 'Back')}];
+        		breadcrumb = [{driveId: driveId, name: mxResources.get('back')}];
         		searchTxt = encodeURIComponent(searchTxt.replace(/\'/g, '\\\''));
         		url = selectedSiteId? '/sites/' + selectedSiteId + '/drive/root/search(q=\'' + searchTxt + '\')' : (driveId? '/drives/' + driveId + '/root/search(q=\'' + searchTxt + '\')' : '/me/drive/root/search(q=\'' + searchTxt + '\')');
         		break;
@@ -760,11 +777,13 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 					for (var i = 0; i < list.length; i++)
 					{
 						var file = list[i];
-						var mimeType = file.file? file.file.mimeType : null;
+						var fileFacet = getItemFile(file);
+						var mimeType = fileFacet != null? fileFacet.mimeType : null;
+						var fileName = getItemName(file);
 						
-						if (file.folder || mimeType == 'text/html' || mimeType == 'text/xml' || mimeType == 'application/xml' || mimeType == 'image/png' 
-							|| /\.svg$/.test(file.name) || /\.html$/.test(file.name) || /\.xml$/.test(file.name) || /\.png$/.test(file.name)
-							|| /\.drawio$/.test(file.name) || /\.drawiolib$/.test(file.name) || /\.pdf$/.test(file.name))
+						if (getItemFolder(file) != null || mimeType == 'text/html' || mimeType == 'text/xml' || mimeType == 'application/xml' || mimeType == 'image/png'
+							|| /\.svg$/.test(fileName) || /\.html$/.test(fileName) || /\.xml$/.test(fileName) || /\.png$/.test(fileName)
+							|| /\.drawio$/.test(fileName) || /\.drawiolib$/.test(fileName) || /\.pdf$/.test(fileName))
 						{
 							potentialDrawioFiles.push(file);
 						}
@@ -773,14 +792,16 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 					// Sorts entries by type and name
 					potentialDrawioFiles.sort(function(a, b)
 					{
-						var nameA = a.name.toLowerCase();
-						var nameB = b.name.toLowerCase();
+						var nameA = (getItemName(a) || '').toLowerCase();
+						var nameB = (getItemName(b) || '').toLowerCase();
+						var isFolderA = getItemFolder(a) != null;
+						var isFolderB = getItemFolder(b) != null;
 
-						if (a.folder && !b.folder)
+						if (isFolderA && !isFolderB)
 						{
 							return -1;
 						}
-						else if (!a.folder && b.folder)
+						else if (!isFolderA && isFolderB)
 						{
 							return 1;
 						}
@@ -825,7 +846,7 @@ function mxODPicker(container, previewFn, getODFilesList, getODFileInfo, getRece
 				}
 				catch(e){} //ignore errors
 				
-				errorFn(mxResources.get('errorFetchingFolder', null, 'Error fetching folder items') +
+				errorFn(mxResources.get('errorFetchingFolder') +
 					(errMsg != null? ' (' + errMsg + ')' : ''));
 
 				requestInProgress = false;

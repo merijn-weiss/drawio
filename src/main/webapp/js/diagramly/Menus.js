@@ -640,7 +640,7 @@
 		editorUi.actions.put('exportPdf', new Action('formatPdf' + '...', function()
 		{
 			editorUi.showPrintDialog(mxResources.get('formatPdf'),
-				(!EditorUi.isElectronApp && (editorUi.isOffline() || editorUi.printPdfExport)) ?
+				(!EditorUi.isElectronApp && editorUi.isPrintPdfExport()) ?
 					null : mxUtils.bind(this, function(preview, args)
 					{
 						var pageCount = (editorUi.pages != null) ? editorUi.pages.length : 1;
@@ -998,7 +998,7 @@
 						}
 					}), true, defaultEditable, format, true);
 			}
-			else if (!editorUi.isOffline() && (!mxClient.IS_IOS || !navigator.standalone))
+			else if (editorUi.isRemoteExportEnabled() && (!mxClient.IS_IOS || !navigator.standalone))
 			{
 				editorUi.showRemoteExportDialog(mxResources.get('export'), null, mxUtils.bind(this,
 					function(ignoreSelection, editable, transparent, scale, border)
@@ -1028,8 +1028,7 @@
 			exportImage('webp');
 		}));
 
-		editorUi.actions.put('exportAnimatedGif', new Action(mxResources.get('formatAnimatedGif',
-			null, 'Animated GIF') + '...', function()
+		editorUi.actions.put('exportAnimatedGif', new Action(mxResources.get('formatAnimatedGif') + '...', function()
 		{
 			editorUi.showAnimatedGifExportDialog();
 		}));
@@ -1390,7 +1389,7 @@
 							}]]);
 					}]);
 				}
-				
+
 				editorUi.showConfigurationEditorDialog(mxResources.get('configuration') + ':', Editor.configurationKey,
 					buttons, 'https://www.drawio.com/doc/faq/configure-diagram-editor');
 			});
@@ -1402,8 +1401,14 @@
 		// in older browsers. URL param has precedence over the saved setting.
 		if (mxClient.IS_CHROMEAPP || isLocalStorage)
 		{
+			editorUi.updateOfflineLanguages();
+
 			this.put('language', new Menu(mxUtils.bind(this, function(menu, parent)
 			{
+				// Refreshes the offline availability of the language bundles
+				// for the next time this menu is opened (asynchronous)
+				editorUi.updateOfflineLanguages();
+
 				var currentLanguage = mxLanguage;
 
 				if (urlParams['lang'] == null && isLocalStorage)
@@ -1418,10 +1423,19 @@
 					
 					if (lang != '')
 					{
+						// Language bundles are cached on first use - while
+						// offline, only cached bundles produce a translated UI
+						var enabled = editorUi.isLanguageAvailableOffline(id);
+
 						item = menu.addItem(lang, null, mxUtils.bind(this, function()
 						{
 							editorUi.setAndPersistLanguage(id);
-						}), parent);
+						}), parent, null, enabled);
+
+						if (!enabled)
+						{
+							item.setAttribute('title', mxResources.get('notInOffline'));
+						}
 						
 						if (id == currentLanguage || (id == '' && currentLanguage == null))
 						{
@@ -1436,9 +1450,23 @@
 				menu.addSeparator(parent);
 
 				// LATER: Sort menu by language name
-				for(var langId in mxLanguageMap) 
+				for(var langId in mxLanguageMap)
 				{
 					addLangItem(langId);
+				}
+
+				// Language dialog with the offline bundles - only useful
+				// where a service worker caches them on use
+				if ('serviceWorker' in navigator &&
+					navigator.serviceWorker.controller != null)
+				{
+					menu.addSeparator(parent);
+
+					menu.addItem(mxResources.get('manage') + '...',
+						null, mxUtils.bind(this, function()
+					{
+						editorUi.showLanguageDialog();
+					}), parent);
 				}
 			})));
 		}
@@ -1455,13 +1483,29 @@
 				editorUi.customLayoutConfig, null, 2));
 		});
 
+		// Re-runs the most recent layout with the same options (recorded as
+		// a custom-layout array on lastLayoutSpec by executeLayoutSpec,
+		// ElkLayout.run, LibavoidRouting.run and the custom layout dialog).
+		// retargetSelection: as a user gesture the replay may retarget a
+		// selected layout container's childLayout, like the other Arrange >
+		// Layout items (programmatic executeLayoutSpec callers must not).
+		// Guarded internally because the Ctrl+Alt keymap invokes the action
+		// without checking its enabled state.
+		editorUi.actions.addAction('runLastLayout', function()
+		{
+			if (editorUi.lastLayoutSpec != null)
+			{
+				editorUi.executeLayoutSpec(editorUi.lastLayoutSpec, null, true);
+			}
+		}, null, null, Editor.ctrlKey + '+' + Editor.altKey + '+T');
+
 		// Adds action for removing user-defined colors
 		editorUi.actions.put('adaptiveColors', new Action('adaptiveColors', function(evt)
 		{
 			if (editorUi.adaptiveColorsWindow == null)
 			{
 				editorUi.adaptiveColorsWindow = new AdaptiveColorsWindow(
-					editorUi, document.body.offsetWidth - 520, 80, 200, 160);
+					editorUi, document.body.offsetWidth - 520, 80, 220, 180);
 			}
 
 			editorUi.adaptiveColorsWindow.window.setVisible(true);
@@ -1481,6 +1525,7 @@
 			}
 		});
 		
+		var menus = this;
 		var layoutMenu = this.get('layout');
 		var layoutMenuFunct = layoutMenu.funct;
 
@@ -1489,18 +1534,16 @@
 
 		layoutMenu.funct = function(menu, parent)
 		{
-			// Re-runs the most recent layout with the same options (recorded
-			// as a custom-layout array on lastLayoutSpec by executeLayoutSpec,
-			// ElkLayout.run, LibavoidRouting.run and the custom layout
-			// dialog); grayed out until a layout has run in this session.
-			menu.addItem(mxResources.get('runLastLayout'), null, function()
+			// Grayed out until a layout has run in this session; see the
+			// runLastLayout action for the replay semantics.
+			var action = editorUi.actions.get('runLastLayout');
+
+			var item = menu.addItem(mxResources.get('runLastLayout'), null, function()
 			{
-				// retargetSelection: as a menu gesture the replay may retarget
-				// a selected layout container's childLayout, like the other
-				// Arrange > Layout items (programmatic executeLayoutSpec
-				// callers must not).
-				editorUi.executeLayoutSpec(editorUi.lastLayoutSpec, null, true);
+				action.funct();
 			}, parent, null, isGraphEnabled() && editorUi.lastLayoutSpec != null);
+
+			menus.addShortcut(item, action);
 
 			menu.addSeparator(parent);
 
@@ -3131,7 +3174,7 @@
 			}
 			
 			// Disabled for standalone mode in iOS because new tab cannot be closed
-			else if (!editorUi.isOffline() && (!mxClient.IS_IOS || !navigator.standalone))
+			else if (editorUi.isRemoteExportEnabled() && (!mxClient.IS_IOS || !navigator.standalone))
 			{
 				this.addMenuItems(menu, ['exportPng', 'exportJpg'], parent);
 			}
@@ -3143,13 +3186,13 @@
 
 			this.addMenuItems(menu, ['exportSvg', '-'], parent);
 			
-			// Redirects export to PDF to print in Chrome App
-			if (editorUi.isOffline() || editorUi.printPdfExport)
+			// Redirects export to PDF to print if no export service is available
+			if (editorUi.isPrintPdfExport())
 			{
 				this.addMenuItems(menu, ['exportPdf'], parent);
 			}
 			// Disabled for standalone mode in iOS because new tab cannot be closed
-			else if (!editorUi.isOffline() && (!mxClient.IS_IOS || !navigator.standalone))
+			else if (!mxClient.IS_IOS || !navigator.standalone)
 			{
 				this.addMenuItems(menu, ['exportPdf'], parent);
 			}
@@ -4209,7 +4252,7 @@
 		{
 			if (graph.isEnabled() && !graph.isCellLocked(graph.getDefaultParent()))
 			{
-    	    	insertVertex('', 80, 80, 'ellipse;whiteSpace=wrap;html=1;', (evt != null &&
+    	    	insertVertex('', 80, 80, 'ellipse;whiteSpace=wrap;html=1;shapeInside=1;', (evt != null &&
 					!mxEvent.isControlDown(evt) && !mxEvent.isMetaDown(evt) &&
 					graph.isMouseInsertPoint()) ? graph.getInsertPoint() : null);
 			}
@@ -4219,7 +4262,7 @@
 		{
 			if (graph.isEnabled() && !graph.isCellLocked(graph.getDefaultParent()))
 			{
-    	    	insertVertex('', 80, 80, 'rhombus;whiteSpace=wrap;html=1;', (evt != null &&
+    	    	insertVertex('', 80, 80, 'rhombus;whiteSpace=wrap;html=1;shapeInside=1;', (evt != null &&
 					!mxEvent.isControlDown(evt) && !mxEvent.isMetaDown(evt) &&
 					graph.isMouseInsertPoint()) ? graph.getInsertPoint() : null);
 			}
@@ -4619,23 +4662,8 @@
 					}, parent, null, false);
 				}
 
-				if (editorUi.isModeReady(App.MODE_DROPBOX))
-				{
-					menu.addItem(mxResources.get('dropbox') + '...', null, function()
-					{
-						editorUi.showLibraryDialog(null, null, null, null, App.MODE_DROPBOX);
-					}, parent);
-				}
-				else if (editorUi.isModeEnabled(App.MODE_DROPBOX))
-				{
-					menu.addItem(mxResources.get('dropbox') + ' (' + mxResources.get('loading') + '...)', null, function()
-					{
-						// do nothing
-					}, parent, null, false);
-				}
-				
 				menu.addSeparator(parent);
-				
+
 				if (editorUi.isModeReady(App.MODE_GITHUB))
 				{
 					menu.addItem(mxResources.get('github') + '...', null, function()
@@ -5106,7 +5134,7 @@
 					(mxUtils.bind(this, function(index)
 					{
 						var item = null;
-
+					
 						if (editorUi.pages[index] == page && !editorUi.editor.graph.isLightboxView() &&
 							editorUi.editor.graph.isEnabled())
 						{
@@ -5236,8 +5264,7 @@
 				Editor.currentTheme == 'sketch' ||
 				Editor.currentTheme == 'min')
 			{
-				if (urlParams['embed'] != '1' && urlParams['extAuth'] != '1' &&
-					editorUi.mode != App.MODE_ATLAS)
+				if (editorUi.isThemeMenuVisible())
 				{
 					editorUi.menus.addSubmenu('theme', menu, parent);
 				}
@@ -5289,8 +5316,7 @@
 			}
 			else
 			{
-				if (urlParams['embed'] != '1' && urlParams['extAuth'] != '1' &&
-					editorUi.mode != App.MODE_ATLAS)
+				if (editorUi.isThemeMenuVisible())
 				{
 					this.addSubmenu('theme', menu, parent);
 				}

@@ -255,32 +255,14 @@ mxStencilRegistry.allowEval = false;
 							pluginUrl = './' + pluginUrl;
 						}
 
-						// External plugins in App Data folder (Needs enabling plugins)
+						// Only built-in plugins shipped with the app are supported;
+						// settings entries for the removed external plugins are skipped
 						if (!pluginUrl.startsWith('./plugins/'))
 						{
-							let pluginFile = await requestSync({
-								action: 'getPluginFile',
-								plugin: plugins[i]
-							});
-
-							if (pluginFile != null)
-							{
-								pluginUrl = 'file://' + pluginFile;
-							}
-							else
-							{
-								continue; //skip not found files
-							}
+							continue;
 						}
 
-						try
-						{
-							mxscript(pluginUrl);
-						}
-						catch (e)
-						{
-							// ignore
-						}
+						mxscript(pluginUrl);
 					}
 					catch (e)
 					{
@@ -427,7 +409,15 @@ mxStencilRegistry.allowEval = false;
 			// KNOWN: Event with gesture handler mouseUp the middle click opens a framed window
 			mxEvent.addListener(a, 'click', mxUtils.bind(this, function(evt)
 			{
-				this.openLink(a.getAttribute('href'), a.getAttribute('target'));
+				// The href is not written for links that did not pass the check
+				// in createLinkForHint, in which case there is nothing to open
+				var url = a.getAttribute('href');
+
+				if (url != null)
+				{
+					this.openLink(url, a.getAttribute('target'));
+				}
+
 				mxEvent.consume(evt);
 			}));
 		}
@@ -559,7 +549,7 @@ mxStencilRegistry.allowEval = false;
 										graph.setSelectionCells(editorUi.importXml(xml));
 									});
 								}
-								else if (editorUi.isRemoteFileFormat(data, path))
+								else if (editorUi.isGliffyData(data, path))
 								{
 									editorUi.spinner.stop();
 									editorUi.showError(mxResources.get('error'), mxResources.get('notInDesktop'));
@@ -830,7 +820,7 @@ mxStencilRegistry.allowEval = false;
 				}
 			}
 
-			editorUi.showDialog(new PluginsDialog(editorUi, async function(callback)
+			editorUi.showDialog(new PluginsDialog(editorUi, function(callback)
 			{
 				var div = document.createElement('div');
 				
@@ -855,78 +845,6 @@ mxStencilRegistry.allowEval = false;
 				}
 				
 				div.appendChild(pluginsSelect);
-				mxUtils.br(div);
-				mxUtils.br(div);
-				
-				title = document.createElement('span');
-				mxUtils.write(title, mxResources.get('extPlugins') + ': ');
-				div.appendChild(title);
-				
-				if (await requestSync('isPluginsEnabled'))
-				{
-					var extPluginsBtn = mxUtils.button(mxResources.get('selectFile') + '...', async function()
-					{
-						var warningMsgs = mxResources.get('pluginWarning').split('\\n');
-						var warningMsg = warningMsgs.pop(); //Last line in the message
-
-						if (!warningMsg) 
-						{
-							warningMsg = warningMsgs.pop();
-						}
-
-						if (!confirm(warningMsg)) 
-						{
-							return;
-						}
-						
-						var lastDir = localStorage.getItem('.lastPluginDir');
-						
-						var paths = await requestSync({
-							action: 'showOpenDialog',
-							defaultPath: lastDir || (await requestSync('getDocumentsFolder')),
-							filters: [
-								{ name: 'draw.io Plugins', extensions: ['js'] },
-								{ name: 'All Files', extensions: ['*'] }
-							],
-							properties: ['openFile']
-						});
-							
-						if (paths !== undefined && paths[0] != null)
-						{
-							try
-							{
-								let ret = await requestSync({
-									action: 'installPlugin',
-									filePath: paths[0]
-								});
-
-								localStorage.setItem('.lastPluginDir', ret.selDir);
-								callback(ret.pluginName);
-								editorUi.hideDialog();
-							}
-							catch (e)
-							{
-								if (e.message == 'fileExists')
-								{
-									alert(mxResources.get('fileExists'));
-								}
-								else
-								{
-									alert('Adding plugin failed.');
-								}
-							}
-						}
-					});
-					
-					extPluginsBtn.className = 'geBtn';
-					div.appendChild(extPluginsBtn);
-				}
-				else
-				{
-					title = document.createElement('span');
-					mxUtils.write(title, mxResources.get('pluginsDisabled'));
-					div.appendChild(title);
-				}
 							
 				var dlg = new CustomDialog(editorUi, div, mxUtils.bind(this, function()
 				{
@@ -936,14 +854,9 @@ mxStencilRegistry.allowEval = false;
 				}));
 				editorUi.showDialog(dlg.container, 300, 125, true, true);
 			},
-			async function(plugin)
+			function(plugin)
 			{
 				delete pluginsMap[plugin];
-				
-				await requestSync({
-					action: 'uninstallPlugin',
-					plugin: plugin
-				});
 			}, true).container, 380, null, true, false);
 		});
 
@@ -1112,6 +1025,13 @@ mxStencilRegistry.allowEval = false;
 	// Monitor the given file for changes
 	EditorUi.prototype.watchFile = async function(file)
 	{
+		// Saving a non-current file (eg. a library) must not unwatch
+		// the current file's path
+		if (file != null && file != this.getCurrentFile())
+		{
+			return;
+		}
+
 		var newPath = (file != null && file.fileObject != null &&
 			file == this.getCurrentFile()) ? file.fileObject.path : null;
 		
@@ -1955,12 +1875,21 @@ mxStencilRegistry.allowEval = false;
 					}));
 				});
 	
-				if (this.isPdfFile())
+				// Libraries always save their XML data: the PDF and PNG
+				// branches below export the current diagram, which would
+				// replace the library contents
+				if (this instanceof LocalLibrary)
 				{
+					doSave(this.getData());
+				}
+				else if (this.isPdfFile())
+				{
+					var p = this.ui.getPdfFileProperties(this.ui.fileNode);
+
 					this.ui.getEmbeddedPdf(function(data)
 					{
 						doSave(data, 'binary');
-					}, error);
+					}, error, p.notes);
 				}
 				else if (!/(\.png)$/i.test(this.fileObject.name))
 				{
@@ -1982,24 +1911,26 @@ mxStencilRegistry.allowEval = false;
 				if (this.fileObject == null)
 				{
 					var lastDir = localStorage.getItem('.lastSaveDir');
+					var isLibrary = this instanceof LocalLibrary;
 					var name = this.ui.normalizeFilename(this.getTitle(),
-						this.constructor == LocalLibrary ? 'xml' : null);
+						(isLibrary) ? 'xml' : null);
 					var ext = null;
-					
+
 					if (name != null)
 					{
 						var idx = name.lastIndexOf('.');
-						
+
 						if (idx > 0)
 						{
 							ext = name.substring(idx + 1);
 						}
 					}
-					
+
 					var path = await requestSync({
 						action: 'showSaveDialog',
 						defaultPath: (lastDir || (await requestSync('getDocumentsFolder'))) + '/' + name,
-						filters: this.ui.createFileSystemFilters(ext)
+						filters: (isLibrary) ? this.ui.createLibraryFileSystemFilters() :
+							this.ui.createFileSystemFilters(ext)
 					});
 
 					if (path != null)
@@ -2086,24 +2017,26 @@ mxStencilRegistry.allowEval = false;
 			var lastDir = (this.fileObject != null && this.fileObject.path != null) ?
 				await requestSync({action: 'dirname', path: this.fileObject.path}) :
 				localStorage.getItem('.lastSaveDir');
+			var isLibrary = this instanceof LocalLibrary;
 			var name = this.ui.normalizeFilename(this.getTitle(),
-				this.constructor == LocalLibrary ? 'xml' : null);
+				(isLibrary) ? 'xml' : null);
 			var ext = null;
-			
+
 			if (name != null)
 			{
 				var idx = name.lastIndexOf('.');
-				
+
 				if (idx > 0)
 				{
 					ext = name.substring(idx + 1);
 				}
 			}
-			
+
 			var path = await requestSync({
 				action: 'showSaveDialog',
 				defaultPath: (lastDir || (await requestSync('getDocumentsFolder'))) + '/' + name,
-				filters: this.ui.createFileSystemFilters(ext)
+				filters: (isLibrary) ? this.ui.createLibraryFileSystemFilters() :
+					this.ui.createFileSystemFilters(ext)
 			});
 
 			if (path != null)
@@ -2132,7 +2065,19 @@ mxStencilRegistry.allowEval = false;
 			error(e);
 		}
 	};
-	
+
+	// The web LocalLibrary.saveAs calls saveFile with the web signature
+	// (title, revision, ...), which hits the signature safeguard in the
+	// desktop saveFile above, so the desktop saveAs is used instead
+	LocalLibrary.prototype.saveAs = LocalFile.prototype.saveAs;
+
+	// LocalLibrary extends the pre-wrapper LocalFile, so without these it
+	// inherits the web save/saveFile: the web save calls saveAs, and the
+	// desktop saveAs above ends with save, which reopens the save dialog
+	// forever without ever writing the file [drawio-desktop#2518]
+	LocalLibrary.prototype.save = LocalFile.prototype.save;
+	LocalLibrary.prototype.saveFile = LocalFile.prototype.saveFile;
+
 	LocalFile.prototype.saveDraft = function(data)
 	{
 		// Save draft only if file is not saved (prevents creating draft file after actual file is saved)
@@ -2212,10 +2157,26 @@ mxStencilRegistry.allowEval = false;
 				ext.push(obj);
 			}
 		}
-		
+
 		return ext;
 	};
-	
+
+	/**
+	 * Returns the save dialog filters for library files.
+	 */
+	App.prototype.createLibraryFileSystemFilters = function()
+	{
+		var filters = [];
+
+		for (var i = 0; i < this.editor.libraryFileTypes.length; i++)
+		{
+			filters.push({name: this.editor.libraryFileTypes[i].description,
+				extensions: this.editor.libraryFileTypes[i].extensions});
+		}
+
+		return filters;
+	};
+
 	/**
 	 * Loads the given file handle as a local file.
 	 */
@@ -2529,11 +2490,13 @@ mxStencilRegistry.allowEval = false;
 	};
 
 	// Renders all pages to PDF with the diagram XML embedded via the local
-	// export pipeline, mirroring getEmbeddedPng for PNG files
-	EditorUi.prototype.getEmbeddedPdf = function(success, error)
+	// export pipeline, mirroring getEmbeddedPng for PNG files. The optional
+	// icons argument adds notes as sticky note annotations.
+	EditorUi.prototype.getEmbeddedPdf = function(success, error, icons)
 	{
 		var req = this.createDownloadRequest(null, 'pdf', true, '0',
-			null, false, null, null, false, true);
+			null, false, null, null, false, true, null, null, null,
+			null, null, null, null, null, null, icons);
 
 		req.send(function()
 		{
@@ -2743,10 +2706,18 @@ mxStencilRegistry.allowEval = false;
 	{
 		this.readGraphFile(mxUtils.bind(this, function(fileEntry, data, stat)
 		{
-			var library = new DesktopLibrary(this, data, fileEntry);
-			this.loadLibrary(library);
-			this.showSidebar();
-			success(library);
+			try
+			{
+				// Must not load the library here: the caller (App.loadLibraries)
+				// waits for all libraries and loads them in the stored order,
+				// an immediate load here would insert them in the random order
+				// in which the file reads complete
+				success(new DesktopLibrary(this, data, fileEntry));
+			}
+			catch (e)
+			{
+				error(e);
+			}
 		}), error, libPath);
 	};
 

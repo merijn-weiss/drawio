@@ -4,8 +4,7 @@
 /**
  * Constructs a new open dialog.
  */
-var OpenDialog = function()
-{
+var OpenDialog = function () {
 	var iframe = document.createElement('iframe');
 	iframe.style.backgroundColor = 'transparent';
 	iframe.allowTransparency = 'true';
@@ -14,20 +13,19 @@ var OpenDialog = function()
 	iframe.style.overflow = 'hidden';
 	iframe.style.maxWidth = '100%';
 	iframe.frameBorder = '0';
-	
+
 	var dx = 0;
 	iframe.setAttribute('width', (((Editor.useLocalStorage) ? 640 : 320) + dx) + 'px');
 	iframe.setAttribute('height', (((Editor.useLocalStorage) ? 480 : 220) + dx) + 'px');
 	iframe.setAttribute('src', OPEN_FORM);
-	
+
 	this.container = iframe;
 };
 
 /**
- * 
+ *
  */
-var ColorPicker = function()
-{
+var ColorPicker = function () {
 	mxEventSource.call(this);
 
 	var div = document.createElement('div');
@@ -65,11 +63,9 @@ var ColorPicker = function()
 
 	var currentHsv = [0, 0, 1];
 	var currentAlpha = 1;
-	
-	function hsv2rgb(h, s, v)
-	{
-		if (h == null)
-		{
+
+	function hsv2rgb(h, s, v) {
+		if (h == null) {
 			return [v, v, v];
 		}
 
@@ -78,8 +74,7 @@ var ColorPicker = function()
 		var m = v * (1 - s);
 		var n = v * (1 - s * f);
 
-		switch(i)
-		{
+		switch (i) {
 			case 6:
 			case 0: return [v, n, m];
 			case 1: return [n, v, m];
@@ -90,26 +85,23 @@ var ColorPicker = function()
 		}
 	};
 
-	function rgb2hsv(r, g, b)
-	{
+	function rgb2hsv(r, g, b) {
 		var n = Math.min(Math.min(r, g), b);
 		var v = Math.max(Math.max(r, g), b);
 		var m = v - n;
 
-		if (m === 0)
-		{
+		if (m === 0) {
 			return [null, 0, v];
 		}
 
 		var h = r === n ? 3 + (b - g) / m :
 			(g === n ? 5 + (r - b) / m :
 				1 + (g - r) / m);
-		
+
 		return [h === 6 ? 0 : h, m / v, v];
 	};
 
-	function fromHSV(h, s, v)
-	{
+	function fromHSV(h, s, v) {
 		h < 0 && (h = 0) || h > 6 && (h = 6);
 		s < 0 && (s = 0) || s > 1 && (s = 1);
 		v < 0 && (v = 0) || v > 1 && (v = 1);
@@ -145,8 +137,7 @@ var ColorPicker = function()
 	var panelActive = false;
 	var sliderActive = false;
 
-	var update = mxUtils.bind(this, function(quiet)
-	{
+	var update = mxUtils.bind(this, function (quiet) {
 		var x = Math.round((currentHsv[0] / 6) * 180);
 		var y = Math.round((1 - currentHsv[1]) * 100);
 
@@ -155,12 +146,10 @@ var ColorPicker = function()
 
 		var seg = sliderPanel.childNodes;
 		var arr = hsv2rgb(currentHsv[0], currentHsv[1], 1);
-		
-		if (arr != null)
-		{
-			for (var i = 0; i < seg.length; i++)
-			{
-				seg[i].style.backgroundColor = 'rgb('+
+
+		if (arr != null) {
+			for (var i = 0; i < seg.length; i++) {
+				seg[i].style.backgroundColor = 'rgb(' +
 					(arr[0] * (1 - i / seg.length)) * 255 + ', ' +
 					(arr[1] * (1 - i / seg.length)) * 255 + ', ' +
 					(arr[2] * (1 - i / seg.length)) * 255 + ')';
@@ -177,35 +166,29 @@ var ColorPicker = function()
 				(currentAlpha < 1 ?
 					('0' + Math.round(currentAlpha * 255).toString(16)).slice(-2) : '');
 
-			if (quiet != true)
-			{
+			if (quiet != true) {
 				this.fireEvent(new mxEventObject('change',
 					'color', mxUtils.rgba2hex(color)));
 			}
 		}
 	});
 
-	var panelMouseDown = mxUtils.bind(this, function(e)
-	{
-		if (currentHsv[2] == 0)
-		{
+	var panelMouseDown = mxUtils.bind(this, function (e) {
+		if (currentHsv[2] == 0) {
 			currentHsv[2] = 1;
 		}
-		
+
 		panelActive = true;
 		mouseMove(e);
 	});
 
-	var sliderMouseDown = mxUtils.bind(this, function(e)
-	{
+	var sliderMouseDown = mxUtils.bind(this, function (e) {
 		sliderActive = true;
 		mouseMove(e);
 	});
 
-	var mouseMove = mxUtils.bind(this, function(e)
-	{
-		if (panelActive)
-		{
+	var mouseMove = mxUtils.bind(this, function (e) {
+		if (panelActive) {
 			var bounds = colorPanel.getBoundingClientRect();
 			var x = mxEvent.getClientX(e) - bounds.left;
 			var y = mxEvent.getClientY(e) - bounds.top;
@@ -222,8 +205,7 @@ var ColorPicker = function()
 				(currentAlpha < 1 ?
 					('0' + Math.round(currentAlpha * 255).toString(16)).slice(-2) : ''));
 		}
-		else if (sliderActive)
-		{
+		else if (sliderActive) {
 			var bounds = sliderBox.getBoundingClientRect();
 			var y = mxEvent.getClientY(e) - bounds.top;
 			currentHsv[2] = Math.max(Math.min(1, 1 - y / 100), 0);
@@ -231,14 +213,12 @@ var ColorPicker = function()
 		}
 	});
 
-	var mouseUp = mxUtils.bind(this, function()
-	{
+	var mouseUp = mxUtils.bind(this, function () {
 		var wasActive = panelActive || sliderActive;
 		sliderActive = false;
 		panelActive = false;
 
-		if (wasActive)
-		{
+		if (wasActive) {
 			this.fireEvent(new mxEventObject('release'));
 		}
 	});
@@ -250,8 +230,7 @@ var ColorPicker = function()
 
 	var tileHeight = 4;
 
-	for(var i = 0; i < 101; i += tileHeight)
-	{
+	for (var i = 0; i < 101; i += tileHeight) {
 		var seg = document.createElement('div');
 		seg.style.height = tileHeight + 'px';
 		seg.style.pointerEvents = 'none';
@@ -273,28 +252,24 @@ var ColorPicker = function()
 	sliderBox.appendChild(sliderPanel);
 	div.appendChild(sliderBox);
 
-	this.fromString = function(color, quiet)
-	{
+	this.fromString = function (color, quiet) {
 		quiet = (quiet != null) ? quiet : false;
 
 		if (color == null || color == '' ||
 			mxUtils.isVarColor(color) ||
-			color == mxConstants.NONE)
-		{
+			color == mxConstants.NONE) {
 			color = '#ffffff';
 			quiet = true;
 		}
-		
+
 		var rgb = mxUtils.parseColor(color);
 		var hsv = rgb2hsv(rgb.r / 255, rgb.g / 255, rgb.b / 255);
 
-		if (hsv[0] != null)
-		{
+		if (hsv[0] != null) {
 			currentHsv[0] = hsv[0];
 		}
-		
-		if (hsv[2] != 0)
-		{
+
+		if (hsv[2] != 0) {
 			currentHsv[1] = hsv[1];
 		}
 
@@ -328,8 +303,7 @@ ColorPicker.prototype.arrowImage = 'data:image/gif;base64,R0lGODlhBwALAKECAAAAAP
 /**
  * Constructs a new color dialog.
  */
-var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defaultColorValue, singleColorMode, liveApply, allowInherit)
-{
+var ColorDialog = function (editorUi, color, apply, cancelFn, defaultColor, defaultColorValue, singleColorMode, liveApply, allowInherit) {
 	var cssDefaultColor = (defaultColorValue != null) ?
 		mxUtils.getLightDarkColor(defaultColorValue,
 			null, null, singleColorMode) : null;
@@ -337,8 +311,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	this.editorUi = editorUi;
 	var useDefault = false;
 
-	function validateColor(color)
-	{
+	function validateColor(color) {
 		return mxUtils.color2hex('#' + color).substring(1).toUpperCase();
 	};
 
@@ -349,8 +322,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		!mxUtils.isVarColor(color) &&
 		!mxUtils.isHexColor(color) &&
 		!mxUtils.isRgbColor(color) &&
-		!mxUtils.isLightDarkColor(color))
-	{
+		!mxUtils.isLightDarkColor(color)) {
 		color = mxUtils.color2hex(color);
 	}
 
@@ -365,7 +337,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	inputDiv.style.display = 'flex';
 	inputDiv.style.alignItems = 'center';
 	wrapper.appendChild(inputDiv);
-	
+
 	var darkInput = document.createElement('input');
 	darkInput.style.textOverflow = 'ellipsis';
 	darkInput.style.margin = '0 6px';
@@ -397,8 +369,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	img.style.width = '20px';
 	darkColorDiv.appendChild(img);
 
-	mxEvent.addListener(img, 'click', function()
-	{
+	mxEvent.addListener(img, 'click', function () {
 		darkInput.focus();
 	});
 
@@ -414,7 +385,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	advancedDiv.style.userSelect = 'none';
 	advancedDiv.style.cursor = 'pointer';
 	advancedDiv.style.marginTop = '4px';
-	
+
 	var collapse = document.createElement('img');
 	collapse.setAttribute('title', mxResources.get('dark'));
 	collapse.className = 'geAdaptiveAsset';
@@ -431,8 +402,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	swapBtn.style.cursor = 'pointer';
 	swapBtn.src = Editor.swapImage;
 
-	mxEvent.addListener(swapBtn, 'click', function(evt)
-	{
+	mxEvent.addListener(swapBtn, 'click', function (evt) {
 		toggleDarkColor(true, false);
 		darkSelect.value = 'custom';
 		setDefaultSelected(false);
@@ -454,18 +424,15 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	copyBtn.style.marginLeft = '2px';
 	copyBtn.src = Editor.doubleArrowUpImage;
 
-	mxEvent.addListener(copyBtn, 'click', function(evt)
-	{
+	mxEvent.addListener(copyBtn, 'click', function (evt) {
 		toggleDarkColor(true, false);
 		darkSelect.value = 'custom';
 		setDefaultSelected(false);
 
-		if (currentInput == darkInput)
-		{
+		if (currentInput == darkInput) {
 			input.value = darkInput.value;
 		}
-		else
-		{
+		else {
 			darkInput.value = input.value;
 		}
 
@@ -481,87 +448,73 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	opacityBtn.setAttribute('title', mxResources.get('opacity'));
 	opacityBtn.src = Editor.opacityImage;
 
-	mxEvent.addListener(opacityBtn, 'click', function(evt)
-	{
+	mxEvent.addListener(opacityBtn, 'click', function (evt) {
 		var rgb = mxUtils.parseColor('#' + currentInput.value);
 		var opacity = String(Math.floor(Math.max(0, Math.min(rgb.a * 100, 100))));
 
-		editorUi.prompt(mxResources.get('opacity') + ' (0-100)', opacity, function(newValue)
-		{
+		editorUi.prompt(mxResources.get('opacity') + ' (0-100)', opacity, function (newValue) {
 			if (!isNaN(newValue) && newValue !== '' &&
-				newValue >= 0 && newValue <= 100)
-			{
+				newValue >= 0 && newValue <= 100) {
 				setDefaultSelected(false);
-				
+
 				input.value = mxUtils.rgba2hex(mxUtils.addAlphaToColor(
 					'#' + input.value, newValue / 100, true)).
-						substring(1).toUpperCase();
+					substring(1).toUpperCase();
 				darkInput.value = mxUtils.rgba2hex(mxUtils.addAlphaToColor(
 					'#' + darkInput.value, newValue / 100, true)).
-						substring(1).toUpperCase();
-				
+					substring(1).toUpperCase();
+
 				updateInputColors();
 				currentInput.focus();
 			}
 		});
-		
+
 		mxEvent.consume(evt);
 	});
 
 	advancedDiv.appendChild(opacityBtn);
 
-	function updateCollapseIcon()
-	{
-		if (darkColorDiv.style.display == 'none')
-		{
+	function updateCollapseIcon() {
+		if (darkColorDiv.style.display == 'none') {
 			collapse.src = Editor.arrowRightImage;
 		}
-		else
-		{
+		else {
 			collapse.src = Editor.arrowDownImage;
 		}
 	};
 
 	updateCollapseIcon();
 
-	function toggleDarkColor(show, transferFocus)
-	{
-		if (show || darkColorDiv.style.display == 'none')
-		{
+	function toggleDarkColor(show, transferFocus) {
+		if (show || darkColorDiv.style.display == 'none') {
 			darkColorDiv.style.display = 'flex';
 
-			if (transferFocus !== false)
-			{
+			if (transferFocus !== false) {
 				darkInput.focus();
 			}
 		}
-		else
-		{
+		else {
 			darkColorDiv.style.display = 'none';
 		}
 
 		updateCollapseIcon();
 
-		if (self.resizeFn != null)
-		{
+		if (self.resizeFn != null) {
 			self.resizeFn();
 		}
 	};
-	
-	mxEvent.addListener(advancedDiv, 'click', function()
-	{
+
+	mxEvent.addListener(advancedDiv, 'click', function () {
 		toggleDarkColor();
 		updateCollapseIcon();
 		ColorDialog.collapsed = darkColorDiv.style.display == 'none';
 
-		if (self.resizeFn != null)
-		{
+		if (self.resizeFn != null) {
 			self.resizeFn();
 		}
 	});
 
-	function isDefaultColor(color)
-	{
+	function isDefaultColor(color) {
 		var lc = color.toLowerCase();
 
 		return defaultColor != null && (color == '' ||
@@ -570,56 +523,44 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 			lc == mxResources.get('automatic').toLowerCase());
 	};
 
-	function updateInputColor(input)
-	{
-		if (input.value == '' && cssDefaultColor != null && useDefault)
-		{
+	function updateInputColor(input) {
+		if (input.value == '' && cssDefaultColor != null && useDefault) {
 			input.style.background = (input == darkInput) ?
 				cssDefaultColor.dark :
 				cssDefaultColor.light;
 		}
 		else if (input.value == '' || input.value == mxConstants.NONE ||
-			mxUtils.isVarColor(input.value))
-		{
+			mxUtils.isVarColor(input.value)) {
 			input.style.background = 'transparent';
 		}
-		else
-		{
+		else {
 			var color = '#' + input.value;
 			input.style.background = color;
 		}
 
-		if (input.style.background == 'transparent')
-		{
+		if (input.style.background == 'transparent') {
 			input.style.color = 'light-dark(#000000, #ffffff)';
 		}
-		else
-		{
+		else {
 			input.style.color =
 				(mxUtils.isDarkColor(input.style.background)) ?
-				'#ffffff' : '#000000';
+					'#ffffff' : '#000000';
 		}
 	};
 
-	function updateInputColors()
-	{
+	function updateInputColors() {
 		updateInputColor(input);
 		updateInputColor(darkInput);
 	};
 
-	function setDefaultSelected(selected)
-	{
-		if (useDefault != selected)
-		{
-			if (selected)
-			{
-				if (singleColorMode && cssDefaultColor != null)
-				{
+	function setDefaultSelected(selected) {
+		if (useDefault != selected) {
+			if (selected) {
+				if (singleColorMode && cssDefaultColor != null) {
 					input.value = cssDefaultColor.light.substring(1).toUpperCase();
 					selected = false;
 				}
-				else
-				{
+				else {
 					input.value = '';
 					darkInput.value = '';
 					darkSelect.value = 'automatic';
@@ -628,18 +569,15 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 					input.setAttribute('title', mxResources.get('useBlackAndWhite'));
 				}
 			}
-			else
-			{
-				if (input.value == '' && cssDefaultColor != null)
-				{	
+			else {
+				if (input.value == '' && cssDefaultColor != null) {
 					input.value = cssDefaultColor.light.substring(1).toUpperCase();
 				}
 
 				input.removeAttribute('placeholder');
 				input.removeAttribute('title');
 
-				if (darkInput.value == '' && cssDefaultColor != null)
-				{
+				if (darkInput.value == '' && cssDefaultColor != null) {
 					darkInput.style.background = cssDefaultColor.dark;
 					var style = mxUtils.getCurrentStyle(darkInput);
 					darkInput.value = mxUtils.rgba2hex(style.backgroundColor).
@@ -655,14 +593,12 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		useDefault = selected;
 	};
 
-	var defaultBtn = mxUtils.button('', function()
-	{
+	var defaultBtn = mxUtils.button('', function () {
 		setDefaultSelected(true);
 		updateInputColors();
 		currentInput.focus();
 
-		if (currentInput.value == '' && cssDefaultColor != null && useDefault)
-		{
+		if (currentInput.value == '' && cssDefaultColor != null && useDefault) {
 			picker.fromString((currentInput == darkInput) ?
 				cssDefaultColor.dark :
 				cssDefaultColor.light, true);
@@ -671,15 +607,12 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		doLiveApply();
 	});
 
-	mxEvent.addListener(darkSelect, 'change', function(evt)
-	{
-		if (darkSelect.value == 'automatic')
-		{
+	mxEvent.addListener(darkSelect, 'change', function (evt) {
+		if (darkSelect.value == 'automatic') {
 			input.focus();
 			inputChanged(input);
 		}
-		else
-		{
+		else {
 			setDefaultSelected(false);
 			darkInput.focus();
 			selectInput();
@@ -690,22 +623,17 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		mxEvent.consume(evt);
 	});
 
-	function inputChanged(elt)
-	{
-		if (elt.value.charAt(0) == '#')
-		{
+	function inputChanged(elt) {
+		if (elt.value.charAt(0) == '#') {
 			elt.value = elt.value.substring(1);
 		}
 
-		if (isDefaultColor(elt.value) && cssDefaultColor != null)
-		{
+		if (isDefaultColor(elt.value) && cssDefaultColor != null) {
 			defaultBtn.click();
 		}
-		else
-		{
+		else {
 			if (elt.value != mxConstants.NONE &&
-				!mxUtils.isVarColor(elt.value))
-			{
+				!mxUtils.isVarColor(elt.value)) {
 				elt.value = validateColor(elt.value);
 				picker.fromString('#' + elt.value);
 			}
@@ -714,23 +642,18 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 
 			if (elt == darkInput &&
 				(input.value != mxConstants.NONE ||
-				darkInput.value != mxConstants.NONE))
-			{
+					darkInput.value != mxConstants.NONE)) {
 				darkSelect.value = 'custom';
 			}
 
-			if (elt == input && darkSelect.value == 'automatic')
-			{
-				if (input.value == mxConstants.NONE)
-				{
+			if (elt == input && darkSelect.value == 'automatic') {
+				if (input.value == mxConstants.NONE) {
 					darkInput.value = mxConstants.NONE;
 				}
-				else if (mxUtils.isVarColor(input.value))
-				{
+				else if (mxUtils.isVarColor(input.value)) {
 					darkInput.value = input.value;
 				}
-				else
-				{
+				else {
 					darkInput.value = mxUtils.rgba2hex(mxUtils.
 						getInverseColor('#' + elt.value)).
 						substring(1).toUpperCase();
@@ -741,80 +664,67 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		}
 	};
 
-	mxEvent.addListener(input, 'change', function()
-	{
+	mxEvent.addListener(input, 'change', function () {
 		inputChanged(input);
 		doLiveApply();
 	});
 
-	mxEvent.addListener(darkInput, 'change', function()
-	{
+	mxEvent.addListener(darkInput, 'change', function () {
 		inputChanged(darkInput);
 		doLiveApply();
 	});
-	
+
 	var applyFunction = (apply != null) ? apply :
 		this.createApplyFunction();
 
 	var self = this;
 
-	function buildFinalColor()
-	{
+	function buildFinalColor() {
 		var color = input.value;
 		var dark = darkInput.value;
 
 		// Blocks any non-alphabetic chars in colors
 		if ((useDefault && cssDefaultColor != null) ||
 			((/(^#?[a-zA-Z0-9]*$)/.test(color) || mxUtils.isVarColor(color)) &&
-			(/(^#?[a-zA-Z0-9]*$)/.test(dark) || mxUtils.isVarColor(dark))))
-		{
-			if (useDefault)
-			{
+				(/(^#?[a-zA-Z0-9]*$)/.test(dark) || mxUtils.isVarColor(dark)))) {
+			if (useDefault) {
 				color = 'default';
 			}
-			else
-			{
-				if (color == '')
-				{
+			else {
+				if (color == '') {
 					color = mxConstants.NONE;
 				}
 
-				if (dark == '')
-				{
+				if (dark == '') {
 					dark = mxConstants.NONE;
 				}
 
 				if (color != mxConstants.NONE &&
 					!mxUtils.isVarColor(color) &&
-					color.charAt(0) != '#')
-				{
+					color.charAt(0) != '#') {
 					color = '#' + validateColor(color);
 				}
 
 				if (dark != mxConstants.NONE &&
 					!mxUtils.isVarColor(dark) &&
-					dark.charAt(0) != '#')
-				{
+					dark.charAt(0) != '#') {
 					dark = '#' + validateColor(dark);
 				}
 
-				if (color != 'none' || dark != 'none')
-				{
+				if (color != 'none' || dark != 'none') {
 					color = (color == mxConstants.NONE) ? 'transparent' : color;
 					dark = (dark == mxConstants.NONE) ? 'transparent' : dark;
 
-					if (!singleColorMode && darkSelect.value != 'automatic')
-					{
+					if (!singleColorMode && darkSelect.value != 'automatic') {
 						color = 'light-dark(' + color + ',' + dark + ')';
 					}
 				}
 			}
 
-			return {color: color, valid: true};
+			return { color: color, valid: true };
 		}
-		else
-		{
-			return {color: null, valid: false};
+		else {
+			return { color: null, valid: false };
 		}
 	};
 
@@ -822,34 +732,29 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	// so successive changes update the same slot instead of flooding the list
 	var sessionRecentColor = null;
 
-	function addCurrentToRecent()
-	{
+	function addCurrentToRecent() {
 		var color = input.value;
 		var dark = darkInput.value;
 
 		if (!((useDefault && cssDefaultColor != null) ||
 			((/(^#?[a-zA-Z0-9]*$)/.test(color) || mxUtils.isVarColor(color)) &&
-			(/(^#?[a-zA-Z0-9]*$)/.test(dark) || mxUtils.isVarColor(dark)))))
-		{
+				(/(^#?[a-zA-Z0-9]*$)/.test(dark) || mxUtils.isVarColor(dark))))) {
 			return;
 		}
 
-		if (!useDefault)
-		{
+		if (!useDefault) {
 			if (color == '') color = mxConstants.NONE;
 			if (dark == '') dark = mxConstants.NONE;
 
 			if (color != mxConstants.NONE &&
 				!mxUtils.isVarColor(color) &&
-				color.charAt(0) != '#')
-			{
+				color.charAt(0) != '#') {
 				color = '#' + validateColor(color);
 			}
 
 			if (dark != mxConstants.NONE &&
 				!mxUtils.isVarColor(dark) &&
-				dark.charAt(0) != '#')
-			{
+				dark.charAt(0) != '#') {
 				dark = '#' + validateColor(dark);
 			}
 
@@ -857,29 +762,23 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 			var newEntry = null;
 
 			if (darkSelect.value != 'automatic' &&
-				dark != mxConstants.NONE)
-			{
-				if (color == mxConstants.NONE)
-				{
+				dark != mxConstants.NONE) {
+				if (color == mxConstants.NONE) {
 					newEntry = dark.substring(1);
 				}
-				else
-				{
+				else {
 					newEntry = 'light-dark(' + color + ',' + dark + ')';
 				}
 			}
-			else if (color != mxConstants.NONE)
-			{
+			else if (color != mxConstants.NONE) {
 				newEntry = color.substring(1);
 			}
-			else
-			{
+			else {
 				newEntry = mxConstants.NONE;
 			}
 
 			// Remove previous session entry before adding new one
-			if (sessionRecentColor != null)
-			{
+			if (sessionRecentColor != null) {
 				mxUtils.remove(sessionRecentColor, ColorDialog.recentColors);
 			}
 
@@ -888,46 +787,37 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		}
 	};
 
-	function doApply()
-	{
+	function doApply() {
 		var result = buildFinalColor();
 
-		if (result.valid)
-		{
+		if (result.valid) {
 			addCurrentToRecent();
 			applyFunction(result.color);
 			refreshRecentColors();
 
-			if (!liveApply)
-			{
+			if (!liveApply) {
 				editorUi.hideDialog();
 			}
 		}
-		else if (!liveApply)
-		{
-			editorUi.handleError({message: mxResources.get('invalidInput')});
+		else if (!liveApply) {
+			editorUi.handleError({ message: mxResources.get('invalidInput') });
 		}
 	};
 
 	// Debounced apply for live mode (picker drag)
 	var liveApplyTimer = null;
 
-	function doLiveApply(delay)
-	{
-		if (liveApply)
-		{
-			if (liveApplyTimer != null)
-			{
+	function doLiveApply(delay) {
+		if (liveApply) {
+			if (liveApplyTimer != null) {
 				clearTimeout(liveApplyTimer);
 			}
 
-			liveApplyTimer = setTimeout(function()
-			{
+			liveApplyTimer = setTimeout(function () {
 				liveApplyTimer = null;
 				var result = buildFinalColor();
 
-				if (result.valid)
-				{
+				if (result.valid) {
 					addCurrentToRecent();
 					applyFunction(result.color);
 					refreshRecentColors();
@@ -936,79 +826,65 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		}
 	};
 
-	function selectInput()
-	{
-		if (!mxClient.IS_TOUCH)
-		{
-			window.setTimeout(function()
-			{
+	function selectInput() {
+		if (!mxClient.IS_TOUCH) {
+			window.setTimeout(function () {
 				currentInput.focus();
-				
-				if (mxClient.IS_GC || mxClient.IS_FF || document.documentMode >= 5)
-				{
+
+				if (mxClient.IS_GC || mxClient.IS_FF || document.documentMode >= 5) {
 					currentInput.select();
 				}
-				else
-				{
+				else {
 					document.execCommand('selectAll', false, null);
 				}
 			}, 0);
 		}
 	};
-	
-	this.init = function()
-	{
+
+	this.init = function () {
 		selectInput();
 	};
 
 	var picker = new ColorPicker();
 	var currentInput = (Editor.isDarkMode() &&
 		(graph.getAdaptiveColors() == 'auto' ||
-		(graph.getAdaptiveColors() == 'simple' &&
-		darkSelect.value == 'custom')) &&
+			(graph.getAdaptiveColors() == 'simple' &&
+				darkSelect.value == 'custom')) &&
 		!singleColorMode) ? darkInput : input;
-	
-	function updatePickerFromCurrentInput()
-	{
+
+	function updatePickerFromCurrentInput() {
 		if (currentInput.value != mxConstants.NONE &&
-			currentInput.value != '')
-		{
+			currentInput.value != '') {
 			picker.fromString('#' + currentInput.value, true);
 		}
 	};
 
-	mxEvent.addListener(input, 'focus', function()
-	{
+	mxEvent.addListener(input, 'focus', function () {
 		currentInput = input;
 		updatePickerFromCurrentInput();
 		copyBtn.src = Editor.doubleArrowDownImage;
 	});
 
-	mxEvent.addListener(darkInput, 'focus', function()
-	{
+	mxEvent.addListener(darkInput, 'focus', function () {
 		currentInput = darkInput;
 		updatePickerFromCurrentInput();
 		copyBtn.src = Editor.doubleArrowUpImage;
 	});
 
-	picker.addListener('change', function(sender, evt)
-	{
+	picker.addListener('change', function (sender, evt) {
 		var color = evt.getProperty('color').substring(1).toUpperCase();
 
-		if (currentInput.value.toUpperCase() != color)
-		{
+		if (currentInput.value.toUpperCase() != color) {
 			currentInput.value = color;
 			inputChanged(currentInput);
 
-			window.setTimeout(function()
-			{
+			window.setTimeout(function () {
 				currentInput.focus();
 			}, 0);
 		}
 	});
 
-	picker.addListener('release', function()
-	{
+	picker.addListener('release', function () {
 		doLiveApply();
 	});
 
@@ -1018,8 +894,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	// padding of its own, so the content supplies it. The modal dialog host
 	// (.geDialog) already pads, so skip it there to avoid double padding and
 	// to keep the 230px picker from overflowing the padded content box.
-	if (liveApply)
-	{
+	if (liveApply) {
 		div.style.padding = '12px 12px 18px 12px';
 	}
 
@@ -1031,18 +906,16 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	center.style.flexFlow = 'row wrap';
 	center.style.justifyContent = 'center';
 	center.style.marginTop = '10px';
-	
-	function createRecentColorTable()
-	{
+
+	function createRecentColorTable() {
 		var table = addPresets((ColorDialog.recentColors.length == 0) ?
 			['FFFFFF'] : ColorDialog.recentColors, 11, 'FFFFFF', true);
 		table.style.marginBottom = '6px';
 
 		return table;
 	};
-	
-	var addPresets = mxUtils.bind(this, function(presets, rowLength, defaultColor, addResetOption)
-	{
+
+	var addPresets = mxUtils.bind(this, function (presets, rowLength, defaultColor, addResetOption) {
 		rowLength = (rowLength != null) ? rowLength : 12;
 		var table = document.createElement('table');
 		table.style.borderCollapse = 'collapse';
@@ -1053,107 +926,86 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		table.appendChild(tbody);
 
 		var rows = presets.length / rowLength;
-		
-		for (var row = 0; row < rows; row++)
-		{
+
+		for (var row = 0; row < rows; row++) {
 			var tr = document.createElement('tr');
-			
-			for (var i = 0; i < rowLength; i++)
-			{
-				(mxUtils.bind(this, function(clr)
-				{
+
+			for (var i = 0; i < rowLength; i++) {
+				(mxUtils.bind(this, function (clr) {
 					var td = document.createElement('td');
 					td.style.border = '0px solid black';
 					td.style.padding = '0px';
 					td.style.width = '16px';
 					td.style.height = '16px';
-					
-					if (clr == null)
-					{
+
+					if (clr == null) {
 						clr = defaultColor;
 					}
 
-					if (clr != null)
-					{
+					if (clr != null) {
 						td.style.borderWidth = '1px';
 
-						if (clr == mxConstants.NONE || clr == null)
-						{
+						if (clr == mxConstants.NONE || clr == null) {
 							td.style.background = 'url(\'' + Dialog.prototype.noColorImage + '\')';
 						}
-						else
-						{
-							if (mxUtils.isLightDarkColor(clr))
-							{
+						else {
+							if (mxUtils.isLightDarkColor(clr)) {
 								var cssColor = mxUtils.getLightDarkColor(clr);
 								td.style.background = 'linear-gradient(to right bottom, ' +
 									cssColor.cssText + ' 50%, ' +
 									mxUtils.invertLightDarkColor(cssColor).cssText + ' 50.3%)';
 							}
-							else
-							{
+							else {
 								td.style.backgroundColor = '#' + clr;
 							}
 						}
 
 						var name = this.colorNames[String(clr).toUpperCase()];
 
-						if (name != null)
-						{
+						if (name != null) {
 							td.setAttribute('title', name);
 						}
 					}
-					
+
 					tr.appendChild(td);
 
-					if (clr != null)
-					{
+					if (clr != null) {
 						td.style.cursor = 'pointer';
-						
-						mxEvent.addListener(td, 'click', function()
-						{
-							if (clr == mxConstants.NONE)
-							{
+
+						mxEvent.addListener(td, 'click', function () {
+							if (clr == mxConstants.NONE) {
 								if (currentInput == darkInput &&
-									darkInput.value == mxConstants.NONE)
-								{
+									darkInput.value == mxConstants.NONE) {
 									input.value = mxConstants.NONE
 								}
-								else
-								{
+								else {
 									currentInput.value = mxConstants.NONE;
 								}
-								
+
 								if (currentInput == input ||
 									(currentInput == darkInput &&
-									input.value == mxConstants.NONE))
-								{
+										input.value == mxConstants.NONE)) {
 									darkSelect.value = 'automatic';
 								}
 
 								inputChanged(currentInput);
 								doLiveApply();
 
-								window.setTimeout(function()
-								{
+								window.setTimeout(function () {
 									currentInput.focus();
 								}, 0);
 							}
-							else
-							{
-								if (mxUtils.isLightDarkColor(clr))
-								{
+							else {
+								if (mxUtils.isLightDarkColor(clr)) {
 									var cssColor = mxUtils.getLightDarkColor(clr);
 
-									if (singleColorMode)
-									{
+									if (singleColorMode) {
 										input.value = cssColor.light.substring(1).toUpperCase();
 										inputChanged(input);
 										picker.fromString(cssColor.light);
 										doLiveApply();
 									}
-									else
-									{
+									else {
 										toggleDarkColor(true, false);
 										darkSelect.value = 'custom';
 										input.value = cssColor.light.substring(1).toUpperCase();
@@ -1162,42 +1014,36 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 										inputChanged(darkInput);
 										doLiveApply();
 
-										if (currentInput == input)
-										{
+										if (currentInput == input) {
 											picker.fromString(cssColor.light);
 										}
-										else
-										{
+										else {
 											picker.fromString(cssColor.dark);
 										}
 									}
 								}
-								else
-								{
+								else {
 									picker.fromString('#' + clr);
 									doLiveApply();
 								}
 							}
 						});
-						
-						mxEvent.addListener(td, 'dblclick', function()
-							{
-								doApply();
 
-								if (liveApply && self.closeFn != null)
-								{
-									self.closeFn();
-								}
-							});
+						mxEvent.addListener(td, 'dblclick', function () {
+							doApply();
+
+							if (liveApply && self.closeFn != null) {
+								self.closeFn();
+							}
+						});
 					}
 				}))(presets[row * rowLength + i]);
 			}
-			
+
 			tbody.appendChild(tr);
 		}
-		
-		if (addResetOption)
-		{
+
+		if (addResetOption) {
 			var td = document.createElement('td');
 			td.setAttribute('title', mxResources.get('reset'));
 			td.className = 'geAdaptiveAsset';
@@ -1210,38 +1056,34 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 			td.style.backgroundSize = '14px 14px';
 			td.style.backgroundRepeat = 'no-repeat';
 			td.style.cursor = 'pointer';
-			
+
 			tr.appendChild(td);
 
-			mxEvent.addListener(td, 'click', function()
-			{
+			mxEvent.addListener(td, 'click', function () {
 				ColorDialog.resetRecentColors();
 				var newTable = createRecentColorTable();
 
-				if (table.parentNode != null)
-				{
+				if (table.parentNode != null) {
 					table.parentNode.replaceChild(newTable, table);
 				}
 
 				recentTable = newTable;
 			});
 		}
-		
+
 		center.appendChild(table);
-		
+
 		return table;
 	});
 
 	var lightIcon = null;
 
-	if (!singleColorMode)
-	{
+	if (!singleColorMode) {
 		wrapper.appendChild(advancedDiv);
 
 		if (ColorDialog.collapsed && (!Editor.isDarkMode() ||
 			graph.getAdaptiveColors() != 'auto') &&
-			darkSelect.value == 'automatic')
-		{
+			darkSelect.value == 'automatic') {
 			darkColorDiv.style.display = 'none';
 			updateCollapseIcon();
 		}
@@ -1253,8 +1095,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		lightIcon.style.width = '20px';
 		inputDiv.appendChild(lightIcon);
 
-		mxEvent.addListener(lightIcon, 'click', function()
-		{
+		mxEvent.addListener(lightIcon, 'click', function () {
 			input.focus();
 		});
 	}
@@ -1265,8 +1106,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	defaultBtn.style.position = 'relative';
 	defaultBtn.style.marginLeft = '6px';
 
-	if (cssDefaultColor != null)
-	{
+	if (cssDefaultColor != null) {
 		defaultBtn.setAttribute('title', mxResources.get(
 			(singleColorMode) ? 'default' : 'useBlackAndWhite'));
 		defaultBtn.innerText = '';
@@ -1280,12 +1120,10 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		def.style.width = '12px';
 		def.style.height = '12px';
 
-		if (singleColorMode)
-		{
+		if (singleColorMode) {
 			def.style.backgroundColor = cssDefaultColor.light;
 		}
-		else
-		{
+		else {
 			def.style.backgroundImage = 'linear-gradient(to right bottom, ' +
 				cssDefaultColor.cssText + ' 50%, ' +
 				mxUtils.invertLightDarkColor(cssDefaultColor).cssText + ' 50.3%)';
@@ -1293,19 +1131,16 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 
 		defaultBtn.appendChild(def);
 	}
-	else
-	{
+	else {
 		defaultBtn.style.display = 'none';
 	}
 
 	inputDiv.appendChild(defaultBtn);
 
-	mxEvent.addListener(defaultBtn, 'dblclick', function()
-	{
+	mxEvent.addListener(defaultBtn, 'dblclick', function () {
 		doApply();
 
-		if (liveApply && self.closeFn != null)
-		{
+		if (liveApply && self.closeFn != null) {
 			self.closeFn();
 		}
 	});
@@ -1318,19 +1153,16 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	clrInput.style.width = '0px';
 	clrInput.style.height = '0px';
 	clrInput.style.border = 'none';
-	
+
 	div.style.whiteSpace = 'nowrap';
 	inputDiv.appendChild(clrInput);
 
-	var dropperBtn = mxUtils.button('', function()
-	{
+	var dropperBtn = mxUtils.button('', function () {
 		// LATER: Check if clrInput is expanded
-		if (document.activeElement == clrInput)
-		{
+		if (document.activeElement == clrInput) {
 			input.focus();
 		}
-		else
-		{
+		else {
 			clrInput.value = '#' + input.value;
 			clrInput.click();
 		}
@@ -1352,30 +1184,25 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 
 	div.appendChild(wrapper);
 
-	mxEvent.addListener(clrInput, 'change', function()
-	{
+	mxEvent.addListener(clrInput, 'change', function () {
 		picker.fromString(clrInput.value);
 	});
 
-	if (!singleColorMode)
-	{
+	if (!singleColorMode) {
 		div.appendChild(darkColorDiv);
 	}
 
 	// Adds recent colors
 	var recentTable = createRecentColorTable();
 
-	function refreshRecentColors()
-	{
-		if (recentTable != null && recentTable.parentNode != null)
-		{
+	function refreshRecentColors() {
+		if (recentTable != null && recentTable.parentNode != null) {
 			recentTable.parentNode.removeChild(recentTable);
 		}
 
 		recentTable = createRecentColorTable();
 
-		if (center.firstChild != recentTable)
-		{
+		if (center.firstChild != recentTable) {
 			center.insertBefore(recentTable, center.firstChild);
 		}
 	};
@@ -1392,28 +1219,23 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	// the parent (eg. a table/swimlane cell using its container's color). Shown
 	// only when the caller marks the value as inheritable (allowInherit). Applies
 	// the 'inherit' sentinel and closes the picker like choosing a color.
-	var inheritBtn = mxUtils.button(mxResources.get('inherit', null, 'Inherit'), function()
-	{
+	var inheritBtn = mxUtils.button(mxResources.get('inherit'), function () {
 		applyFunction('inherit');
 
-		if (liveApply)
-		{
-			if (self.closeFn != null)
-			{
+		if (liveApply) {
+			if (self.closeFn != null) {
 				self.closeFn();
 			}
 		}
-		else
-		{
+		else {
 			editorUi.hideDialog();
 		}
 	});
 
-	inheritBtn.setAttribute('title', mxResources.get('inherit', null, 'Inherit'));
+	inheritBtn.setAttribute('title', mxResources.get('inherit'));
 	// allowInherit may be a live predicate (re-evaluated as the selection changes
 	// while the reused color window stays open) or a plain boolean
-	function inheritAllowed(v)
-	{
+	function inheritAllowed(v) {
 		return (typeof v === 'function') ? v() : v;
 	};
 
@@ -1424,8 +1246,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 
 	var buttons = null;
 
-	if (!liveApply)
-	{
+	if (!liveApply) {
 		buttons = document.createElement('div');
 		buttons.style.display = 'flex';
 		buttons.style.whiteSpace = 'nowrap';
@@ -1433,24 +1254,20 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		buttons.style.justifyContent = 'end';
 		buttons.style.marginTop = '34px';
 
-		if (!editorUi.isOffline())
-		{
+		if (!editorUi.isOffline()) {
 			buttons.appendChild(editorUi.createHelpIcon('https://www.drawio.com/docs/manual/editor/appearance/adaptive-colours/'));
 		}
 
-		var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
-		{
+		var cancelBtn = mxUtils.button(mxResources.get('cancel'), function () {
 			editorUi.hideDialog();
 
-			if (cancelFn != null)
-			{
+			if (cancelFn != null) {
 				cancelFn();
 			}
 		});
 		cancelBtn.className = 'geBtn';
 
-		if (editorUi.editor.cancelFirst)
-		{
+		if (editorUi.editor.cancelFirst) {
 			buttons.appendChild(cancelBtn);
 		}
 
@@ -1458,41 +1275,31 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		applyBtn.className = 'geBtn gePrimaryBtn';
 		buttons.appendChild(applyBtn);
 
-		if (!editorUi.editor.cancelFirst)
-		{
+		if (!editorUi.editor.cancelFirst) {
 			buttons.appendChild(cancelBtn);
 		}
 	}
-	
-	if (color != null)
-	{
-		if (color == 'default')
-		{
+
+	if (color != null) {
+		if (color == 'default') {
 			defaultBtn.click();
 		}
-		else
-		{
+		else {
 			var cssColor = mxUtils.getLightDarkColor(color);
 
 			if (color == mxConstants.NONE ||
-				cssColor.light == 'transparent')
-			{
+				cssColor.light == 'transparent') {
 				input.value = mxConstants.NONE;
 			}
-			else
-			{
-				if (mxUtils.isVarColor(cssColor.light))
-				{
+			else {
+				if (mxUtils.isVarColor(cssColor.light)) {
 					input.value = cssColor.light;
 				}
-				else
-				{
-					if (mxUtils.isRgbColor(cssColor.light))
-					{
+				else {
+					if (mxUtils.isRgbColor(cssColor.light)) {
 						cssColor.light = mxUtils.rgba2hex(cssColor.light);
 					}
-					else if (!mxUtils.isHexColor(cssColor.light))
-					{
+					else if (!mxUtils.isHexColor(cssColor.light)) {
 						cssColor.light = '#' + validateColor(cssColor.light);
 					}
 
@@ -1501,27 +1308,21 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 			}
 
 			if (color == mxConstants.NONE ||
-				cssColor.dark == 'transparent')
-			{
+				cssColor.dark == 'transparent') {
 				darkInput.value = mxConstants.NONE;
 			}
-			else
-			{
-				if (mxUtils.isVarColor(cssColor.dark))
-				{
+			else {
+				if (mxUtils.isVarColor(cssColor.dark)) {
 					darkInput.value = cssColor.dark;
 				}
-				else
-				{
-					if (mxUtils.isRgbColor(cssColor.dark))
-					{
+				else {
+					if (mxUtils.isRgbColor(cssColor.dark)) {
 						cssColor.dark = mxUtils.rgba2hex(cssColor.dark);
 					}
-					else if (!mxUtils.isHexColor(cssColor.dark))
-					{
+					else if (!mxUtils.isHexColor(cssColor.dark)) {
 						cssColor.dark = '#' + validateColor(cssColor.dark);
 					}
-					
+
 					darkInput.value = cssColor.dark.substring(1).toUpperCase();
 				}
 			}
@@ -1530,32 +1331,27 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 			updateInputColors();
 		}
 	}
-	
+
 	if (!singleColorMode && ColorDialog.collapsed &&
 		darkSelect.value == 'automatic' &&
-		!Editor.isDarkMode())
-	{
+		!Editor.isDarkMode()) {
 		darkColorDiv.style.display = 'none';
 		updateCollapseIcon();
 	}
-	
-	if (buttons != null)
-	{
+
+	if (buttons != null) {
 		div.appendChild(buttons);
 	}
 
 	this.picker = picker;
 	this.colorInput = input;
 
-	function keyPressed(e)
-	{
-		if (e.keyCode == 13)
-		{
+	function keyPressed(e) {
+		if (e.keyCode == 13) {
 			inputChanged(mxEvent.getSource(e));
 			doApply();
 
-			if (liveApply && self.closeFn != null)
-			{
+			if (liveApply && self.closeFn != null) {
 				self.closeFn();
 			}
 		}
@@ -1566,23 +1362,17 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 
 	// LATER: Only fires if input if focused, should always
 	// fire if this dialog is showing.
-	mxEvent.addListener(div, 'keydown', function(e)
-	{
-		if (e.keyCode == 27)
-		{
-			if (liveApply)
-			{
-				if (self.closeFn != null)
-				{
+	mxEvent.addListener(div, 'keydown', function (e) {
+		if (e.keyCode == 27) {
+			if (liveApply) {
+				if (self.closeFn != null) {
 					self.closeFn();
 				}
 			}
-			else
-			{
+			else {
 				editorUi.hideDialog();
 
-				if (cancelFn != null)
-				{
+				if (cancelFn != null) {
 					cancelFn();
 				}
 			}
@@ -1597,13 +1387,11 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 	this.closeFn = null;
 	this.resizeFn = null;
 
-	this.setApplyFn = function(fn)
-	{
+	this.setApplyFn = function (fn) {
 		applyFunction = fn;
 	};
 
-	this.setColor = function(newColor, newDefaultColor, newDefaultColorValue, newSingleColorMode, newAllowInherit)
-	{
+	this.setColor = function (newColor, newDefaultColor, newDefaultColorValue, newSingleColorMode, newAllowInherit) {
 		// Reset session tracking for recent colors
 		sessionRecentColor = null;
 
@@ -1620,35 +1408,29 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		useDefault = false;
 
 		// Update singleColorMode visibility
-		if (newSingleColorMode)
-		{
+		if (newSingleColorMode) {
 			advancedDiv.style.display = 'none';
 			darkColorDiv.style.display = 'none';
 
-			if (lightIcon != null)
-			{
+			if (lightIcon != null) {
 				lightIcon.style.display = 'none';
 			}
 
 			currentInput = input;
 			input.focus();
 		}
-		else
-		{
+		else {
 			advancedDiv.style.display = 'flex';
 
-			if (lightIcon != null)
-			{
+			if (lightIcon != null) {
 				lightIcon.style.display = '';
 			}
 
 			if (ColorDialog.collapsed && darkSelect.value == 'automatic' &&
-				!Editor.isDarkMode())
-			{
+				!Editor.isDarkMode()) {
 				darkColorDiv.style.display = 'none';
 			}
-			else
-			{
+			else {
 				darkColorDiv.style.display = 'flex';
 			}
 
@@ -1656,8 +1438,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 		}
 
 		// Update default button
-		if (cssDefaultColor != null)
-		{
+		if (cssDefaultColor != null) {
 			defaultBtn.style.display = '';
 			defaultBtn.setAttribute('title', mxResources.get(
 				(newSingleColorMode) ? 'default' : 'useBlackAndWhite'));
@@ -1672,12 +1453,10 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 			def.style.width = '12px';
 			def.style.height = '12px';
 
-			if (newSingleColorMode)
-			{
+			if (newSingleColorMode) {
 				def.style.backgroundColor = cssDefaultColor.light;
 			}
-			else
-			{
+			else {
 				def.style.backgroundImage = 'linear-gradient(to right bottom, ' +
 					cssDefaultColor.cssText + ' 50%, ' +
 					mxUtils.invertLightDarkColor(cssDefaultColor).cssText + ' 50.3%)';
@@ -1685,14 +1464,12 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 
 			defaultBtn.appendChild(def);
 		}
-		else
-		{
+		else {
 			defaultBtn.style.display = 'none';
 		}
 
 		// Set color values
-		if (newColor != null)
-		{
+		if (newColor != null) {
 			// Converts color names to hex
 			if (newColor != 'default' &&
 				newColor != 'transparent' &&
@@ -1700,49 +1477,39 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 				!mxUtils.isVarColor(newColor) &&
 				!mxUtils.isHexColor(newColor) &&
 				!mxUtils.isRgbColor(newColor) &&
-				!mxUtils.isLightDarkColor(newColor))
-			{
+				!mxUtils.isLightDarkColor(newColor)) {
 				newColor = mxUtils.color2hex(newColor);
 			}
 
 			darkSelect.value = (!mxUtils.isLightDarkColor(newColor) ?
 				'automatic' : 'custom');
 
-			if (newColor == 'default')
-			{
+			if (newColor == 'default') {
 				setDefaultSelected(true);
 				updateInputColors();
 
-				if (cssDefaultColor != null)
-				{
+				if (cssDefaultColor != null) {
 					picker.fromString((currentInput == darkInput) ?
 						cssDefaultColor.dark :
 						cssDefaultColor.light, true);
 				}
 			}
-			else
-			{
+			else {
 				var cssColor = mxUtils.getLightDarkColor(newColor);
 
 				if (newColor == mxConstants.NONE ||
-					cssColor.light == 'transparent')
-				{
+					cssColor.light == 'transparent') {
 					input.value = mxConstants.NONE;
 				}
-				else
-				{
-					if (mxUtils.isVarColor(cssColor.light))
-					{
+				else {
+					if (mxUtils.isVarColor(cssColor.light)) {
 						input.value = cssColor.light;
 					}
-					else
-					{
-						if (mxUtils.isRgbColor(cssColor.light))
-						{
+					else {
+						if (mxUtils.isRgbColor(cssColor.light)) {
 							cssColor.light = mxUtils.rgba2hex(cssColor.light);
 						}
-						else if (!mxUtils.isHexColor(cssColor.light))
-						{
+						else if (!mxUtils.isHexColor(cssColor.light)) {
 							cssColor.light = '#' + validateColor(cssColor.light);
 						}
 
@@ -1751,24 +1518,18 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 				}
 
 				if (newColor == mxConstants.NONE ||
-					cssColor.dark == 'transparent')
-				{
+					cssColor.dark == 'transparent') {
 					darkInput.value = mxConstants.NONE;
 				}
-				else
-				{
-					if (mxUtils.isVarColor(cssColor.dark))
-					{
+				else {
+					if (mxUtils.isVarColor(cssColor.dark)) {
 						darkInput.value = cssColor.dark;
 					}
-					else
-					{
-						if (mxUtils.isRgbColor(cssColor.dark))
-						{
+					else {
+						if (mxUtils.isRgbColor(cssColor.dark)) {
 							cssColor.dark = mxUtils.rgba2hex(cssColor.dark);
 						}
-						else if (!mxUtils.isHexColor(cssColor.dark))
-						{
+						else if (!mxUtils.isHexColor(cssColor.dark)) {
 							cssColor.dark = '#' + validateColor(cssColor.dark);
 						}
 
@@ -1783,16 +1544,14 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 
 		if (!newSingleColorMode && ColorDialog.collapsed &&
 			darkSelect.value == 'automatic' &&
-			!Editor.isDarkMode())
-		{
+			!Editor.isDarkMode()) {
 			darkColorDiv.style.display = 'none';
 			updateCollapseIcon();
 		}
 
 		refreshRecentColors();
 
-		if (self.resizeFn != null)
-		{
+		if (self.resizeFn != null) {
 			self.resizeFn();
 		}
 	};
@@ -1801,7 +1560,7 @@ var ColorDialog = function(editorUi, color, apply, cancelFn, defaultColor, defau
 /**
  * Creates function to apply value
  */
-ColorDialog.prototype.presetColors = ['E6D0DE', 'CDA2BE', 'B5739D', 'E1D5E7', 'C3ABD0', 'A680B8', 'D4E1F5', 'A9C4EB', '7EA6E0', 'D5E8D4', '9AC7BF', '67AB9F', 'D5E8D4', 'B9E0A5', '97D077', 'FFF2CC', 'FFE599', 'FFD966', 'FFF4C3', 'FFCE9F', 'FFB570', 'F8CECC', 'F19C99', 'EA6B66']; 
+ColorDialog.prototype.presetColors = ['E6D0DE', 'CDA2BE', 'B5739D', 'E1D5E7', 'C3ABD0', 'A680B8', 'D4E1F5', 'A9C4EB', '7EA6E0', 'D5E8D4', '9AC7BF', '67AB9F', 'D5E8D4', 'B9E0A5', '97D077', 'FFF2CC', 'FFE599', 'FFD966', 'FFF4C3', 'FFCE9F', 'FFB570', 'F8CECC', 'F19C99', 'EA6B66'];
 
 /**
  * Creates function to apply value
@@ -1812,59 +1571,51 @@ ColorDialog.prototype.colorNames = {};
  * Creates function to apply value
  */
 ColorDialog.prototype.defaultColors = ['none', 'FFFFFF', 'E6E6E6', 'CCCCCC', 'B3B3B3', '999999', '808080', '666666', '4D4D4D', '333333', '1A1A1A', '000000', 'FFCCCC', 'FFE6CC', 'FFFFCC', 'E6FFCC', 'CCFFCC', 'CCFFE6', 'CCFFFF', 'CCE5FF', 'CCCCFF', 'E5CCFF', 'FFCCFF', 'FFCCE6',
-		'FF9999', 'FFCC99', 'FFFF99', 'CCFF99', '99FF99', '99FFCC', '99FFFF', '99CCFF', '9999FF', 'CC99FF', 'FF99FF', 'FF99CC', 'FF6666', 'FFB366', 'FFFF66', 'B3FF66', '66FF66', '66FFB3', '66FFFF', '66B2FF', '6666FF', 'B266FF', 'FF66FF', 'FF66B3', 'FF3333', 'FF9933', 'FFFF33',
-		'99FF33', '33FF33', '33FF99', '33FFFF', '3399FF', '3333FF', '9933FF', 'FF33FF', 'FF3399', 'FF0000', 'FF8000', 'FFFF00', '80FF00', '00FF00', '00FF80', '00FFFF', '007FFF', '0000FF', '7F00FF', 'FF00FF', 'FF0080', 'CC0000', 'CC6600', 'CCCC00', '66CC00', '00CC00', '00CC66',
-		'00CCCC', '0066CC', '0000CC', '6600CC', 'CC00CC', 'CC0066', '990000', '994C00', '999900', '4D9900', '009900', '00994D', '009999', '004C99', '000099', '4C0099', '990099', '99004D', '660000', '663300', '666600', '336600', '006600', '006633', '006666', '003366', '000066',
-		'330066', '660066', '660033', '330000', '331A00', '333300', '1A3300', '003300', '00331A', '003333', '001933', '000033', '190033', '330033', '33001A'];
+	'FF9999', 'FFCC99', 'FFFF99', 'CCFF99', '99FF99', '99FFCC', '99FFFF', '99CCFF', '9999FF', 'CC99FF', 'FF99FF', 'FF99CC', 'FF6666', 'FFB366', 'FFFF66', 'B3FF66', '66FF66', '66FFB3', '66FFFF', '66B2FF', '6666FF', 'B266FF', 'FF66FF', 'FF66B3', 'FF3333', 'FF9933', 'FFFF33',
+	'99FF33', '33FF33', '33FF99', '33FFFF', '3399FF', '3333FF', '9933FF', 'FF33FF', 'FF3399', 'FF0000', 'FF8000', 'FFFF00', '80FF00', '00FF00', '00FF80', '00FFFF', '007FFF', '0000FF', '7F00FF', 'FF00FF', 'FF0080', 'CC0000', 'CC6600', 'CCCC00', '66CC00', '00CC00', '00CC66',
+	'00CCCC', '0066CC', '0000CC', '6600CC', 'CC00CC', 'CC0066', '990000', '994C00', '999900', '4D9900', '009900', '00994D', '009999', '004C99', '000099', '4C0099', '990099', '99004D', '660000', '663300', '666600', '336600', '006600', '006633', '006666', '003366', '000066',
+	'330066', '660066', '660033', '330000', '331A00', '333300', '1A3300', '003300', '00331A', '003333', '001933', '000033', '190033', '330033', '33001A'];
 
 /**
  * Creates function to apply value
  */
-ColorDialog.prototype.createApplyFunction = function()
-{
+ColorDialog.prototype.createApplyFunction = function () {
 	return ColorDialog.createApplyFunction(this.editorUi, this.currentColorKey);
 };
 
 /**
  * Creates function to apply value
  */
-ColorDialog.createApplyFunction = function(editorUi, colorKey)
-{
-	return function(color)
-	{
+ColorDialog.createApplyFunction = function (editorUi, colorKey) {
+	return function (color) {
 		var graph = editorUi.editor.graph;
-		
+
 		graph.getModel().beginUpdate();
-		try
-		{
+		try {
 			graph.setCellStyles(colorKey, color);
 			editorUi.fireEvent(new mxEventObject('styleChanged', 'keys', [colorKey],
 				'values', [color], 'cells', graph.getSelectionCells()));
 		}
-		finally
-		{
+		finally {
 			graph.getModel().endUpdate();
 		}
 	};
 };
 
 /**
- * 
+ *
  */
 ColorDialog.recentColors = [];
 
 /**
  * Adds recent color for later use.
  */
-ColorDialog.addRecentColor = function(color, max)
-{
-	if (color != null)
-	{
+ColorDialog.addRecentColor = function (color, max) {
+	if (color != null) {
 		mxUtils.remove(color, ColorDialog.recentColors);
 		ColorDialog.recentColors.splice(0, 0, color);
-		
-		if (ColorDialog.recentColors.length >= max)
-		{
+
+		if (ColorDialog.recentColors.length >= max) {
 			ColorDialog.recentColors.pop();
 		}
 	}
@@ -1873,8 +1624,7 @@ ColorDialog.addRecentColor = function(color, max)
 /**
  * Adds recent color for later use.
  */
-ColorDialog.resetRecentColors = function()
-{
+ColorDialog.resetRecentColors = function () {
 	ColorDialog.recentColors = [];
 };
 
@@ -1886,12 +1636,11 @@ ColorDialog.collapsed = true;
 /**
  * Non-modal color picker tool window.
  */
-var ColorWindow = function(editorUi, x, y, w)
-{
+var ColorWindow = function (editorUi, x, y, w) {
 	var graph = editorUi.editor.graph;
 
 	this.colorDialog = new ColorDialog(editorUi, mxConstants.NONE,
-		function() {}, null, null, null, false, true);
+		function () { }, null, null, null, false, true);
 
 	// Initial height from content
 	var container = this.colorDialog.container;
@@ -1908,14 +1657,12 @@ var ColorWindow = function(editorUi, x, y, w)
 
 	var self = this;
 
-	this.fitHeight = function()
-	{
+	this.fitHeight = function () {
 		// While minimized the content is hidden (scrollHeight 0), so measuring
 		// would shrink to the title bar and setSize would then clamp back up to
 		// minimumSize, leaving a wrong-sized empty window. The minimize/restore
 		// logic owns the size in that state, so leave it alone.
-		if (self.window.minimized)
-		{
+		if (self.window.minimized) {
 			return;
 		}
 
@@ -1926,18 +1673,15 @@ var ColorWindow = function(editorUi, x, y, w)
 		self.window.fit();
 	};
 
-	this.colorDialog.closeFn = mxUtils.bind(this, function()
-	{
+	this.colorDialog.closeFn = mxUtils.bind(this, function () {
 		this.window.setVisible(false);
 	});
 
-	this.colorDialog.resizeFn = mxUtils.bind(this, function()
-	{
+	this.colorDialog.resizeFn = mxUtils.bind(this, function () {
 		this.fitHeight();
 	});
 
-	this.window.addListener(mxEvent.SHOW, mxUtils.bind(this, function()
-	{
+	this.window.addListener(mxEvent.SHOW, mxUtils.bind(this, function () {
 		this.fitHeight();
 	}));
 
@@ -1949,15 +1693,12 @@ var ColorWindow = function(editorUi, x, y, w)
 	this.currentAllowInherit = null;
 	this.applying = false;
 
-	var refreshColor = mxUtils.bind(this, function()
-	{
+	var refreshColor = mxUtils.bind(this, function () {
 		if (this.window.isVisible() && this.getColorFn != null &&
-			!this.applying)
-		{
+			!this.applying) {
 			var color = this.getColorFn();
 
-			if (color != null)
-			{
+			if (color != null) {
 				// Passes allowInherit so an external change (eg. collaborator
 				// edit) does not drop the Inherit button while the window is open
 				this.colorDialog.setColor(color, this.currentDefaultColor,
@@ -1977,9 +1718,8 @@ var ColorWindow = function(editorUi, x, y, w)
 /**
  * Updates the color window state for a new color property.
  */
-ColorWindow.prototype.update = function(color, applyFn, title,
-	defaultColor, defaultColorValue, singleColorMode, getColorFn, allowInherit)
-{
+ColorWindow.prototype.update = function (color, applyFn, title,
+	defaultColor, defaultColorValue, singleColorMode, getColorFn, allowInherit) {
 	this.getColorFn = getColorFn || null;
 	this.currentDefaultColor = defaultColor;
 	this.currentDefaultColorValue = defaultColorValue;
@@ -1997,8 +1737,7 @@ ColorWindow.prototype.update = function(color, applyFn, title,
 /**
  * Constructs a new about dialog.
  */
-var AboutDialog = function(editorUi)
-{
+var AboutDialog = function (editorUi) {
 	var div = document.createElement('div');
 	div.setAttribute('align', 'center');
 	var h3 = document.createElement('h3');
@@ -2020,21 +1759,19 @@ var AboutDialog = function(editorUi)
 	div.appendChild(link);
 	mxUtils.br(div);
 	mxUtils.br(div);
-	var closeBtn = mxUtils.button(mxResources.get('close'), function()
-	{
+	var closeBtn = mxUtils.button(mxResources.get('close'), function () {
 		editorUi.hideDialog();
 	});
 	closeBtn.className = 'geBtn gePrimaryBtn';
 	div.appendChild(closeBtn);
-	
+
 	this.container = div;
 };
 
 /**
  * Constructs a simple textarea dialog.
  */
-var SimpleTextareaDialog = function(editorUi, value, fn, buttonLabel, helpLink, headerControl, applyKeepsOpen, previewFn)
-{
+var SimpleTextareaDialog = function (editorUi, value, fn, buttonLabel, helpLink, headerControl, applyKeepsOpen, previewFn) {
 	var initialValue = (value != null) ? value : '';
 	var applying = false;
 
@@ -2069,24 +1806,20 @@ var SimpleTextareaDialog = function(editorUi, value, fn, buttonLabel, helpLink, 
 	buttons.style.marginTop = '14px';
 	buttons.style.flexShrink = '0';
 
-	if (helpLink != null && !editorUi.isOffline())
-	{
+	if (helpLink != null && !editorUi.isOffline()) {
 		buttons.appendChild(editorUi.createHelpIcon(helpLink));
 	}
 
 	// Optional caller-supplied control (e.g. a select) placed left of the
 	// action buttons, matching the type dropdown in ParseDialog.
-	if (headerControl != null)
-	{
+	if (headerControl != null) {
 		buttons.appendChild(headerControl);
 	}
 
 	// Optional preview of the current text (wired by the caller), keeping
 	// the dialog open and the text unapplied.
-	if (previewFn != null)
-	{
-		var previewBtn = mxUtils.button(mxResources.get('preview'), function(evt)
-		{
+	if (previewFn != null) {
+		var previewBtn = mxUtils.button(mxResources.get('preview'), function (evt) {
 			previewFn(textarea.value, evt);
 		});
 
@@ -2094,68 +1827,58 @@ var SimpleTextareaDialog = function(editorUi, value, fn, buttonLabel, helpLink, 
 		buttons.appendChild(previewBtn);
 	}
 
-	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
-	{
+	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function () {
 		editorUi.hideDialog();
 	});
 
 	cancelBtn.setAttribute('title', 'Escape');
 	cancelBtn.className = 'geBtn';
 
-	if (editorUi.editor.cancelFirst)
-	{
+	if (editorUi.editor.cancelFirst) {
 		buttons.appendChild(cancelBtn);
 	}
 
 	var okBtn = mxUtils.button((buttonLabel != null) ?
-		buttonLabel : mxResources.get('apply'), function()
-	{
-		// applyKeepsOpen leaves the dialog open for an async fn that may
-		// fail (e.g. mermaid parsing) so the input isn't lost; the caller
-		// hides it via this.hide() once the apply succeeds, like the
-		// mermaid branch in ParseDialog.
-		if (applyKeepsOpen)
-		{
+		buttonLabel : mxResources.get('apply'), function () {
+			// applyKeepsOpen leaves the dialog open for an async fn that may
+			// fail (e.g. mermaid parsing) so the input isn't lost; the caller
+			// hides it via this.hide() once the apply succeeds, like the
+			// mermaid branch in ParseDialog.
+			if (applyKeepsOpen) {
+				fn(textarea.value);
+
+				return;
+			}
+
+			// suppresses the unsaved-changes confirmation a caller may have
+			// wired into the dialog's onClose (see shouldConfirmClose)
+			applying = true;
+
+			try {
+				editorUi.hideDialog();
+			}
+			finally {
+				applying = false;
+			}
+
 			fn(textarea.value);
-
-			return;
-		}
-
-		// suppresses the unsaved-changes confirmation a caller may have
-		// wired into the dialog's onClose (see shouldConfirmClose)
-		applying = true;
-
-		try
-		{
-			editorUi.hideDialog();
-		}
-		finally
-		{
-			applying = false;
-		}
-
-		fn(textarea.value);
-	});
+		});
 
 	okBtn.setAttribute('title', 'Ctrl+Enter');
 	okBtn.className = 'geBtn gePrimaryBtn';
 	buttons.appendChild(okBtn);
 
-	mxEvent.addListener(textarea, 'keydown', function(e)
-	{
-		if (e.keyCode == 13 && mxEvent.isControlDown(e))
-		{
+	mxEvent.addListener(textarea, 'keydown', function (e) {
+		if (e.keyCode == 13 && mxEvent.isControlDown(e)) {
 			okBtn.click();
 		}
 	});
 
-	if (!editorUi.editor.cancelFirst)
-	{
+	if (!editorUi.editor.cancelFirst) {
 		buttons.appendChild(cancelBtn);
 	}
 
-	this.init = function()
-	{
+	this.init = function () {
 		textarea.focus();
 		textarea.scrollTop = 0;
 	};
@@ -2166,8 +1889,7 @@ var SimpleTextareaDialog = function(editorUi, value, fn, buttonLabel, helpLink, 
 	 * Callers use this from the dialog's onClose to show an
 	 * "all changes will be lost" confirmation.
 	 */
-	this.shouldConfirmClose = function()
-	{
+	this.shouldConfirmClose = function () {
 		return !applying && textarea.value != initialValue;
 	};
 
@@ -2176,16 +1898,13 @@ var SimpleTextareaDialog = function(editorUi, value, fn, buttonLabel, helpLink, 
 	 * Used with applyKeepsOpen: the caller closes the dialog once its
 	 * async apply has succeeded.
 	 */
-	this.hide = function()
-	{
+	this.hide = function () {
 		applying = true;
 
-		try
-		{
+		try {
 			editorUi.hideDialog();
 		}
-		finally
-		{
+		finally {
 			applying = false;
 		}
 	};
@@ -2197,9 +1916,8 @@ var SimpleTextareaDialog = function(editorUi, value, fn, buttonLabel, helpLink, 
 /**
  * Constructs a new textarea dialog.
  */
-var TextareaDialog = function(editorUi, title, url, fn, cancelFn, cancelTitle, w, h,
-	addButtons, noHide, noWrap, applyTitle, helpLink, customButtons, header)
-{
+var TextareaDialog = function (editorUi, title, url, fn, cancelFn, cancelTitle, w, h,
+	addButtons, noHide, noWrap, applyTitle, helpLink, customButtons, header) {
 	w = (w != null) ? w : 300;
 	h = (h != null) ? h : 120;
 	noHide = (noHide != null) ? noHide : false;
@@ -2221,8 +1939,7 @@ var TextareaDialog = function(editorUi, title, url, fn, cancelFn, cancelTitle, w
 	hd.style.cssText = 'width:100%;text-align:center;margin:0';
 	top.appendChild(hd);
 
-	if (header != null)
-	{
+	if (header != null) {
 		top.appendChild(header);
 	}
 
@@ -2230,12 +1947,10 @@ var TextareaDialog = function(editorUi, title, url, fn, cancelFn, cancelTitle, w
 
 	var nameInput = document.createElement('textarea');
 
-	if (noWrap)
-	{
+	if (noWrap) {
 		nameInput.setAttribute('wrap', 'off');
 	}
-	else
-	{
+	else {
 		nameInput.style.wordBreak = 'break-all';
 	}
 
@@ -2253,8 +1968,7 @@ var TextareaDialog = function(editorUi, title, url, fn, cancelFn, cancelTitle, w
 
 	this.textarea = nameInput;
 
-	this.init = function()
-	{
+	this.init = function () {
 		nameInput.focus();
 		nameInput.scrollTop = 0;
 	};
@@ -2269,24 +1983,18 @@ var TextareaDialog = function(editorUi, title, url, fn, cancelFn, cancelTitle, w
 	buttons.style.marginTop = '14px';
 	buttons.style.flexShrink = '0';
 
-	if (helpLink != null && !editorUi.isOffline())
-	{
+	if (helpLink != null && !editorUi.isOffline()) {
 		buttons.appendChild(editorUi.createHelpIcon(helpLink));
 	}
 
-	if (customButtons != null)
-	{
-		for (var i = 0; i < customButtons.length; i++)
-		{
-			(function(label, fn, title)
-			{
-				var customBtn = mxUtils.button(label, function(e)
-				{
+	if (customButtons != null) {
+		for (var i = 0; i < customButtons.length; i++) {
+			(function (label, fn, title) {
+				var customBtn = mxUtils.button(label, function (e) {
 					fn(e, nameInput);
 				});
 
-				if (title != null)
-				{
+				if (title != null) {
 					customBtn.setAttribute('title', title);
 				}
 
@@ -2297,12 +2005,10 @@ var TextareaDialog = function(editorUi, title, url, fn, cancelFn, cancelTitle, w
 		}
 	}
 
-	var cancelBtn = mxUtils.button(cancelTitle || mxResources.get('cancel'), function()
-	{
+	var cancelBtn = mxUtils.button(cancelTitle || mxResources.get('cancel'), function () {
 		editorUi.hideDialog();
 
-		if (cancelFn != null)
-		{
+		if (cancelFn != null) {
 			cancelFn();
 		}
 	});
@@ -2310,22 +2016,17 @@ var TextareaDialog = function(editorUi, title, url, fn, cancelFn, cancelTitle, w
 	cancelBtn.setAttribute('title', 'Escape');
 	cancelBtn.className = 'geBtn';
 
-	if (editorUi.editor.cancelFirst)
-	{
+	if (editorUi.editor.cancelFirst) {
 		buttons.appendChild(cancelBtn);
 	}
 
-	if (addButtons != null)
-	{
+	if (addButtons != null) {
 		addButtons(buttons, nameInput);
 	}
 
-	if (fn != null)
-	{
-		var genericBtn = mxUtils.button(applyTitle || mxResources.get('apply'), function()
-		{
-			if (!noHide)
-			{
+	if (fn != null) {
+		var genericBtn = mxUtils.button(applyTitle || mxResources.get('apply'), function () {
+			if (!noHide) {
 				editorUi.hideDialog();
 			}
 
@@ -2336,17 +2037,14 @@ var TextareaDialog = function(editorUi, title, url, fn, cancelFn, cancelTitle, w
 		genericBtn.className = 'geBtn gePrimaryBtn';
 		buttons.appendChild(genericBtn);
 
-		mxEvent.addListener(nameInput, 'keydown', function(e)
-		{
-			if (e.keyCode == 13 && mxEvent.isControlDown(e))
-			{
+		mxEvent.addListener(nameInput, 'keydown', function (e) {
+			if (e.keyCode == 13 && mxEvent.isControlDown(e)) {
 				genericBtn.click();
 			}
 		});
 	}
 
-	if (!editorUi.editor.cancelFirst)
-	{
+	if (!editorUi.editor.cancelFirst) {
 		buttons.appendChild(cancelBtn);
 	}
 
@@ -2359,8 +2057,7 @@ var TextareaDialog = function(editorUi, title, url, fn, cancelFn, cancelTitle, w
  * toolbar and a source view. Used for tooltips and notes where plain
  * HTML is the established format.
  */
-var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
-{
+var MarkupDialog = function (editorUi, title, value, fn, cancelFn, helpLink) {
 	var div = document.createElement('div');
 	div.style.display = 'flex';
 	div.style.flexDirection = 'column';
@@ -2407,33 +2104,27 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 
 	var sourceVisible = false;
 
-	function sourceToWysiwyg()
-	{
+	function sourceToWysiwyg() {
 		wysiwyg.innerHTML = Graph.sanitizeHtml(textarea.value);
 	};
 
-	function wysiwygToSource()
-	{
+	function wysiwygToSource() {
 		return Graph.sanitizeHtml(wysiwyg.innerHTML);
 	};
 
-	function getValue()
-	{
+	function getValue() {
 		return (sourceVisible) ? textarea.value : wysiwygToSource();
 	};
 
 	sourceToWysiwyg();
 
 	// Pastes as plain text
-	mxEvent.addListener(wysiwyg, 'paste', function(evt)
-	{
-		if (evt.clipboardData != null)
-		{
+	mxEvent.addListener(wysiwyg, 'paste', function (evt) {
+		if (evt.clipboardData != null) {
 			var text = evt.clipboardData.getData('text/plain');
 			evt.preventDefault();
 
-			if (text != null && text.length > 0)
-			{
+			if (text != null && text.length > 0) {
 				document.execCommand('insertText', false, text);
 			}
 		}
@@ -2442,37 +2133,31 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 	// Wraps the selection with the given markup or, in block mode, wraps
 	// the selected lines with prefix/suffix and the whole block with the
 	// given container markup
-	function applyFormat(prefix, suffix, block, containerStart, containerEnd)
-	{
+	function applyFormat(prefix, suffix, block, containerStart, containerEnd) {
 		var start = textarea.selectionStart;
 		var end = textarea.selectionEnd;
 		var text = textarea.value;
 		suffix = (suffix != null) ? suffix : '';
 
-		if (block)
-		{
+		if (block) {
 			// Expands the selection to whole lines
-			while (start > 0 && text.charAt(start - 1) != '\n')
-			{
+			while (start > 0 && text.charAt(start - 1) != '\n') {
 				start--;
 			}
 
-			while (end < text.length && text.charAt(end) != '\n')
-			{
+			while (end < text.length && text.charAt(end) != '\n') {
 				end++;
 			}
 
 			var lines = text.substring(start, end).split('\n');
 
-			for (var i = 0; i < lines.length; i++)
-			{
+			for (var i = 0; i < lines.length; i++) {
 				lines[i] = prefix.replace('{1}', i + 1) + lines[i] + suffix;
 			}
 
 			var replaced = lines.join('\n');
 
-			if (containerStart != null)
-			{
+			if (containerStart != null) {
 				replaced = containerStart + '\n' + replaced + '\n' + containerEnd;
 			}
 
@@ -2480,19 +2165,16 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 			textarea.selectionStart = start;
 			textarea.selectionEnd = start + replaced.length;
 		}
-		else
-		{
+		else {
 			var selected = text.substring(start, end);
 			textarea.value = text.substring(0, start) + prefix + selected +
 				suffix + text.substring(end);
 
-			if (selected.length == 0)
-			{
+			if (selected.length == 0) {
 				textarea.selectionStart = start + prefix.length;
 				textarea.selectionEnd = textarea.selectionStart;
 			}
-			else
-			{
+			else {
 				textarea.selectionStart = start;
 				textarea.selectionEnd = end + prefix.length + suffix.length;
 			}
@@ -2502,16 +2184,13 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 	};
 
 	// Returns the selection range if it is inside the WYSIWYG area
-	function getRange()
-	{
+	function getRange() {
 		var sel = window.getSelection();
 
-		if (sel != null && sel.rangeCount > 0)
-		{
+		if (sel != null && sel.rangeCount > 0) {
 			var range = sel.getRangeAt(0);
 
-			if (mxUtils.isAncestorNode(wysiwyg, range.commonAncestorContainer))
-			{
+			if (mxUtils.isAncestorNode(wysiwyg, range.commonAncestorContainer)) {
 				return range;
 			}
 		}
@@ -2519,26 +2198,21 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 		return null;
 	};
 
-	function execCmd(cmd, arg)
-	{
+	function execCmd(cmd, arg) {
 		wysiwyg.focus();
 		document.execCommand(cmd, false, (arg != null) ? arg : null);
 	};
 
-	function wrapInline(tag)
-	{
+	function wrapInline(tag) {
 		var range = getRange();
 
-		if (range != null && !range.collapsed)
-		{
+		if (range != null && !range.collapsed) {
 			var node = document.createElement(tag);
 
-			try
-			{
+			try {
 				range.surroundContents(node);
 			}
-			catch (e)
-			{
+			catch (e) {
 				// Partial element selections cannot be surrounded
 				node.appendChild(range.extractContents());
 				range.insertNode(node);
@@ -2554,44 +2228,37 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 		wysiwyg.focus();
 	};
 
-	function insertLink()
-	{
+	function insertLink() {
 		var range = getRange();
 		range = (range != null) ? range.cloneRange() : null;
 
 		var dlg = new FilenameDialog(editorUi, 'https://',
-			mxResources.get('apply'), function(href)
-		{
-			if (href != null && href.length > 0 && href != 'https://')
-			{
-				wysiwyg.focus();
+			mxResources.get('apply'), function (href) {
+				if (href != null && href.length > 0 && href != 'https://') {
+					wysiwyg.focus();
 
-				if (range != null)
-				{
-					var sel = window.getSelection();
-					sel.removeAllRanges();
-					sel.addRange(range);
-				}
+					if (range != null) {
+						var sel = window.getSelection();
+						sel.removeAllRanges();
+						sel.addRange(range);
+					}
 
-				if (range != null && !range.collapsed)
-				{
-					document.execCommand('createLink', false, href);
+					if (range != null && !range.collapsed) {
+						document.execCommand('createLink', false, href);
+					}
+					else {
+						var temp = mxUtils.htmlEntities(href);
+						document.execCommand('insertHTML', false,
+							'<a href="' + temp + '">' + temp + '</a>');
+					}
 				}
-				else
-				{
-					var temp = mxUtils.htmlEntities(href);
-					document.execCommand('insertHTML', false,
-						'<a href="' + temp + '">' + temp + '</a>');
-				}
-			}
-		}, mxResources.get('link'));
+			}, mxResources.get('link'));
 
 		editorUi.showDialog(dlg.container, 340, 96, true, true);
 		dlg.init();
 	};
 
-	function addFormatButton(html, title, fn)
-	{
+	function addFormatButton(html, title, fn) {
 		// Not a geButton as those are inverted in dark mode which would
 		// cancel out the light-dark colors of the button styles
 		var btn = document.createElement('a');
@@ -2600,13 +2267,11 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 		btn.setAttribute('title', title);
 
 		// Keeps the focus and selection in the editing area
-		mxEvent.addListener(btn, 'mousedown', function(evt)
-		{
+		mxEvent.addListener(btn, 'mousedown', function (evt) {
 			evt.preventDefault();
 		});
 
-		mxEvent.addListener(btn, 'click', function(evt)
-		{
+		mxEvent.addListener(btn, 'click', function (evt) {
 			fn();
 			evt.preventDefault();
 			mxEvent.consume(evt);
@@ -2617,54 +2282,40 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 		return btn;
 	};
 
-	addFormatButton('<b>B</b>', mxResources.get('bold'), function()
-	{
-		if (sourceVisible)
-		{
+	addFormatButton('<b>B</b>', mxResources.get('bold'), function () {
+		if (sourceVisible) {
 			applyFormat('<b>', '</b>');
 		}
-		else
-		{
+		else {
 			execCmd('bold');
 		}
 	});
-	addFormatButton('<i>I</i>', mxResources.get('italic'), function()
-	{
-		if (sourceVisible)
-		{
+	addFormatButton('<i>I</i>', mxResources.get('italic'), function () {
+		if (sourceVisible) {
 			applyFormat('<i>', '</i>');
 		}
-		else
-		{
+		else {
 			execCmd('italic');
 		}
 	});
-	addFormatButton('<s>S</s>', mxResources.get('strikethrough'), function()
-	{
-		if (sourceVisible)
-		{
+	addFormatButton('<s>S</s>', mxResources.get('strikethrough'), function () {
+		if (sourceVisible) {
 			applyFormat('<s>', '</s>');
 		}
-		else
-		{
+		else {
 			execCmd('strikeThrough');
 		}
 	});
-	addFormatButton('&lt;/&gt;', mxResources.get('code', null, 'Code'), function()
-	{
-		if (sourceVisible)
-		{
+	addFormatButton('&lt;/&gt;', mxResources.get('code'), function () {
+		if (sourceVisible) {
 			applyFormat('<code>', '</code>');
 		}
-		else
-		{
+		else {
 			wrapInline('code');
 		}
 	});
-	addFormatButton('<u>a</u>', mxResources.get('link'), function()
-	{
-		if (sourceVisible)
-		{
+	addFormatButton('<u>a</u>', mxResources.get('link'), function () {
+		if (sourceVisible) {
 			var start = textarea.selectionStart;
 			var end = textarea.selectionEnd;
 			var selected = textarea.value.substring(start, end);
@@ -2677,52 +2328,40 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 			textarea.selectionEnd = textarea.selectionStart + 8;
 			textarea.focus();
 		}
-		else
-		{
+		else {
 			insertLink();
 		}
 	});
-	addFormatButton('H', mxResources.get('heading'), function()
-	{
-		if (sourceVisible)
-		{
+	addFormatButton('H', mxResources.get('heading'), function () {
+		if (sourceVisible) {
 			applyFormat('<h1>', '</h1>', true);
 		}
-		else
-		{
+		else {
 			var block = null;
 
-			try
-			{
+			try {
 				block = String(document.queryCommandValue('formatBlock')).toLowerCase();
 			}
-			catch (e)
-			{
+			catch (e) {
 				// ignored
 			}
 
 			execCmd('formatBlock', (block == 'h1') ? '<div>' : '<h1>');
 		}
 	});
-	addFormatButton('&bull;&ndash;', mxResources.get('bulletedList'), function()
-	{
-		if (sourceVisible)
-		{
+	addFormatButton('&bull;&ndash;', mxResources.get('bulletedList'), function () {
+		if (sourceVisible) {
 			applyFormat('<li>', '</li>', true, '<ul>', '</ul>');
 		}
-		else
-		{
+		else {
 			execCmd('insertUnorderedList');
 		}
 	});
-	addFormatButton('1.', mxResources.get('numberedList'), function()
-	{
-		if (sourceVisible)
-		{
+	addFormatButton('1.', mxResources.get('numberedList'), function () {
+		if (sourceVisible) {
 			applyFormat('<li>', '</li>', true, '<ol>', '</ol>');
 		}
-		else
-		{
+		else {
 			execCmd('insertOrderedList');
 		}
 	});
@@ -2730,17 +2369,14 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 	// Source view toggle on the right of the toolbar
 	var sourceBtn = document.createElement('a');
 	sourceBtn.className = 'geMarkupTbBtn geMarkupSourceBtn';
-	mxUtils.write(sourceBtn, mxResources.get('html', null, 'HTML'));
+	mxUtils.write(sourceBtn, mxResources.get('html'));
 
-	mxEvent.addListener(sourceBtn, 'click', function(evt)
-	{
-		if (!sourceVisible)
-		{
+	mxEvent.addListener(sourceBtn, 'click', function (evt) {
+		if (!sourceVisible) {
 			textarea.value = wysiwygToSource();
 			sourceBtn.classList.add('geActiveItem');
 		}
-		else
-		{
+		else {
 			sourceToWysiwyg();
 			sourceBtn.classList.remove('geActiveItem');
 		}
@@ -2756,15 +2392,12 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 
 	toolbar.appendChild(sourceBtn);
 
-	this.init = function()
-	{
-		try
-		{
+	this.init = function () {
+		try {
 			// Semantic tags instead of styled spans for editing commands
 			document.execCommand('styleWithCSS', false, false);
 		}
-		catch (e)
-		{
+		catch (e) {
 			// ignored
 		}
 
@@ -2779,17 +2412,14 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 	buttons.style.marginTop = '14px';
 	buttons.style.flexShrink = '0';
 
-	if (helpLink != null && !editorUi.isOffline())
-	{
+	if (helpLink != null && !editorUi.isOffline()) {
 		buttons.appendChild(editorUi.createHelpIcon(helpLink));
 	}
 
-	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
-	{
+	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function () {
 		editorUi.hideDialog();
 
-		if (cancelFn != null)
-		{
+		if (cancelFn != null) {
 			cancelFn();
 		}
 	});
@@ -2797,13 +2427,11 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 	cancelBtn.setAttribute('title', 'Escape');
 	cancelBtn.className = 'geBtn';
 
-	if (editorUi.editor.cancelFirst)
-	{
+	if (editorUi.editor.cancelFirst) {
 		buttons.appendChild(cancelBtn);
 	}
 
-	var applyBtn = mxUtils.button(mxResources.get('apply'), function()
-	{
+	var applyBtn = mxUtils.button(mxResources.get('apply'), function () {
 		var newValue = getValue();
 		editorUi.hideDialog();
 		fn(newValue);
@@ -2813,10 +2441,8 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 	applyBtn.className = 'geBtn gePrimaryBtn';
 	buttons.appendChild(applyBtn);
 
-	function keyHandler(e)
-	{
-		if (e.keyCode == 13 && mxEvent.isControlDown(e))
-		{
+	function keyHandler(e) {
+		if (e.keyCode == 13 && mxEvent.isControlDown(e)) {
 			e.preventDefault();
 			applyBtn.click();
 		}
@@ -2825,8 +2451,7 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 	mxEvent.addListener(textarea, 'keydown', keyHandler);
 	mxEvent.addListener(wysiwyg, 'keydown', keyHandler);
 
-	if (!editorUi.editor.cancelFirst)
-	{
+	if (!editorUi.editor.cancelFirst) {
 		buttons.appendChild(cancelBtn);
 	}
 
@@ -2837,8 +2462,7 @@ var MarkupDialog = function(editorUi, title, value, fn, cancelFn, helpLink)
 /**
  * Constructs a new edit file dialog.
  */
-var EditDiagramDialog = function(editorUi)
-{
+var EditDiagramDialog = function (editorUi) {
 	var div = document.createElement('div');
 	div.style.display = 'flex';
 	div.style.flexDirection = 'column';
@@ -2866,39 +2490,32 @@ var EditDiagramDialog = function(editorUi)
 	textarea.value = mxUtils.getPrettyXml(snapshot.node);
 	div.appendChild(textarea);
 
-	this.init = function()
-	{
+	this.init = function () {
 		textarea.focus();
 	};
 
 	// Enables dropping files
-	if (Graph.fileSupport)
-	{
-		function handleDrop(evt)
-		{
+	if (Graph.fileSupport) {
+		function handleDrop(evt) {
 			evt.stopPropagation();
 			evt.preventDefault();
 
-			if (evt.dataTransfer.files.length > 0)
-			{
+			if (evt.dataTransfer.files.length > 0) {
 				var file = evt.dataTransfer.files[0];
 				var reader = new FileReader();
 
-				reader.onload = function(e)
-				{
+				reader.onload = function (e) {
 					textarea.value = e.target.result;
 				};
 
 				reader.readAsText(file);
 			}
-			else
-			{
+			else {
 				textarea.value = editorUi.extractGraphModelFromEvent(evt);
 			}
 		};
 
-		function handleDragOver(evt)
-		{
+		function handleDragOver(evt) {
 			evt.stopPropagation();
 			evt.preventDefault();
 		};
@@ -2916,22 +2533,19 @@ var EditDiagramDialog = function(editorUi)
 	buttons.style.marginTop = '14px';
 	buttons.style.flexShrink = '0';
 
-	if (!editorUi.isOffline())
-	{
+	if (!editorUi.isOffline()) {
 		var helpIcon = editorUi.createHelpIcon(EditDiagramDialog.helpLink);
 		helpIcon.style.marginRight = 'auto';
 		buttons.appendChild(helpIcon);
 	}
 
-	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
-	{
+	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function () {
 		editorUi.hideDialog();
 	});
 
 	cancelBtn.className = 'geBtn';
 
-	if (editorUi.editor.cancelFirst)
-	{
+	if (editorUi.editor.cancelFirst) {
 		buttons.appendChild(cancelBtn);
 	}
 
@@ -2957,8 +2571,7 @@ var EditDiagramDialog = function(editorUi)
 	newOption.setAttribute('value', 'new');
 	mxUtils.write(newOption, mxResources.get('openInNewWindow'));
 
-	if (EditDiagramDialog.showNewWindowOption && !navigator.standalone)
-	{
+	if (EditDiagramDialog.showNewWindowOption && !navigator.standalone) {
 		select.appendChild(newOption);
 	}
 
@@ -2966,110 +2579,89 @@ var EditDiagramDialog = function(editorUi)
 	var hasExtractText = extractTextAction != null;
 	var hasAnonymize = typeof editorUi.anonymizeXml == 'function';
 
-	if (hasExtractText)
-	{
+	if (hasExtractText) {
 		var extractOption = document.createElement('option');
 		extractOption.setAttribute('value', 'extractText');
 		mxUtils.write(extractOption, mxResources.get('extractText'));
 		select.appendChild(extractOption);
 	}
 
-	if (hasAnonymize)
-	{
+	if (hasAnonymize) {
 		var anonymizeOption = document.createElement('option');
 		anonymizeOption.setAttribute('value', 'anonymize');
 		mxUtils.write(anonymizeOption, mxResources.get('anonymize'));
 		select.appendChild(anonymizeOption);
 	}
 
-	mxEvent.addListener(select, 'change', function()
-	{
+	mxEvent.addListener(select, 'change', function () {
 		var value = select.value;
 		// Removes all illegal control characters before parsing
 		var data = Graph.zapGremlins(mxUtils.trim(textarea.value));
 		var error = null;
 
-		if (value == 'new')
-		{
+		if (value == 'new') {
 			editorUi.hideDialog();
 			editorUi.editor.editAsNew(data);
 		}
-		else if (value == 'copy')
-		{
-			editorUi.writeTextToClipboard(data, function(e)
-			{
+		else if (value == 'copy') {
+			editorUi.writeTextToClipboard(data, function (e) {
 				editorUi.handleError(e);
-			}, function()
-			{
+			}, function () {
 				editorUi.alert(mxResources.get('copiedToClipboard'));
 			});
 		}
-		else if (value == 'extractText')
-		{
+		else if (value == 'extractText') {
 			extractTextAction.funct(true);
 		}
-		else if (value == 'anonymize')
-		{
-			try
-			{
+		else if (value == 'anonymize') {
+			try {
 				textarea.value = editorUi.anonymizeXml(data);
 			}
-			catch (e)
-			{
+			catch (e) {
 				error = e;
 			}
 		}
 
 		select.value = '';
 
-		if (error != null)
-		{
+		if (error != null) {
 			editorUi.handleError(error);
 		}
 	});
 
 	buttons.appendChild(select);
 
-	if (editorUi.editor.graph.isEnabled())
-	{
-		var applyBtn = mxUtils.button(mxResources.get('apply'), function()
-		{
+	if (editorUi.editor.graph.isEnabled()) {
+		var applyBtn = mxUtils.button(mxResources.get('apply'), function () {
 			// Removes all illegal control characters before parsing
 			var data = Graph.zapGremlins(mxUtils.trim(textarea.value));
 			var error = null;
 
-			try
-			{
+			try {
 				var node = mxUtils.parseXml(data).documentElement;
 				var cause = Editor.extractParserError(node, mxResources.get('unknownError'));
 
-				if (cause)
-				{
+				if (cause) {
 					EditorUi.debug('EditDiagramDialogParserError', [this],
 						'node', [node], 'cause', [cause]);
 					error = mxResources.get('invalidInput') + ' (' + cause + ')';
 				}
-				else
-				{
-					if (node.nodeName == 'mxfile')
-					{
+				else {
+					if (node.nodeName == 'mxfile') {
 						editorUi.editor.setGraphXml(node);
 					}
-					else
-					{
+					else {
 						editorUi.updateDiagramData(snapshot, node);
 					}
 
 					editorUi.hideDialog();
 				}
 			}
-			catch (e)
-			{
+			catch (e) {
 				error = e;
 			}
 
-			if (error != null)
-			{
+			if (error != null) {
 				editorUi.handleError(error);
 			}
 		});
@@ -3077,8 +2669,7 @@ var EditDiagramDialog = function(editorUi)
 		buttons.appendChild(applyBtn);
 	}
 
-	if (!editorUi.editor.cancelFirst)
-	{
+	if (!editorUi.editor.cancelFirst) {
 		buttons.appendChild(cancelBtn);
 	}
 
@@ -3087,7 +2678,7 @@ var EditDiagramDialog = function(editorUi)
 };
 
 /**
- * 
+ *
  */
 EditDiagramDialog.showNewWindowOption = true;
 
@@ -3099,12 +2690,11 @@ EditDiagramDialog.helpLink = 'https://www.drawio.com/docs/manual/advanced/diagra
 /**
  * Constructs a new export dialog.
  */
-var ExportDialog = function(editorUi)
-{
+var ExportDialog = function (editorUi) {
 	var graph = editorUi.editor.graph;
 	var bounds = graph.getGraphBounds();
 	var scale = graph.view.scale;
-	
+
 	var width = Math.ceil(bounds.width / scale);
 	var height = Math.ceil(bounds.height / scale);
 
@@ -3141,8 +2731,7 @@ var ExportDialog = function(editorUi)
 
 	var gifOption = document.createElement('option');
 
-	if (ExportDialog.showGifOption)
-	{
+	if (ExportDialog.showGifOption) {
 		gifOption.setAttribute('value', 'gif');
 		mxUtils.write(gifOption, mxResources.get('formatGif'));
 		imageFormatSelect.appendChild(gifOption);
@@ -3158,8 +2747,7 @@ var ExportDialog = function(editorUi)
 	mxUtils.write(svgOption, mxResources.get('formatSvg'));
 	imageFormatSelect.appendChild(svgOption);
 
-	if (ExportDialog.showXmlOption)
-	{
+	if (ExportDialog.showXmlOption) {
 		var xmlOption = document.createElement('option');
 		xmlOption.setAttribute('value', 'xml');
 		mxUtils.write(xmlOption, mxResources.get('formatXml'));
@@ -3261,47 +2849,39 @@ var ExportDialog = function(editorUi)
 	// Options section (populated after DPI handlers below)
 	var optSection = document.createElement('div');
 	optSection.className = 'geDialogSection';
-	
+
 	var zoomUserChanged = false;
-	
-	mxEvent.addListener(dpiSelect, 'change', function()
-	{
-		if (this.value == 'custom')
-		{
+
+	mxEvent.addListener(dpiSelect, 'change', function () {
+		if (this.value == 'custom') {
 			this.style.display = 'none';
 			customDpi.style.display = '';
 			customDpi.focus();
 		}
-		else
-		{
+		else {
 			customDpi.value = this.value;
-			
-			if (!zoomUserChanged) 
-			{
+
+			if (!zoomUserChanged) {
 				zoomInput.value = this.value;
 			}
 		}
 	});
-	
-	mxEvent.addListener(customDpi, 'change', function()
-	{
+
+	mxEvent.addListener(customDpi, 'change', function () {
 		var dpi = parseInt(customDpi.value);
-		
-		if (isNaN(dpi) || dpi <= 0)
-		{
+
+		if (isNaN(dpi) || dpi <= 0) {
 			customDpi.style.backgroundColor = 'red';
 		}
-		else
-		{
+		else {
 			customDpi.style.backgroundColor = '';
 
-			if (!zoomUserChanged) 
-			{
+			if (!zoomUserChanged) {
 				zoomInput.value = dpi;
 			}
-		}	
+		}
 	});
-	
+
 	var checkRow = document.createElement('div');
 	checkRow.className = 'geDialogCheckRow';
 	var transparentCheckbox = document.createElement('input');
@@ -3336,175 +2916,145 @@ var ExportDialog = function(editorUi)
 	formRow.appendChild(borderInput);
 	optSection.appendChild(formRow);
 	container.appendChild(optSection);
-	
+
 	// Handles changes in the export format
-	function formatChanged()
-	{
+	function formatChanged() {
 		var name = nameInput.value;
 		var dot = name.lastIndexOf('.');
-		
-		if (dot > 0)
-		{
+
+		if (dot > 0) {
 			nameInput.value = name.substring(0, dot + 1) + imageFormatSelect.value;
 		}
-		else
-		{
+		else {
 			nameInput.value = name + '.' + imageFormatSelect.value;
 		}
-		
-		if (imageFormatSelect.value === 'xml')
-		{
+
+		if (imageFormatSelect.value === 'xml') {
 			zoomInput.setAttribute('disabled', 'true');
 			widthInput.setAttribute('disabled', 'true');
 			heightInput.setAttribute('disabled', 'true');
 			borderInput.setAttribute('disabled', 'true');
 		}
-		else
-		{
+		else {
 			zoomInput.removeAttribute('disabled');
 			widthInput.removeAttribute('disabled');
 			heightInput.removeAttribute('disabled');
 			borderInput.removeAttribute('disabled');
 		}
-		
-		if (imageFormatSelect.value === 'png' || imageFormatSelect.value === 'svg' || imageFormatSelect.value === 'pdf')
-		{
+
+		if (imageFormatSelect.value === 'png' || imageFormatSelect.value === 'svg' || imageFormatSelect.value === 'pdf') {
 			transparentCheckbox.removeAttribute('disabled');
 		}
-		else
-		{
+		else {
 			transparentCheckbox.setAttribute('disabled', 'disabled');
 		}
-		
-		if (imageFormatSelect.value === 'png' || imageFormatSelect.value === 'jpg' || imageFormatSelect.value === 'pdf')
-		{
+
+		if (imageFormatSelect.value === 'png' || imageFormatSelect.value === 'jpg' || imageFormatSelect.value === 'pdf') {
 			gridCheckbox.removeAttribute('disabled');
 		}
-		else
-		{
+		else {
 			gridCheckbox.setAttribute('disabled', 'disabled');
 		}
-		
-		if (imageFormatSelect.value === 'png')
-		{
+
+		if (imageFormatSelect.value === 'png') {
 			dpiSelect.removeAttribute('disabled');
 			customDpi.removeAttribute('disabled');
 		}
-		else
-		{
+		else {
 			dpiSelect.setAttribute('disabled', 'disabled');
 			customDpi.setAttribute('disabled', 'disabled');
 		}
 	};
-	
+
 	mxEvent.addListener(imageFormatSelect, 'change', formatChanged);
 	formatChanged();
 
-	function checkValues()
-	{
-		if (widthInput.value * heightInput.value > MAX_AREA || widthInput.value <= 0)
-		{
+	function checkValues() {
+		if (widthInput.value * heightInput.value > MAX_AREA || widthInput.value <= 0) {
 			widthInput.style.backgroundColor = 'red';
 		}
-		else
-		{
+		else {
 			widthInput.style.backgroundColor = '';
 		}
-		
-		if (widthInput.value * heightInput.value > MAX_AREA || heightInput.value <= 0)
-		{
+
+		if (widthInput.value * heightInput.value > MAX_AREA || heightInput.value <= 0) {
 			heightInput.style.backgroundColor = 'red';
 		}
-		else
-		{
+		else {
 			heightInput.style.backgroundColor = '';
 		}
 	};
 
-	mxEvent.addListener(zoomInput, 'change', function()
-	{
+	mxEvent.addListener(zoomInput, 'change', function () {
 		zoomUserChanged = true;
 		var s = Math.max(0, parseFloat(zoomInput.value) || 100) / 100;
 		zoomInput.value = parseFloat((s * 100).toFixed(2));
-		
-		if (width > 0)
-		{
+
+		if (width > 0) {
 			widthInput.value = Math.floor(width * s);
 			heightInput.value = Math.floor(height * s);
 		}
-		else
-		{
+		else {
 			zoomInput.value = '100';
 			widthInput.value = width;
 			heightInput.value = height;
 		}
-		
+
 		checkValues();
 	});
 
-	mxEvent.addListener(widthInput, 'change', function()
-	{
+	mxEvent.addListener(widthInput, 'change', function () {
 		var s = parseInt(widthInput.value) / width;
-		
-		if (s > 0)
-		{
+
+		if (s > 0) {
 			zoomInput.value = parseFloat((s * 100).toFixed(2));
 			heightInput.value = Math.floor(height * s);
 		}
-		else
-		{
+		else {
 			zoomInput.value = '100';
 			widthInput.value = width;
 			heightInput.value = height;
 		}
-		
+
 		checkValues();
 	});
 
-	mxEvent.addListener(heightInput, 'change', function()
-	{
+	mxEvent.addListener(heightInput, 'change', function () {
 		var s = parseInt(heightInput.value) / height;
-		
-		if (s > 0)
-		{
+
+		if (s > 0) {
 			zoomInput.value = parseFloat((s * 100).toFixed(2));
 			widthInput.value = Math.floor(width * s);
 		}
-		else
-		{
+		else {
 			zoomInput.value = '100';
 			widthInput.value = width;
 			heightInput.value = height;
 		}
-		
+
 		checkValues();
 	});
-	
+
 	var btnRow = document.createElement('div');
 	btnRow.style.textAlign = 'right';
 	btnRow.style.paddingTop = '16px';
 
-	var saveBtn = mxUtils.button(mxResources.get('export'), mxUtils.bind(this, function()
-	{
-		if (parseInt(zoomInput.value) <= 0)
-		{
+	var saveBtn = mxUtils.button(mxResources.get('export'), mxUtils.bind(this, function () {
+		if (parseInt(zoomInput.value) <= 0) {
 			mxUtils.alert(mxResources.get('drawingEmpty'));
 		}
-		else
-		{
-	    	var name = nameInput.value;
+		else {
+			var name = nameInput.value;
 			var format = imageFormatSelect.value;
-	    	var s = Math.max(0, parseFloat(zoomInput.value) || 100) / 100;
+			var s = Math.max(0, parseFloat(zoomInput.value) || 100) / 100;
 			var b = Math.max(0, parseInt(borderInput.value));
 			var bg = graph.background;
 			var dpi = Math.max(1, parseInt(customDpi.value));
 
-			if ((format == 'svg' || format == 'png' || format == 'pdf') && transparentCheckbox.checked)
-			{
+			if ((format == 'svg' || format == 'png' || format == 'pdf') && transparentCheckbox.checked) {
 				bg = null;
 			}
-			else if (bg == null || bg == mxConstants.NONE)
-			{
+			else if (bg == null || bg == mxConstants.NONE) {
 				bg = '#ffffff';
 			}
 
@@ -3514,19 +3064,16 @@ var ExportDialog = function(editorUi)
 	}));
 	saveBtn.className = 'geBtn gePrimaryBtn';
 
-	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
-	{
+	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function () {
 		editorUi.hideDialog();
 	});
 	cancelBtn.className = 'geBtn';
 
-	if (editorUi.editor.cancelFirst)
-	{
+	if (editorUi.editor.cancelFirst) {
 		btnRow.appendChild(cancelBtn);
 		btnRow.appendChild(saveBtn);
 	}
-	else
-	{
+	else {
 		btnRow.appendChild(saveBtn);
 		btnRow.appendChild(cancelBtn);
 	}
@@ -3556,44 +3103,39 @@ ExportDialog.showXmlOption = true;
  * parameter and value to be used in the request in the form
  * key=value, where value should be URL encoded.
  */
-ExportDialog.exportFile = function(editorUi, name, format, bg, s, b, dpi, grid)
-{
+ExportDialog.exportFile = function (editorUi, name, format, bg, s, b, dpi, grid) {
 	var graph = editorUi.editor.graph;
-	
-	if (format == 'xml')
-	{
-    	ExportDialog.saveLocalFile(editorUi, mxUtils.getXml(editorUi.editor.getGraphXml()), name, format);
+
+	if (format == 'xml') {
+		ExportDialog.saveLocalFile(editorUi, mxUtils.getXml(editorUi.editor.getGraphXml()), name, format);
 	}
-    else if (format == 'svg')
-	{
+	else if (format == 'svg') {
 		ExportDialog.saveLocalFile(editorUi, mxUtils.getXml(graph.getSvg(bg, s, b)), name, format);
 	}
-    else
-    {
-    	var bounds = graph.getGraphBounds();
-    	
+	else {
+		var bounds = graph.getGraphBounds();
+
 		// New image export
 		var xmlDoc = mxUtils.createXmlDocument();
 		var root = xmlDoc.createElement('output');
 		xmlDoc.appendChild(root);
-		
-	    // Renders graph. Offset will be multiplied with state's scale when painting state.
+
+		// Renders graph. Offset will be multiplied with state's scale when painting state.
 		var xmlCanvas = new mxXmlCanvas2D(root);
 		xmlCanvas.translate(Math.floor((b / s - bounds.x) / graph.view.scale),
 			Math.floor((b / s - bounds.y) / graph.view.scale));
 		xmlCanvas.scale(s / graph.view.scale);
-		
+
 		var imgExport = new mxImageExport()
-	    imgExport.drawState(graph.getView().getState(graph.model.root), xmlCanvas);
-	    
+		imgExport.drawState(graph.getView().getState(graph.model.root), xmlCanvas);
+
 		// Puts request data together
 		var param = 'xml=' + encodeURIComponent(mxUtils.getXml(root));
 		var w = Math.ceil(bounds.width * s / graph.view.scale + 2 * b);
 		var h = Math.ceil(bounds.height * s / graph.view.scale + 2 * b);
-		
+
 		// Requests image if request is valid
-		if (param.length <= MAX_REQUEST_SIZE && w * h < MAX_AREA)
-		{
+		if (param.length <= MAX_REQUEST_SIZE && w * h < MAX_AREA) {
 			editorUi.hideDialog();
 			var req = new mxXmlRequest(EXPORT_URL, 'format=' + format +
 				'&filename=' + encodeURIComponent(name) +
@@ -3602,8 +3144,7 @@ ExportDialog.exportFile = function(editorUi, name, format, bg, s, b, dpi, grid)
 				'&dpi=' + dpi);
 			req.simulate(document, '_blank');
 		}
-		else
-		{
+		else {
 			mxUtils.alert(mxResources.get('drawingTooLarge'));
 		}
 	}
@@ -3615,17 +3156,14 @@ ExportDialog.exportFile = function(editorUi, name, format, bg, s, b, dpi, grid)
  * parameter and value to be used in the request in the form
  * key=value, where value should be URL encoded.
  */
-ExportDialog.saveLocalFile = function(editorUi, data, filename, format)
-{
-	if (data.length < MAX_REQUEST_SIZE)
-	{
+ExportDialog.saveLocalFile = function (editorUi, data, filename, format) {
+	if (data.length < MAX_REQUEST_SIZE) {
 		editorUi.hideDialog();
 		var req = new mxXmlRequest(SAVE_URL, 'xml=' + encodeURIComponent(data) + '&filename=' +
 			encodeURIComponent(filename) + '&format=' + format);
 		req.simulate(document, '_blank');
 	}
-	else
-	{
+	else {
 		mxUtils.alert(mxResources.get('drawingTooLarge'));
 		mxUtils.popup(xml);
 	}
@@ -3634,44 +3172,53 @@ ExportDialog.saveLocalFile = function(editorUi, data, filename, format)
 /**
  * Constructs a new metadata dialog.
  */
-var EditDataDialog = function(ui, cell, optionalGraph)
-{
+var EditDataDialog = function (ui, cell, optionalGraph) {
 	var container = document.createElement('div');
 	container.style.display = 'flex';
 	container.style.flexDirection = 'column';
 	container.style.height = '100%';
 	var graph = optionalGraph || ui.editor.graph;
 
-	var value = graph.getModel().getValue(cell);
+	// Accepts an array of cells for editing the data of multiple
+	// cells at once, using the first cell as the reference cell
+	var cells = (cell instanceof Array) ? cell : [cell];
+	cell = cells[0];
+	var multi = cells.length > 1;
 
-	// Converts the value to an XML node
-	if (!mxUtils.isNode(value))
-	{
-		var doc = mxUtils.createXmlDocument();
-		var obj = doc.createElement('object');
-		obj.setAttribute('label', value || '');
-		value = obj;
+	// Resolves the value of each cell as an XML node
+	var values = [];
+
+	for (var i = 0; i < cells.length; i++) {
+		var cellValue = graph.getModel().getValue(cells[i]);
+
+		// Converts the value to an XML node
+		if (!mxUtils.isNode(cellValue)) {
+			var doc = mxUtils.createXmlDocument();
+			var obj = doc.createElement('object');
+			obj.setAttribute('label', cellValue || '');
+			cellValue = obj;
+		}
+
+		values.push(cellValue);
 	}
+
+	var value = values[0];
 
 	var meta = {};
 
-	try
-	{
+	try {
 		var temp = mxUtils.getValue(ui.editor.graph.getCurrentCellStyle(cell), 'metaData', null);
 
-		if (temp != null)
-		{
+		if (temp != null) {
 			meta = JSON.parse(temp);
 		}
 
 		//Mondrian addition: Control Repo Attributes
-		if (window.MondrianDialogs != null)
-		{
+		if (window.MondrianDialogs != null) {
 			meta = MondrianDialogs.processMetaData(graph, cell, value, meta);
 		}
 	}
-	catch (e)
-	{
+	catch (e) {
 		// ignore
 	}
 
@@ -3679,16 +3226,17 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 	var names = [];
 	var texts = [];
 	var rows = [];
+	var mixed = [];
+	var placeholdersTouched = false;
 	var count = 0;
 
-	var id = (EditDataDialog.getDisplayIdForCell != null) ?
+	var id = (!multi && EditDataDialog.getDisplayIdForCell != null) ?
 		EditDataDialog.getDisplayIdForCell(ui, cell, optionalGraph) : null;
 
 	// Properties container for dynamic rows
 	var propertiesContainer = document.createElement('div');
 
-	var addRemoveButton = function(row, name)
-	{
+	var addRemoveButton = function (row, name) {
 		var removeAttr = document.createElement('a');
 		var img = mxUtils.createImage(Dialog.prototype.closeImage);
 		img.style.height = '9px';
@@ -3701,14 +3249,10 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 		removeAttr.style.flexShrink = '0';
 		removeAttr.appendChild(img);
 
-		var removeAttrFn = (function(name)
-		{
-			return function()
-			{
-				for (var j = 0; j < names.length; j++)
-				{
-					if (names[j] == name && texts[j] != null)
-					{
+		var removeAttrFn = (function (name) {
+			return function () {
+				for (var j = 0; j < names.length; j++) {
+					if (names[j] == name && texts[j] != null) {
 						texts[j] = null;
 						rows[j] = null;
 						row.parentNode.removeChild(row);
@@ -3723,8 +3267,7 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 		row.appendChild(removeAttr);
 	};
 
-	var addTextArea = function(index, name, value)
-	{
+	var addTextArea = function (index, name, value, isMixed) {
 		names[index] = name;
 
 		var row = document.createElement('div');
@@ -3741,6 +3284,15 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 		textarea.setAttribute('rows', (value.indexOf('\n') > 0) ? '3' : '2');
 		textarea.value = value;
 		textarea.style.resize = 'vertical';
+
+		// Empty fields for differing values are only applied
+		// to the cells if a value is entered by the user
+		if (isMixed) {
+			mixed[index] = true;
+			textarea.setAttribute('placeholder',
+				mxResources.get('multipleValues'));
+		}
+
 		row.appendChild(textarea);
 
 		texts[index] = textarea;
@@ -3749,8 +3301,7 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 		addRemoveButton(row, name);
 		propertiesContainer.appendChild(row);
 
-		if (meta[name] != null && meta[name].editable == false)
-		{
+		if (meta[name] != null && meta[name].editable == false) {
 			textarea.setAttribute('disabled', 'disabled');
 		}
 	};
@@ -3759,39 +3310,64 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 	var isLayer = graph.getModel().getParent(cell) == graph.getModel().getRoot();
 	var style = graph.getCellStyle(cell);
 
-	for (var i = 0; i < attrs.length; i++)
-	{
-		if ((attrs[i].nodeName != 'label' || style['metaEdit'] == '1' ||
-			Graph.translateDiagram || isLayer) &&
-			attrs[i].nodeName != 'placeholders')
-		{
-			temp.push({name: attrs[i].nodeName, value: attrs[i].nodeValue});
+	if (multi) {
+		// Shows the union of the attribute names of all cells with
+		// the value shown if it is the same for all cells and an
+		// empty field with a placeholder for differing values
+		var seen = {};
+
+		for (var i = 0; i < values.length; i++) {
+			var attrs2 = values[i].attributes;
+
+			for (var j = 0; j < attrs2.length; j++) {
+				var name = attrs2[j].nodeName;
+
+				if (name != 'label' && name != 'placeholders' &&
+					!seen['$' + name]) {
+					seen['$' + name] = true;
+					var common = attrs2[j].nodeValue;
+
+					for (var k = 0; k < values.length && common != null; k++) {
+						if (values[k].getAttribute(name) != common) {
+							common = null;
+						}
+					}
+
+					temp.push({
+						name: name, value: (common != null) ?
+							common : '', mixed: common == null
+					});
+				}
+			}
+		}
+	}
+	else {
+		for (var i = 0; i < attrs.length; i++) {
+			if ((attrs[i].nodeName != 'label' || style['metaEdit'] == '1' ||
+				Graph.translateDiagram || isLayer) &&
+				attrs[i].nodeName != 'placeholders') {
+				temp.push({ name: attrs[i].nodeName, value: attrs[i].nodeValue });
+			}
 		}
 	}
 
 	// Sorts by name
-	temp.sort(function(a, b)
-	{
-		if (a.name == 'label')
-		{
+	temp.sort(function (a, b) {
+		if (a.name == 'label') {
 			return 1;
 		}
-		else if (b.name == 'label')
-		{
+		else if (b.name == 'label') {
 			return -1;
 		}
-	    else if (a.name < b.name)
-	    {
-	    	return -1;
-	    }
-	    else if (a.name > b.name)
-	    {
-	    	return 1;
-	    }
-	    else
-	    {
-	    	return 0;
-	    }
+		else if (a.name < b.name) {
+			return -1;
+		}
+		else if (a.name > b.name) {
+			return 1;
+		}
+		else {
+			return 0;
+		}
 	});
 
 	// --- ID section ---
@@ -3816,56 +3392,47 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 		mxUtils.write(idText, id);
 		idRow.appendChild(idText);
 
-		mxEvent.addListener(idText, 'dblclick', function(evt)
-		{
+		mxEvent.addListener(idText, 'dblclick', function (evt) {
 			var dlg = new FilenameDialog(ui, id, mxResources.get('apply'),
-				mxUtils.bind(this, function(value)
-			{
-				if (value != null && value.length > 0 && value != id)
-				{
-					if (graph.model.isRoot(cell))
-					{
-						var page = ui.getPageById(id);
+				mxUtils.bind(this, function (value) {
+					if (value != null && value.length > 0 && value != id) {
+						if (graph.model.isRoot(cell)) {
+							var page = ui.getPageById(id);
 
-						if (page != null)
-						{
-							if (ui.getPageById(value) == null)
-							{
-								var index = ui.getPageIndex(page);
+							if (page != null) {
+								if (ui.getPageById(value) == null) {
+									var index = ui.getPageIndex(page);
 
-								if (index >= 0)
-								{
-									ui.removePage(page);
-									page.node.setAttribute('id', value);
-									id = value;
-									idText.innerHTML = mxUtils.htmlEntities(value);
-									ui.insertPage(page, index);
+									if (index >= 0) {
+										ui.removePage(page);
+										page.node.setAttribute('id', value);
+										id = value;
+										idText.innerHTML = mxUtils.htmlEntities(value);
+										ui.insertPage(page, index);
+									}
+								}
+								else {
+									ui.handleError({
+										message: mxResources.get('alreadyExst',
+											[mxResources.get('page')])
+									});
 								}
 							}
-							else
-							{
-								ui.handleError({message: mxResources.get('alreadyExst',
-									[mxResources.get('page')])});
+						}
+						else {
+							if (graph.getModel().getCell(value) == null) {
+								graph.getModel().cellRemoved(cell);
+								cell.setId(value);
+								id = value;
+								idText.innerHTML = mxUtils.htmlEntities(value);
+								graph.getModel().cellAdded(cell);
+							}
+							else {
+								ui.handleError({ message: mxResources.get('alreadyExst', [value]) });
 							}
 						}
 					}
-					else
-					{
-						if (graph.getModel().getCell(value) == null)
-						{
-							graph.getModel().cellRemoved(cell);
-							cell.setId(value);
-							id = value;
-							idText.innerHTML = mxUtils.htmlEntities(value);
-							graph.getModel().cellAdded(cell);
-						}
-						else
-						{
-							ui.handleError({message: mxResources.get('alreadyExst', [value])});
-						}
-					}
-				}
-			}), mxResources.get('id'));
+				}), mxResources.get('id'));
 			ui.showDialog(dlg.container, 300, 80, true, true);
 			dlg.init();
 		});
@@ -3876,26 +3443,26 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 
 	// Start Mondrian Data Dialogs: hook for filtering and layout of attributes, and processing of metadata for attributes
 	temp = MondrianDialogs.filterAttributes(graph, cell, temp);
-	temp = MondrianDialogs.processAttributes(graph, cell, value,temp );
-	for (var i = 0; i < temp.length; i++)
-	{
+	temp = MondrianDialogs.processAttributes(graph, cell, value, temp);
+	for (var i = 0; i < temp.length; i++) {
 		count += MondrianDialogs.renderDataRow(
-		{
-			ui: ui,
-			graph: graph,
-			cell: cell,
-			value: value,
-			item: temp[i],
-			index: i,
-			count: count,
-			meta: meta,
-			propertiesContainer: propertiesContainer,
-			addTextArea: addTextArea,
-			addRemoveButton: addRemoveButton,
-			names: names,
-			texts: texts,
-			rows: rows
-		});
+			{
+				ui: ui,
+				graph: graph,
+				cell: cell,
+				value: value,
+				item: temp[i],
+				index: i,
+				count: count,
+				meta: meta,
+				propertiesContainer: propertiesContainer,
+				addTextArea: addTextArea,
+				addRemoveButton: addRemoveButton,
+				names: names,
+				texts: texts,
+				rows: rows,
+				mixed: mixed
+			});
 	}
 	// End Mondrian Data Dialogs
 
@@ -3920,34 +3487,29 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 	nameInput.setAttribute('type', 'text');
 	addRow.appendChild(nameInput);
 
-	var addBtn = mxUtils.button(mxResources.get('addProperty'), function()
-	{
+	var addBtn = mxUtils.button(mxResources.get('addProperty'), function () {
 		var name = nameInput.value;
 
 		// Avoid ':' in attribute names which seems to be valid in Chrome
 		if (name.length > 0 && name != 'label' && name != 'id' &&
 			name != 'placeholders' && name.indexOf(':') < 0 &&
-			EditDataDialog.isValidAttributeName(name))
-		{
-			try
-			{
+			EditDataDialog.isValidAttributeName(name)) {
+			try {
 				var idx = mxUtils.indexOf(names, name);
 
-				if (idx >= 0 && texts[idx] != null)
-				{
+				if (idx >= 0 && texts[idx] != null) {
 					texts[idx].focus();
 				}
-				else
-				{
+				else {
 					// Checks if the name is valid
 					var clone = value.cloneNode(false);
 					clone.setAttribute(name, '');
 
-					if (idx >= 0)
-					{
+					if (idx >= 0) {
 						names.splice(idx, 1);
 						texts.splice(idx, 1);
 						rows.splice(idx, 1);
+						mixed.splice(idx, 1);
 					}
 
 					var newIndex = names.length;
@@ -3959,13 +3521,11 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 				addBtn.setAttribute('disabled', 'disabled');
 				nameInput.value = '';
 			}
-			catch (e)
-			{
+			catch (e) {
 				mxUtils.alert(e);
 			}
 		}
-		else
-		{
+		else {
 			mxUtils.alert(mxResources.get('invalidName'));
 		}
 	});
@@ -3980,22 +3540,17 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 	addSection.appendChild(addRow);
 	container.appendChild(addSection);
 
-	mxEvent.addListener(nameInput, 'keypress', function(e)
-	{
-		if (e.keyCode == 13)
-		{
+	mxEvent.addListener(nameInput, 'keypress', function (e) {
+		if (e.keyCode == 13) {
 			addBtn.click();
 		}
 	});
 
-	function updateAddBtn()
-	{
-		if (nameInput.value.length > 0)
-		{
+	function updateAddBtn() {
+		if (nameInput.value.length > 0) {
 			addBtn.removeAttribute('disabled');
 		}
-		else
-		{
+		else {
 			addBtn.setAttribute('disabled', 'disabled');
 		}
 	};
@@ -4017,20 +3572,32 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 		var input = document.createElement('input');
 		input.setAttribute('type', 'checkbox');
 
-		if (value.getAttribute('placeholders') == '1')
-		{
+		var placeholdersCount = 0;
+
+		for (var i = 0; i < values.length; i++) {
+			if (values[i].getAttribute('placeholders') == '1') {
+				placeholdersCount++;
+			}
+		}
+
+		if (placeholdersCount == values.length) {
 			input.setAttribute('checked', 'checked');
 			input.defaultChecked = true;
 		}
+		else if (placeholdersCount > 0) {
+			input.indeterminate = true;
+		}
 
-		mxEvent.addListener(input, 'click', function()
-		{
-			if (value.getAttribute('placeholders') == '1')
-			{
+		mxEvent.addListener(input, 'click', function () {
+			if (multi) {
+				// Applied to all cells on apply only if toggled
+				placeholdersTouched = true;
+				input.indeterminate = false;
+			}
+			else if (value.getAttribute('placeholders') == '1') {
 				value.removeAttribute('placeholders');
 			}
-			else
-			{
+			else {
 				value.setAttribute('placeholders', '1');
 			}
 		});
@@ -4040,8 +3607,7 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 		mxUtils.write(lbl, mxResources.get('placeholders'));
 		checkRow.appendChild(lbl);
 
-		if (EditDataDialog.placeholderHelpLink != null)
-		{
+		if (EditDataDialog.placeholderHelpLink != null) {
 			checkRow.appendChild(ui.createHelpIcon(
 				EditDataDialog.placeholderHelpLink));
 		}
@@ -4051,20 +3617,17 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 	}
 
 	// --- Button bar ---
-	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
-	{
+	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function () {
 		ui.hideDialog.apply(ui, arguments);
 	});
 
 	cancelBtn.setAttribute('title', 'Escape');
 	cancelBtn.className = 'geBtn';
 
-	var exportBtn = mxUtils.button(mxResources.get('export'), mxUtils.bind(this, function(evt)
-	{
-		var result = graph.getDataForCells([cell], true);
+	var exportBtn = mxUtils.button(mxResources.get('export'), mxUtils.bind(this, function (evt) {
+		var result = graph.getDataForCells(cells, true);
 
-		var dlg = new EmbedDialog(ui, JSON.stringify(result, null, 2), null, null, function()
-		{
+		var dlg = new EmbedDialog(ui, JSON.stringify(result, null, 2), null, null, function () {
 			console.log(result);
 			ui.alert('Written to Console (Dev Tools)');
 		}, mxResources.get('export'), null, 'Console', 'data.json');
@@ -4076,41 +3639,54 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 	exportBtn.setAttribute('title', mxResources.get('export'));
 	exportBtn.className = 'geBtn';
 
-	var applyBtn = mxUtils.button(mxResources.get('apply'), function()
-	{
-		try
-		{
+	var applyBtn = mxUtils.button(mxResources.get('apply'), function () {
+		try {
 			ui.hideDialog.apply(ui, arguments);
+			graph.getModel().beginUpdate();
 
-			// Clones and updates the value
-			value = value.cloneNode(true);
-			var removeLabel = false;
+			try {
+				for (var i = 0; i < cells.length; i++) {
+					// Clones and updates the value
+					var newValue = values[i].cloneNode(true);
 
-			for (var i = 0; i < names.length; i++)
-			{
-				if (texts[i] == null || names[i] == null) //MONDRIAN ADDITION
-				{
-					value.removeAttribute(names[i]);
-				}
-				else
-				{
-					value.setAttribute(names[i], texts[i].value);
-					removeLabel = removeLabel || (names[i] == 'placeholder' &&
-						value.getAttribute('placeholders') == '1');
+					// Applies the placeholders checkbox to all cells
+					// only if it was toggled by the user
+					if (multi && placeholdersTouched) {
+						if (input.checked) {
+							newValue.setAttribute('placeholders', '1');
+						}
+						else {
+							newValue.removeAttribute('placeholders');
+						}
+					}
+
+					var removeLabel = false;
+
+					for (var j = 0; j < names.length; j++) {
+						if (texts[j] == null) {
+							newValue.removeAttribute(names[j]);
+						}
+						else if (!mixed[j] || texts[j].value != '') {
+							newValue.setAttribute(names[j], texts[j].value);
+							removeLabel = removeLabel || (names[j] == 'placeholder' &&
+								newValue.getAttribute('placeholders') == '1');
+						}
+					}
+
+					// Removes label if placeholder is assigned
+					if (removeLabel) {
+						newValue.removeAttribute('label');
+					}
+
+					// Updates the value of the cell (undoable)
+					graph.getModel().setValue(cells[i], newValue);
 				}
 			}
-
-			// Removes label if placeholder is assigned
-			if (removeLabel)
-			{
-				value.removeAttribute('label');
+			finally {
+				graph.getModel().endUpdate();
 			}
-
-			// Updates the value of the cell (undoable)
-			graph.getModel().setValue(cell, value);
 		}
-		catch (e)
-		{
+		catch (e) {
 			mxUtils.alert(e);
 		}
 	});
@@ -4122,38 +3698,31 @@ var EditDataDialog = function(ui, cell, optionalGraph)
 	btnRow.style.textAlign = 'right';
 	btnRow.style.paddingTop = '8px';
 
-	if (ui.editor.cancelFirst)
-	{
+	if (ui.editor.cancelFirst) {
 		btnRow.appendChild(cancelBtn);
 	}
 
 	btnRow.appendChild(exportBtn);
 	btnRow.appendChild(applyBtn);
 
-	if (!ui.editor.cancelFirst)
-	{
+	if (!ui.editor.cancelFirst) {
 		btnRow.appendChild(cancelBtn);
 	}
 
 	container.appendChild(btnRow);
 
 	// --- Keyboard shortcuts ---
-	mxEvent.addListener(container, 'keydown', function(e)
-	{
-		if (e.keyCode == 13 && mxEvent.isControlDown(e))
-		{
+	mxEvent.addListener(container, 'keydown', function (e) {
+		if (e.keyCode == 13 && mxEvent.isControlDown(e)) {
 			applyBtn.click();
 		}
 	});
 
-	this.init = function()
-	{
-		if (texts.length > 0)
-		{
+	this.init = function () {
+		if (texts.length > 0) {
 			texts[0].focus();
 		}
-		else
-		{
+		else {
 			nameInput.focus();
 		}
 	};
@@ -4188,23 +3757,20 @@ EditDataDialog.attributeNamePattern = new RegExp('^[' + EditDataDialog.nameStart
 /**
  * Returns true if the given string can be used as a data property (XML attribute) name.
  */
-EditDataDialog.isValidAttributeName = function(name)
-{
+EditDataDialog.isValidAttributeName = function (name) {
 	return EditDataDialog.attributeNamePattern.test(name);
 };
 
 /**
  * Optional help link.
  */
-EditDataDialog.getDisplayIdForCell = function(ui, cell)
-{
+EditDataDialog.getDisplayIdForCell = function (ui, cell) {
 	var id = null;
-	
-	if (ui.editor.graph.getModel().getParent(cell) != null)
-	{
+
+	if (ui.editor.graph.getModel().getParent(cell) != null) {
 		id = cell.getId();
 	}
-	
+
 	return id;
 };
 
@@ -4216,11 +3782,10 @@ EditDataDialog.placeholderHelpLink = null;
 /**
  * Constructs a new link dialog.
  */
-var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
-{
+var LinkDialog = function (editorUi, initialValue, btnLabel, fn) {
 	var div = document.createElement('div');
 	mxUtils.write(div, mxResources.get('editLink') + ':');
-	
+
 	var inner = document.createElement('div');
 	inner.className = 'geTitle';
 	inner.style.backgroundColor = 'transparent';
@@ -4229,7 +3794,7 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
 	inner.style.textOverflow = 'clip';
 	inner.style.cursor = 'default';
 	inner.style.paddingRight = '20px';
-	
+
 	var linkInput = document.createElement('input');
 	linkInput.setAttribute('value', initialValue);
 	linkInput.setAttribute('placeholder', 'http://www.example.com/');
@@ -4240,7 +3805,7 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
 	linkInput.style.backgroundRepeat = 'no-repeat';
 	linkInput.style.backgroundPosition = '100% 50%';
 	linkInput.style.paddingRight = '14px';
-	
+
 	var cross = document.createElement('div');
 	cross.setAttribute('title', mxResources.get('reset'));
 	cross.style.position = 'relative';
@@ -4252,68 +3817,58 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
 	// Workaround for inline-block not supported in IE
 	cross.style.display = 'inline-block';
 	cross.style.top = '3px';
-	
+
 	// Needed to block event transparency in IE
 	cross.style.background = 'url(' + IMAGE_PATH + '/transparent.gif)';
 
-	mxEvent.addListener(cross, 'click', function()
-	{
+	mxEvent.addListener(cross, 'click', function () {
 		linkInput.value = '';
 		linkInput.focus();
 	});
-	
+
 	inner.appendChild(linkInput);
 	inner.appendChild(cross);
 	div.appendChild(inner);
-	
-	this.init = function()
-	{
+
+	this.init = function () {
 		linkInput.focus();
-		
-		if (mxClient.IS_GC || mxClient.IS_FF || document.documentMode >= 5)
-		{
+
+		if (mxClient.IS_GC || mxClient.IS_FF || document.documentMode >= 5) {
 			linkInput.select();
 		}
-		else
-		{
+		else {
 			document.execCommand('selectAll', false, null);
 		}
 	};
-	
+
 	var btns = document.createElement('div');
 	btns.style.marginTop = '18px';
 	btns.style.textAlign = 'right';
 
-	mxEvent.addListener(linkInput, 'keypress', function(e)
-	{
-		if (e.keyCode == 13)
-		{
+	mxEvent.addListener(linkInput, 'keypress', function (e) {
+		if (e.keyCode == 13) {
 			editorUi.hideDialog();
 			fn(linkInput.value);
 		}
 	});
 
-	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
-	{
+	var cancelBtn = mxUtils.button(mxResources.get('cancel'), function () {
 		editorUi.hideDialog();
 	});
 	cancelBtn.className = 'geBtn';
-	
-	if (editorUi.editor.cancelFirst)
-	{
+
+	if (editorUi.editor.cancelFirst) {
 		btns.appendChild(cancelBtn);
 	}
-	
-	var mainBtn = mxUtils.button(btnLabel, function()
-	{
+
+	var mainBtn = mxUtils.button(btnLabel, function () {
 		editorUi.hideDialog();
 		fn(linkInput.value);
 	});
 	mainBtn.className = 'geBtn gePrimaryBtn';
 	btns.appendChild(mainBtn);
-	
-	if (!editorUi.editor.cancelFirst)
-	{
+
+	if (!editorUi.editor.cancelFirst) {
 		btns.appendChild(cancelBtn);
 	}
 
@@ -4323,10 +3878,9 @@ var LinkDialog = function(editorUi, initialValue, btnLabel, fn)
 };
 
 /**
- * 
+ *
  */
-var OutlineWindow = function(editorUi, x, y, w, h)
-{
+var OutlineWindow = function (editorUi, x, y, w, h) {
 	var graph = editorUi.editor.graph;
 
 	var div = document.createElement('div');
@@ -4342,46 +3896,38 @@ var OutlineWindow = function(editorUi, x, y, w, h)
 	this.window.setResizable(true);
 	this.window.setClosable(true);
 	this.window.setVisible(true);
-	
+
 	var outline = editorUi.createOutline(this.window);
 
-	editorUi.installResizeHandler(this, true, function()
-	{
+	editorUi.installResizeHandler(this, true, function () {
 		outline.destroy();
 	});
 
-	this.window.addListener(mxEvent.SHOW, mxUtils.bind(this, function()
-	{
+	this.window.addListener(mxEvent.SHOW, mxUtils.bind(this, function () {
 		this.window.fit();
 		outline.setSuspended(false);
 	}));
-	
-	this.window.addListener(mxEvent.HIDE, mxUtils.bind(this, function()
-	{
+
+	this.window.addListener(mxEvent.HIDE, mxUtils.bind(this, function () {
 		outline.setSuspended(true);
 	}));
-	
-	this.window.addListener(mxEvent.NORMALIZE, mxUtils.bind(this, function()
-	{
+
+	this.window.addListener(mxEvent.NORMALIZE, mxUtils.bind(this, function () {
 		outline.setSuspended(false);
 	}));
-			
-	this.window.addListener(mxEvent.MINIMIZE, mxUtils.bind(this, function()
-	{
+
+	this.window.addListener(mxEvent.MINIMIZE, mxUtils.bind(this, function () {
 		outline.setSuspended(true);
 	}));
 
 	outline.init(div);
-	
-	mxEvent.addMouseWheelListener(function(evt, up)
-	{
+
+	mxEvent.addMouseWheelListener(function (evt, up) {
 		var outlineWheel = false;
 		var source = mxEvent.getSource(evt);
 
-		while (source != null)
-		{
-			if (source == outline.svg)
-			{
+		while (source != null) {
+			if (source == outline.svg) {
 				outlineWheel = true;
 				break;
 			}
@@ -4389,30 +3935,29 @@ var OutlineWindow = function(editorUi, x, y, w, h)
 			source = source.parentNode;
 		}
 
-		if (outlineWheel)
-		{
+		if (outlineWheel) {
 			var factor = graph.zoomFactor;
+			var smooth = false;
 
 			// Slower zoom for pinch gesture on trackpad
-			if (evt.deltaY != null && Math.round(evt.deltaY) != evt.deltaY)
-			{
+			if (evt.deltaY != null && Math.round(evt.deltaY) != evt.deltaY) {
 				factor = 1 + (Math.abs(evt.deltaY) / 20) * (factor - 1);
+				smooth = true;
 			}
 
-			graph.lazyZoom(up, null, null, factor);
+			graph.lazyZoom(up, null, null, factor, smooth);
 			mxEvent.consume(evt);
 		}
 	});
 };
 
 /**
- * 
+ *
  */
-var LayersWindow = function(editorUi, x, y, w, h)
-{
+var LayersWindow = function (editorUi, x, y, w, h) {
 	var graph = editorUi.editor.graph;
 	var model = graph.getModel();
-	
+
 	var div = document.createElement('div');
 	div.style.userSelect = 'none';
 	div.style.height = '100%';
@@ -4427,21 +3972,19 @@ var LayersWindow = function(editorUi, x, y, w, h)
 	listDiv.style.top = '0px';
 	listDiv.style.bottom = '32px';
 	div.appendChild(listDiv);
-	
+
 	var dragSource = null;
 	var dropIndex = null;
-	
-	mxEvent.addListener(div, 'dragover', function(evt)
-	{
+
+	mxEvent.addListener(div, 'dragover', function (evt) {
 		evt.dataTransfer.dropEffect = 'move';
 		dropIndex = 0;
 		evt.stopPropagation();
 		evt.preventDefault();
 	});
-	
+
 	// Workaround for "no element found" error in FF
-	mxEvent.addListener(div, 'drop', function(evt)
-	{
+	mxEvent.addListener(div, 'drop', function (evt) {
 		evt.stopPropagation();
 		evt.preventDefault();
 	});
@@ -4451,57 +3994,48 @@ var LayersWindow = function(editorUi, x, y, w, h)
 	var layerDivs = new mxDictionary();
 	var ldiv = document.createElement('div');
 	ldiv.className = 'geToolbarContainer geDialogToolbar';
-	
+
 	var link = document.createElement('a');
 	link.className = 'geButton';
-	
+
 	var addLink = link.cloneNode(false);
 	addLink.style.backgroundImage = 'url(' + Editor.plusImage + ')';
 	addLink.setAttribute('title', mxResources.get('addLayer'));
 
-	mxEvent.addListener(addLink, 'click', function(evt)
-	{
-		if (graph.isEnabled())
-		{
+	mxEvent.addListener(addLink, 'click', function (evt) {
+		if (graph.isEnabled()) {
 			selectLayers(false);
 			model.beginUpdate();
 			var cell
-			
-			try
-			{
+
+			try {
 				cell = graph.addCell(new mxCell(mxResources.get('untitledLayer')), model.root);
 				graph.setDefaultParent(cell);
 			}
-			finally
-			{
+			finally {
 				model.endUpdate();
 			}
 
 			renameLayer(cell);
 		}
-		
+
 		mxEvent.consume(evt);
 	});
-	
-	if (!graph.isEnabled())
-	{
+
+	if (!graph.isEnabled()) {
 		addLink.classList.add('mxDisabled');
 	}
-	
+
 	ldiv.appendChild(addLink);
-	
-	function renameLayer(layer)
-	{
-		if (graph.isEnabled() && layer != null)
-		{
+
+	function renameLayer(layer) {
+		if (graph.isEnabled() && layer != null) {
 			var div = layerDivs.get(layer);
 
-			if (div != null)
-			{
+			if (div != null) {
 				var spans = div.getElementsByTagName('div');
 
-				if (spans != null && spans.length > 1)
-				{
+				if (spans != null && spans.length > 1) {
 					var span = spans[1];
 					var oldValue = mxUtils.getTextContent(span);
 					span.style.textOverflow = '';
@@ -4514,44 +4048,35 @@ var LayersWindow = function(editorUi, x, y, w, h)
 					div.removeAttribute('draggable');
 					div.style.cursor = '';
 
-					var stopEditing = function(applyValue)
-					{
-						if (span.contentEditable == 'true')
-						{
+					var stopEditing = function (applyValue) {
+						if (span.contentEditable == 'true') {
 							span.contentEditable = 'false';
 							var newValue = mxUtils.getTextContent(span);
 
-							if (applyValue && newValue != oldValue)
-							{
+							if (applyValue && newValue != oldValue) {
 								var newValue = mxUtils.getTextContent(span);
 
-								if (newValue.length > 0)
-								{
+								if (newValue.length > 0) {
 									graph.cellLabelChanged(layer, newValue);
 								}
-								else
-								{
+								else {
 									graph.cellLabelChanged(layer, mxResources.get('untitledLayer'));
 								}
 							}
-							else
-							{
+							else {
 								refresh();
 							}
 						}
 					};
 
-					mxEvent.addListener(span, 'keydown', function(evt)
-					{
-						if (evt.keyCode == 13 || evt.keyCode == 27)
-						{
+					mxEvent.addListener(span, 'keydown', function (evt) {
+						if (evt.keyCode == 13 || evt.keyCode == 27) {
 							stopEditing(evt.keyCode == 13);
 							mxEvent.consume(evt);
 						}
 					});
 
-					mxEvent.addListener(span, 'blur', function(evt)
-					{
+					mxEvent.addListener(span, 'blur', function (evt) {
 						stopEditing(true);
 						mxEvent.consume(evt);
 					});
@@ -4559,19 +4084,16 @@ var LayersWindow = function(editorUi, x, y, w, h)
 			}
 		}
 	};
-	
+
 	var menuLink = link.cloneNode(false);
 	menuLink.style.backgroundImage = 'url(' + Editor.menuImage + ')';
 	ldiv.appendChild(menuLink);
 
-	function isLayersVisible(layers)
-	{
+	function isLayersVisible(layers) {
 		var visible = true;
 
-		for (var i = 0; i < layers.length; i++)
-		{
-			if (!model.isVisible(layers[i]))
-			{
+		for (var i = 0; i < layers.length; i++) {
+			if (!model.isVisible(layers[i])) {
 				visible = false;
 				break;
 			}
@@ -4580,46 +4102,38 @@ var LayersWindow = function(editorUi, x, y, w, h)
 		return visible;
 	};
 
-	function selectLayers(selected)
-	{
+	function selectLayers(selected) {
 		var divs = layerDivs.getValues();
-		
-		for (var i = 0; i < divs.length; i++)
-		{
+
+		for (var i = 0; i < divs.length; i++) {
 			var cb = divs[i].getElementsByTagName('input')[0];
-			
-			if (cb != null)
-			{
+
+			if (cb != null) {
 				cb.checked = (selected != null) ?
 					selected : !cb.checked;
 			}
 		}
 	};
 
-	function isLayerSelected(layer)
-	{
+	function isLayerSelected(layer) {
 		var div = layerDivs.get(layer);
-		
-		if (div != null)
-		{
+
+		if (div != null) {
 			var cb = div.getElementsByTagName('input')[0];
 			return cb != null && cb.checked;
 		}
-		
+
 		return false;
 	};
 
-	function getSelectedLayers(exclude, ignoreCheckbox)
-	{
+	function getSelectedLayers(exclude, ignoreCheckbox) {
 		var layers = [];
 
-		for (var i = 0; i < model.getChildCount(model.root); i++)
-		{
+		for (var i = 0; i < model.getChildCount(model.root); i++) {
 			var layer = model.getChildAt(model.root, i);
 
 			if (layer != exclude && (ignoreCheckbox ||
-				isLayerSelected(layer)))
-			{
+				isLayerSelected(layer))) {
 				layers.push(layer);
 			}
 		}
@@ -4627,25 +4141,20 @@ var LayersWindow = function(editorUi, x, y, w, h)
 		return layers;
 	};
 
-	function setLayersLocked(layers, locked)
-	{
+	function setLayersLocked(layers, locked) {
 		graph.setCellStyles('locked', (locked) ? '1' : '0', layers);
 
-		if (locked)
-		{
-			for (var i = 0; i < layers.length; i++)
-			{
+		if (locked) {
+			for (var i = 0; i < layers.length; i++) {
 				graph.removeSelectionCells(model.getDescendants(layers[i]));
 			}
 		}
 	};
 
-	mxEvent.addListener(menuLink, 'click', function(evt)
-	{
-		if (graph.isEnabled())
-		{
+	mxEvent.addListener(menuLink, 'click', function (evt) {
+		if (graph.isEnabled()) {
 			editorUi.editor.graph.popupMenuHandler.hideMenu();
-			
+
 			var selectedLayers = getSelectedLayers();
 			var index = model.root.getIndex(selectionLayer);
 			var enabled = selectedLayers.length > 0 && graph.isEnabled();
@@ -4653,144 +4162,120 @@ var LayersWindow = function(editorUi, x, y, w, h)
 			var layer = graph.getLayerForCells(graph.getSelectionCells());
 			var label = graph.convertValueToString(selectionLayer) || mxResources.get('background');
 
-			var menu = new mxPopupMenu(mxUtils.bind(this, function(menu, parent)
-			{
+			var menu = new mxPopupMenu(mxUtils.bind(this, function (menu, parent) {
 				// Adds submenu for multiple selected layers
 				var layersSubmenu = menu.addItem(mxResources.get('layers'), null, null, parent);
 
-				menu.addItem(mxResources.get('selectAll'), null, mxUtils.bind(this, function()
-				{
+				menu.addItem(mxResources.get('selectAll'), null, mxUtils.bind(this, function () {
 					refresh();
 					selectLayers(true);
 				}), layersSubmenu);
 
-				menu.addItem(mxResources.get('selectNone'), null, mxUtils.bind(this, function()
-				{
+				menu.addItem(mxResources.get('selectNone'), null, mxUtils.bind(this, function () {
 					refresh();
 					selectLayers(false);
 				}), layersSubmenu, null, selectedLayers.length > 0).setAttribute('title',
 					selectedLayers.length > 0 ? mxResources.get('selectNone') : nothingIsSelected);
 
-				menu.addItem(mxResources.get('invertSelection'), null, mxUtils.bind(this, function()
-				{
+				menu.addItem(mxResources.get('invertSelection'), null, mxUtils.bind(this, function () {
 					refresh();
 					selectLayers();
 				}), layersSubmenu);
 
 				menu.addSeparator(layersSubmenu);
-				
-				menu.addItem(mxResources.get('show'), null, mxUtils.bind(this, function()
-				{
+
+				menu.addItem(mxResources.get('show'), null, mxUtils.bind(this, function () {
 					graph.setCellsVisible(selectedLayers, true);
 				}), layersSubmenu, null, enabled).setAttribute('title', selectedLayers.length > 0 ?
-						mxResources.get('show') : nothingIsSelected);
-				menu.addItem(mxResources.get('hide'), null, mxUtils.bind(this, function()
-				{
+					mxResources.get('show') : nothingIsSelected);
+				menu.addItem(mxResources.get('hide'), null, mxUtils.bind(this, function () {
 					graph.setCellsVisible(selectedLayers, false);
 				}), layersSubmenu, null, enabled).setAttribute('title', selectedLayers.length > 0 ?
-						mxResources.get('hide') : nothingIsSelected);
+					mxResources.get('hide') : nothingIsSelected);
 
 				menu.addSeparator(layersSubmenu);
 
-				menu.addItem(mxResources.get('lock'), null, mxUtils.bind(this, function()
-				{
+				menu.addItem(mxResources.get('lock'), null, mxUtils.bind(this, function () {
 					setLayersLocked(getSelectedLayers(), true);
 				}), layersSubmenu, null, enabled).setAttribute('title', selectedLayers.length > 0 ?
-						mxResources.get('lock') : nothingIsSelected);
+					mxResources.get('lock') : nothingIsSelected);
 
-				menu.addItem(mxResources.get('unlock'), null, mxUtils.bind(this, function()
-				{
+				menu.addItem(mxResources.get('unlock'), null, mxUtils.bind(this, function () {
 					setLayersLocked(getSelectedLayers(), false);
 				}), layersSubmenu, null, enabled).setAttribute('title', selectedLayers.length > 0 ?
-						mxResources.get('unlock') : nothingIsSelected);
-				
+					mxResources.get('unlock') : nothingIsSelected);
+
 				// Adds submenu for single layer operations
 				var layerSubmenu = menu.addItem(mxResources.get('currentLayer'), null, null, parent);
-				
-				menu.addItem(mxResources.get('duplicate'), null, mxUtils.bind(this, function()
-				{
+
+				menu.addItem(mxResources.get('duplicate'), null, mxUtils.bind(this, function () {
 					selectLayers(false);
 					var newCell = null;
 					model.beginUpdate();
-					try
-					{
+					try {
 						newCell = graph.cloneCell(selectionLayer);
 						graph.cellLabelChanged(newCell, mxResources.get('copyOf', [label]));
 						newCell = graph.addCell(newCell, model.root, index + 1);
 						newCell.setVisible(true);
 					}
-					finally
-					{
+					finally {
 						model.endUpdate();
 					}
 
-					if (newCell != null && !graph.isCellLocked(newCell))
-					{
+					if (newCell != null && !graph.isCellLocked(newCell)) {
 						graph.setDefaultParent(newCell);
 						graph.selectAll(newCell);
 					}
 				}), layerSubmenu);
 
-				menu.addItem(mxResources.get('addLayer'), null, mxUtils.bind(this, function(evt)
-				{
-					if (graph.isEnabled())
-					{
+				menu.addItem(mxResources.get('addLayer'), null, mxUtils.bind(this, function (evt) {
+					if (graph.isEnabled()) {
 						selectLayers(false);
 						model.beginUpdate();
 						var cell
-						
-						try
-						{
+
+						try {
 							cell = graph.addCell(new mxCell(mxResources.get('untitledLayer')),
 								model.root, index + ((mxEvent.isShiftDown(evt) ? 0 : 1)));
 							graph.setDefaultParent(cell);
 						}
-						finally
-						{
+						finally {
 							model.endUpdate();
 						}
 
 						renameLayer(cell);
 					}
-					
+
 					mxEvent.consume(evt);
 				}), layerSubmenu);
-				
+
 				menu.addSeparator(layerSubmenu);
 
-				menu.addItem(mxResources.get('rename'), null, mxUtils.bind(this, function()
-				{
+				menu.addItem(mxResources.get('rename'), null, mxUtils.bind(this, function () {
 					renameLayer(selectionLayer);
 				}), layerSubmenu);
 
-				menu.addItem(mxResources.get('editData'), null, mxUtils.bind(this, function()
-				{
+				menu.addItem(mxResources.get('editData'), null, mxUtils.bind(this, function () {
 					editorUi.showDataDialog(selectionLayer);
 				}), layerSubmenu);
 
-				if (layerCount > 1)
-				{
+				if (layerCount > 1) {
 					menu.addSeparator(layerSubmenu);
 
-					menu.addItem(mxResources.get('toFront'), null, mxUtils.bind(this, function()
-					{
+					menu.addItem(mxResources.get('toFront'), null, mxUtils.bind(this, function () {
 						graph.addCell(selectionLayer, model.root, layerCount - 1);
 					}), layerSubmenu, null, index >= 0 && index < layerCount - 1);
 
-					menu.addItem(mxResources.get('toBack'), null, mxUtils.bind(this, function()
-					{
+					menu.addItem(mxResources.get('toBack'), null, mxUtils.bind(this, function () {
 						graph.addCell(selectionLayer, model.root, 0);
 					}), layerSubmenu, null, index > 0);
 
-					if (layerCount > 2)
-					{
-						menu.addItem(mxResources.get('bringForward'), null, mxUtils.bind(this, function()
-						{
+					if (layerCount > 2) {
+						menu.addItem(mxResources.get('bringForward'), null, mxUtils.bind(this, function () {
 							graph.addCell(selectionLayer, model.root, index + 1);
 						}), layerSubmenu, null, index >= 0 && index < layerCount - 1);
 
-						menu.addItem(mxResources.get('sendBackward'), null, mxUtils.bind(this, function()
-						{
+						menu.addItem(mxResources.get('sendBackward'), null, mxUtils.bind(this, function () {
 							graph.addCell(selectionLayer, model.root, index - 1);
 						}), layerSubmenu, null, index > 0);
 					}
@@ -4798,160 +4283,135 @@ var LayersWindow = function(editorUi, x, y, w, h)
 
 				menu.addSeparator(layerSubmenu);
 
-				menu.addItem(mxResources.get('selectObjectsInLayer'), null, mxUtils.bind(this, function()
-				{
+				menu.addItem(mxResources.get('selectObjectsInLayer'), null, mxUtils.bind(this, function () {
 					graph.clearSelection();
 					graph.selectAll(selectionLayer);
 				}), layerSubmenu, null, selectionLayer.children != null &&
-					selectionLayer.children.length > 0);
+				selectionLayer.children.length > 0);
 
 				// Adds submenu for moving selection cells
 				var moveSubmenu = menu.addItem(mxResources.get('moveSelectionTo', ['']),
 					null, null, parent, null, !graph.isSelectionEmpty());
-				
-				if (graph.isSelectionEmpty())
-				{
+
+				if (graph.isSelectionEmpty()) {
 					moveSubmenu.setAttribute('title', mxResources.get('nothingIsSelected'));
 				}
 
-				for (var i = layerCount - 1; i >= 0; i--)
-				{
-					(mxUtils.bind(this, function(child)
-					{
+				for (var i = layerCount - 1; i >= 0; i--) {
+					(mxUtils.bind(this, function (child) {
 						var locked = mxUtils.getValue(graph.getCurrentCellStyle(child), 'locked', '0') == '1';
 
 						var item = menu.addItem(graph.convertValueToString(child) ||
-							mxResources.get('background'), null, mxUtils.bind(this, function()
-						{
-							if (!locked)
-							{
-								graph.moveCells(graph.getSelectionCells(), 0, 0, false, child);
-							}
-						}), moveSubmenu, null, !locked);
+							mxResources.get('background'), null, mxUtils.bind(this, function () {
+								if (!locked) {
+									graph.moveCells(graph.getSelectionCells(), 0, 0, false, child);
+								}
+							}), moveSubmenu, null, !locked);
 
-						if (locked)
-						{
+						if (locked) {
 							item.setAttribute('title', mxResources.get('locked'));
 						}
 
-						if (child == layer)
-						{
+						if (child == layer) {
 							menu.addCheckmark(item, Editor.checkmarkImage);
 						}
 					}))(model.getChildAt(model.root, i));
 				}
 			}));
-			
+
 			menu.smartSeparators = true;
 			menu.showDisabled = true;
 			menu.autoExpand = true;
-			
+
 			// Disables autoexpand and destroys menu when hidden
-			menu.hideMenu = mxUtils.bind(this, function()
-			{
+			menu.hideMenu = mxUtils.bind(this, function () {
 				mxPopupMenu.prototype.hideMenu.apply(menu, arguments);
 				menu.destroy();
 			});
-		
+
 			var x = mxEvent.getClientX(evt);
 			var y = mxEvent.getClientY(evt);
 			menu.popup(x, y, null, evt);
-			
+
 			// Allows hiding by clicking on document
 			editorUi.setCurrentMenu(menu);
 			mxEvent.consume(evt);
 		}
 	});
-	
-	if (!graph.isEnabled())
-	{
+
+	if (!graph.isEnabled()) {
 		menuLink.classList.add('mxDisabled');
 	}
-	
+
 	var removeLink = link.cloneNode(false);
 	removeLink.style.backgroundImage = 'url(' + Editor.trashImage + ')';
 	removeLink.setAttribute('title', mxResources.get('delete'));
 	ldiv.appendChild(removeLink);
 
-	mxEvent.addListener(removeLink, 'click', function(evt)
-	{
-		if (graph.isEnabled())
-		{
+	mxEvent.addListener(removeLink, 'click', function (evt) {
+		if (graph.isEnabled()) {
 			model.beginUpdate();
-			try
-			{
+			try {
 				var index = model.root.getIndex(selectionLayer);
 				var layers = getSelectedLayers();
 
-				if (layers.length == 0)
-				{
+				if (layers.length == 0) {
 					layers.push(selectionLayer);
 				}
-				
+
 				graph.removeCells(layers, false);
-				
+
 				// Creates default layer if no layer exists
-				if (model.getChildCount(model.root) == 0)
-				{
+				if (model.getChildCount(model.root) == 0) {
 					model.add(model.root, new mxCell());
 					graph.setDefaultParent(null);
 				}
-				else if (index > 0 && index <= model.getChildCount(model.root))
-				{
+				else if (index > 0 && index <= model.getChildCount(model.root)) {
 					graph.setDefaultParent(model.getChildAt(model.root, index - 1));
 				}
-				else
-				{
+				else {
 					graph.setDefaultParent(null);
 				}
 			}
-			finally
-			{
+			finally {
 				model.endUpdate();
 			}
 		}
-		
+
 		mxEvent.consume(evt);
 	});
-	
-	if (!graph.isEnabled())
-	{
+
+	if (!graph.isEnabled()) {
 		removeLink.classList.add('mxDisabled');
 	}
 
 	div.appendChild(ldiv);
-	
+
 	var dot = document.createElement('span');
 	dot.setAttribute('title', mxResources.get('allSelectedObjectsInThisLayer'));
 	dot.innerHTML = '&#8226;';
 	dot.style.padding = '0 2px';
 	dot.style.fontSize = '16pt';
 	dot.style.order = '1';
-	
-	function updateLayerDot()
-	{
+
+	function updateLayerDot() {
 		var div = layerDivs.get(graph.getLayerForCells(graph.getSelectionCells()));
-		
-		if (div != null)
-		{
+
+		if (div != null) {
 			div.appendChild(dot);
 		}
-		else if (dot.parentNode != null)
-		{
+		else if (dot.parentNode != null) {
 			dot.parentNode.removeChild(dot);
 		}
 	};
 
-	function refresh()
-	{
-		if (graph.isEnabled())
-		{
+	function refresh() {
+		if (graph.isEnabled()) {
 			removeLink.classList.remove('mxDisabled');
 			menuLink.classList.remove('mxDisabled');
 			addLink.classList.remove('mxDisabled');
 		}
-		else
-		{
+		else {
 			removeLink.classList.add('mxDisabled');
 			menuLink.classList.add('mxDisabled');
 			addLink.classList.add('mxDisabled');
@@ -4960,9 +4420,8 @@ var LayersWindow = function(editorUi, x, y, w, h)
 		layerCount = model.getChildCount(model.root)
 		listDiv.innerText = '';
 		var newLayerDivs = new mxDictionary();
-		
-		function addLayer(index, label, child, defaultParent, selected)
-		{
+
+		function addLayer(index, label, child, defaultParent, selected) {
 			var ldiv = document.createElement('div');
 			ldiv.className = 'geToolbarContainer';
 			ldiv.style.overflow = 'hidden';
@@ -4977,7 +4436,7 @@ var LayersWindow = function(editorUi, x, y, w, h)
 			ldiv.style.whiteSpace = 'nowrap';
 			ldiv.style.cursor = 'move';
 			ldiv.setAttribute('draggable', 'true');
-			ldiv.setAttribute('title', label  +
+			ldiv.setAttribute('title', label +
 				' (' + child.getId() + ')');
 			newLayerDivs.put(child, ldiv);
 
@@ -4988,17 +4447,15 @@ var LayersWindow = function(editorUi, x, y, w, h)
 			cb.checked = selected;
 			cb.style.display = (graph.isEnabled()) ? '' : 'none';
 			ldiv.appendChild(cb);
-			
+
 			var div = document.createElement('div');
 			div.style.display = 'flex';
 			div.style.alignItems = 'center';
 			div.style.minWidth = '0';
 			div.style.flexGrow = '1';
 
-			mxEvent.addListener(cb, 'click', function(evt)
-			{
-				if (mxEvent.isShiftDown(evt))
-				{
+			mxEvent.addListener(cb, 'click', function (evt) {
+				if (mxEvent.isShiftDown(evt)) {
 					selectLayers(cb.checked);
 				}
 			});
@@ -5012,49 +4469,40 @@ var LayersWindow = function(editorUi, x, y, w, h)
 			title.style.padding = '4px';
 			title.style.flexGrow = '1';
 
-			mxEvent.addListener(ldiv, 'dragover', function(evt)
-			{
+			mxEvent.addListener(ldiv, 'dragover', function (evt) {
 				evt.dataTransfer.dropEffect = 'move';
 				dropIndex = index;
 				evt.stopPropagation();
 				evt.preventDefault();
 			});
-			
-			mxEvent.addListener(ldiv, 'dragstart', function(evt)
-			{
-				if (title.contentEditable != 'true')
-				{
+
+			mxEvent.addListener(ldiv, 'dragstart', function (evt) {
+				if (title.contentEditable != 'true') {
 					dragSource = ldiv;
-					
+
 					// Workaround for no DnD on DIV in FF
-					if (mxClient.IS_FF)
-					{
+					if (mxClient.IS_FF) {
 						// LATER: Check what triggers a parse as XML on this in FF after drop
 						evt.dataTransfer.setData('Text', '<layer/>');
 					}
 				}
 			});
-			
-			mxEvent.addListener(ldiv, 'dragend', function(evt)
-			{
+
+			mxEvent.addListener(ldiv, 'dragend', function (evt) {
 				var layers = getSelectedLayers();
 
 				if (dragSource != null && dropIndex != null &&
-					model.getChildCount(model.root) > 1)
-				{
+					model.getChildCount(model.root) > 1) {
 					layers = (layers.length == 0) ? [child] : layers;
 
 					// Moves all selected layers
 					model.beginUpdate();
-					try
-					{
-						for (var i = 0; i < layers.length; i++)
-						{
+					try {
+						for (var i = 0; i < layers.length; i++) {
 							graph.addCell(layers[i], model.root, dropIndex);
 						}
 					}
-					finally
-					{
+					finally {
 						model.endUpdate();
 					}
 				}
@@ -5074,35 +4522,28 @@ var LayersWindow = function(editorUi, x, y, w, h)
 			inp.setAttribute('title', mxResources.get(
 				visible ? 'hide' : 'show'));
 
-			if (visible)
-			{
+			if (visible) {
 				inp.setAttribute('src', Editor.visibleImage);
 				mxUtils.setOpacity(div, 90);
 			}
-			else
-			{
+			else {
 				inp.setAttribute('src', Editor.hiddenImage);
 				mxUtils.setOpacity(div, 40);
 			}
 
-			if (!graph.isEnabled())
-			{
+			if (!graph.isEnabled()) {
 				mxUtils.setOpacity(inp, 50);
 			}
 
 			div.appendChild(inp);
 
-			mxEvent.addListener(inp, 'click', function(evt)
-			{
-				if (graph.isEnabled())
-				{
-					if (mxEvent.isShiftDown(evt))
-					{
+			mxEvent.addListener(inp, 'click', function (evt) {
+				if (graph.isEnabled()) {
+					if (mxEvent.isShiftDown(evt)) {
 						var others = getSelectedLayers(child, true);
 						graph.setCellsVisible(others, !isLayersVisible(others));
 					}
-					else
-					{
+					else {
 						graph.setCellsVisible([child], !visible);
 					}
 				}
@@ -5115,62 +4556,50 @@ var LayersWindow = function(editorUi, x, y, w, h)
 			btn.setAttribute('title', mxResources.get('lockUnlock'));
 			var locked = mxUtils.getValue(style, 'locked', '0') == '1';
 
-			if (locked)
-			{
+			if (locked) {
 				btn.setAttribute('src', Editor.lockedImage);
 				mxUtils.setOpacity(btn, 90);
 				ldiv.style.color = 'red';
 			}
-			else
-			{
+			else {
 				btn.setAttribute('src', Editor.unlockedImage);
 				mxUtils.setOpacity(btn, 40);
 			}
-			
-			if (graph.isEnabled())
-			{
+
+			if (graph.isEnabled()) {
 				btn.style.cursor = 'pointer';
 			}
 
-			function toggleLock(allLayers)
-			{
+			function toggleLock(allLayers) {
 				var value = null;
-				
+
 				model.beginUpdate();
-				try
-				{
+				try {
 					value = (locked) ? null : '1';
 
-					if (allLayers)
-					{
+					if (allLayers) {
 						var parent = model.getParent(child);
 
-						for (var i = 0; i < model.getChildCount(parent); i++)
-						{
+						for (var i = 0; i < model.getChildCount(parent); i++) {
 							graph.setCellStyles('locked', value,
 								[model.getChildAt(parent, i)]);
 						}
 					}
-					else
-					{
+					else {
 						graph.setCellStyles('locked', value, [child]);
 					}
 				}
-				finally
-				{
+				finally {
 					model.endUpdate();
 				}
 
-				if (value == '1')
-				{
+				if (value == '1') {
 					graph.removeSelectionCells(model.getDescendants(child));
 				}
 			};
-			
-			mxEvent.addListener(btn, 'click', function(evt)
-			{
-				if (graph.isEnabled())
-				{
+
+			mxEvent.addListener(btn, 'click', function (evt) {
+				if (graph.isEnabled()) {
 					setLayersLocked(mxEvent.isShiftDown(evt) ?
 						getSelectedLayers(null, true) : [child],
 						!locked);
@@ -5181,36 +4610,30 @@ var LayersWindow = function(editorUi, x, y, w, h)
 			div.appendChild(btn);
 			div.appendChild(title);
 			ldiv.appendChild(div);
-			
-			mxEvent.addListener(ldiv, 'dblclick', function(evt)
-			{
+
+			mxEvent.addListener(ldiv, 'dblclick', function (evt) {
 				var nodeName = mxEvent.getSource(evt).nodeName;
-				
+
 				if (nodeName != 'INPUT' && nodeName != 'IMG' &&
-					title.contentEditable != 'true')
-				{
+					title.contentEditable != 'true') {
 					renameLayer(child);
 					mxEvent.consume(evt);
 				}
 			});
 
-			if (graph.getDefaultParent() == child)
-			{
+			if (graph.getDefaultParent() == child) {
 				ldiv.classList.add('geActivePage');
 				ldiv.style.fontWeight = (graph.isEnabled()) ? 'bold' : '';
 				selectionLayer = child;
 			}
 
-			mxEvent.addListener(ldiv, 'click', function(evt)
-			{
+			mxEvent.addListener(ldiv, 'click', function (evt) {
 				if (graph.isEnabled() && title.contentEditable != 'true' &&
-					mxEvent.getSource(evt) != cb)
-				{
+					mxEvent.getSource(evt) != cb) {
 					graph.setDefaultParent(defaultParent);
 					graph.view.setCurrentRoot(null);
 
-					if (mxEvent.isShiftDown(evt))
-					{
+					if (mxEvent.isShiftDown(evt)) {
 						graph.clearSelection();
 						graph.selectAll(selectionLayer);
 					}
@@ -5218,14 +4641,12 @@ var LayersWindow = function(editorUi, x, y, w, h)
 					mxEvent.consume(evt);
 				}
 			});
-			
+
 			listDiv.appendChild(ldiv);
 		};
-		
-		for (var i = layerCount - 1; i >= 0; i--)
-		{
-			(mxUtils.bind(this, function(child)
-			{
+
+		for (var i = layerCount - 1; i >= 0; i--) {
+			(mxUtils.bind(this, function (child) {
 				addLayer(i, graph.convertValueToString(child) ||
 					mxResources.get('background'), child, child,
 					isLayerSelected(child));
@@ -5241,8 +4662,7 @@ var LayersWindow = function(editorUi, x, y, w, h)
 	graph.addListener('defaultParentChanged', refresh);
 	editorUi.addListener('lockedChanged', refresh);
 
-	graph.selectionModel.addListener(mxEvent.CHANGE, function()
-	{
+	graph.selectionModel.addListener(mxEvent.CHANGE, function () {
 		updateLayerDot();
 	});
 
@@ -5253,17 +4673,15 @@ var LayersWindow = function(editorUi, x, y, w, h)
 	this.window.setResizable(true);
 	this.window.setClosable(true);
 	this.window.setVisible(true);
-	
-	this.init = function()
-	{
-		listDiv.scrollTop = listDiv.scrollHeight - listDiv.clientHeight;	
+
+	this.init = function () {
+		listDiv.scrollTop = listDiv.scrollHeight - listDiv.clientHeight;
 	};
 
-	this.window.addListener(mxEvent.SHOW, mxUtils.bind(this, function()
-	{
+	this.window.addListener(mxEvent.SHOW, mxUtils.bind(this, function () {
 		this.window.fit();
 	}));
-	
+
 	// Make refresh available via instance
 	this.refreshLayers = refresh;
 	editorUi.installResizeHandler(this, true);

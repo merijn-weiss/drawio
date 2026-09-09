@@ -2217,7 +2217,8 @@ GraphViewer.prototype.showLightbox = function(editable, closable, target)
 
 				if (this.graphConfig.hiddenTags == null)
 				{
-					this.graphConfig.hiddenTags = {};
+					// Null prototype: keyed by page ids from the diagram XML
+					this.graphConfig.hiddenTags = Object.create(null);
 				}
 
 				this.graphConfig.hiddenTags[curPageId] =
@@ -2340,7 +2341,8 @@ GraphViewer.prototype.showLocalLightbox = function(container)
 
 		if (this.graphConfig.hiddenTags == null)
 		{
-			this.graphConfig.hiddenTags = {};
+			// Null prototype: keyed by page ids from the diagram XML
+			this.graphConfig.hiddenTags = Object.create(null);
 		}
 
 		this.graphConfig.hiddenTags[curPageId] =
@@ -2373,9 +2375,15 @@ GraphViewer.prototype.showLocalLightbox = function(container)
 	var ui = new EditorUi(new Editor(true), document.createElement('div'), true);
 	this.addListener('darkModeChanged', updateDarkMode);
 	ui.editor.editBlankUrl = this.editBlankUrl;
-	
+
 	// Disables refresh
 	ui.refresh = function() {};
+
+	// The lightbox runs in the host page document, so page switches must not
+	// update the URL (location.replace('#') scrolls the host page to the top)
+	// or overwrite the host page title
+	ui.updateHashObject = function() {};
+	ui.updateDocumentTitle = function() {};
 	
 	// Handles escape keystroke
 	var keydownHandler = mxUtils.bind(this, function(evt)

@@ -223,6 +223,13 @@
 	}
 
 	/**
+	 * Language bundles installed for offline use on startup (array of
+	 * language codes, see the defaultLanguages configuration key). The
+	 * service worker validates each code against its lazy manifest.
+	 */
+	Editor.defaultLanguages = null;
+
+	/**
 	 * Specifies if web fonts are enabled.
 	 */
 	Editor.enableWebFonts = !window.mxIsElectron;
@@ -523,6 +530,21 @@
 	Editor.maxPublicPromptLength = 10000;
 
 	/**
+	 * The Atlassian deployments (ac.draw.io / aj.draw.io Connect apps and the
+	 * Forge CDN) get a larger prompt budget, configured via the
+	 * DRAWIO_ATLASSIAN_PROMPT_LENGTH global (Init.js). The value must not
+	 * exceed the per-origin limit enforced by the generate/v3 worker
+	 * (MAX_PROMPT_LENGTH_ATLASSIAN in cf-workers/generate3/lib/security.js).
+	 */
+	if (window.location.hostname == 'ac.draw.io' ||
+		window.location.hostname == 'aj.draw.io' ||
+		/\.cdn\.prod\.atlassian-dev\.net$/.test(window.location.hostname) ||
+		/\.cdn\.prod\.atlassian-dev-us-gov-mod\.net$/.test(window.location.hostname))
+	{
+		Editor.maxPublicPromptLength = window.DRAWIO_ATLASSIAN_PROMPT_LENGTH;
+	}
+
+	/**
 	 * Specifies if data URIs should be replaced with SVG sub-trees in SVG export.
 	 * Default is true.
 	 */
@@ -610,6 +632,17 @@
 	};
 
 	/**
+	 * Returns true if the given style defines a pattern fill style that is
+	 * rendered as an SVG fill pattern when sketch mode is disabled.
+	 */
+	Editor.isPatternFillStyle = function(style)
+	{
+		var fillStyle = mxUtils.getValue(style, 'fillStyle', 'auto');
+
+		return fillStyle != 'auto' && fillStyle != 'solid';
+	};
+
+	/**
 	 * Common properties for all edges.
 	 */
 	Editor.commonProperties = [
@@ -632,17 +665,20 @@
         }},
         {name: 'fillWeight', dispName: 'Fill Weight', type: 'int', defVal: -1, isVisible: function(state, format)
         {
-        	return mxUtils.getValue(state.style, 'sketch', (urlParams['rough'] == '1') ? '1' : '0') == '1' &&
-				state.vertices.length > 0;
+        	return (mxUtils.getValue(state.style, 'sketch', (urlParams['rough'] == '1') ? '1' : '0') == '1' ||
+				Editor.isPatternFillStyle(state.style)) && state.vertices.length > 0;
         }},
         {name: 'hachureGap', dispName: 'Hachure Gap', type: 'int', defVal: -1, isVisible: function(state, format)
         {
-        	return mxUtils.getValue(state.style, 'sketch', (urlParams['rough'] == '1') ? '1' : '0') == '1' &&
-				state.vertices.length > 0;
+        	return (mxUtils.getValue(state.style, 'sketch', (urlParams['rough'] == '1') ? '1' : '0') == '1' ||
+				Editor.isPatternFillStyle(state.style)) && state.vertices.length > 0;
         }},
         {name: 'hachureAngle', dispName: 'Hachure Angle', type: 'int', defVal: -41, isVisible: function(state, format)
         {
-        	return mxUtils.getValue(state.style, 'sketch', (urlParams['rough'] == '1') ? '1' : '0') == '1' &&
+        	// The dots pattern ignores the hachure angle in normal mode
+        	return (mxUtils.getValue(state.style, 'sketch', (urlParams['rough'] == '1') ? '1' : '0') == '1' ||
+				(Editor.isPatternFillStyle(state.style) &&
+				mxUtils.getValue(state.style, 'fillStyle', 'auto') != 'dots')) &&
 				state.vertices.length > 0;
         }},
         {name: 'curveFitting', dispName: 'Curve Fitting', type: 'float', defVal: 0.95, isVisible: function(state, format)
@@ -858,8 +894,38 @@
         	enumList: [{val: 'visible', dispName: 'Visible'}, {val: 'hidden', dispName: 'Hidden'}, {val: 'block', dispName: 'Block'},
         		{val: 'fill', dispName: 'Fill'}, {val: 'width', dispName: 'Width'}]
         },
+		{name: 'shapeInsideShape', dispName: 'Text Flow Shape', type: 'enum', defVal: null,
+			enumList: [{val: null, dispName: 'Automatic'}, {val: 'dataStorage', dispName: 'Data Storage'},
+				{val: 'ellipse', dispName: 'Ellipse'}, {val: 'hexagon', dispName: 'Hexagon'},
+				{val: 'or', dispName: 'Or'}, {val: 'parallelogram', dispName: 'Parallelogram'},
+				{val: 'rhombus', dispName: 'Rhombus'}, {val: 'step', dispName: 'Step'},
+				{val: 'trapezoid', dispName: 'Trapezoid'}, {val: 'triangle', dispName: 'Triangle'},
+				{val: 'xor', dispName: 'Xor'}],
+			onChange: function(graph, newValue)
+			{
+				// Enables the text flow with an explicit flow shape so
+				// that the effect is immediately visible
+				if (newValue != null && newValue != '')
+				{
+					var cells = graph.getSelectionCells();
+					var vertices = [];
+
+					for (var i = 0; i < cells.length; i++)
+					{
+						if (graph.model.isVertex(cells[i]))
+						{
+							vertices.push(cells[i]);
+						}
+					}
+
+					if (vertices.length > 0)
+					{
+						graph.setCellStyles('shapeInside', '1', vertices);
+					}
+				}
+			}},
+		{name: 'shapeInsidePadding', dispName: 'Text Flow Padding', type: 'float', min: 0, defVal: 2},
         {name: 'noLabel', dispName: 'Hide Label', type: 'bool', defVal: false},
-        {name: 'labelPadding', dispName: 'Label Padding', type: 'float', defVal: 0},
         {name: 'direction', dispName: 'Direction', type: 'enum', defVal: 'east',
         	enumList: [{val: 'north', dispName: 'North'}, {val: 'east', dispName: 'East'}, {val: 'south', dispName: 'South'}, {val: 'west', dispName: 'West'}]
         },
@@ -880,6 +946,10 @@
         }},
         {name: 'allowArrows', dispName: 'Allow Arrows', type: 'bool', defVal: true},
         {name: 'snapToPoint', dispName: 'Snap to Point', type: 'bool', defVal: false},
+        {name: 'outlineConnect', dispName: 'Outline Connect', defVal: '1', type: 'enum',
+        	enumList: [{val: '1', dispName: 'Default'}, {val: '0', dispName: 'Delayed'},
+        		{val: '2', dispName: 'Always'}, {val: '3', dispName: 'Never'}]
+        },
         {name: 'perimeter', dispName: 'Perimeter', defVal: 'none', type: 'enum',
         	enumList: [{val: 'none', dispName: 'None'},
         			{val: 'rectanglePerimeter', dispName: 'Rectangle'}, {val: 'ellipsePerimeter', dispName: 'Ellipse'},
@@ -2379,20 +2449,32 @@
 		// Extracts Subject or Embedded file attachment from PDF 1.7
 		if (f.substring(0, 8) == '%PDF-1.7')
 		{
-			var blockStart = f.indexOf('EmbeddedFile'); 
-			
-			if (blockStart > -1)
+			// Checks all occurrences as the first may be the /EmbeddedFiles
+			// name tree entry in the document catalog rather than the
+			// /Type /EmbeddedFile stream object with the attached diagram
+			var blockStart = f.indexOf('EmbeddedFile');
+
+			while (blockStart > -1)
 			{
 				var streamStart = f.indexOf('stream', blockStart) + 9; //the start of the stream [skipping header check]
 				var fileInfo = f.substring(blockStart, streamStart);
-				
+
 				if (fileInfo.indexOf('application#2Fvnd.jgraph.mxfile') > 0)
 				{
 					var streamEnd = f.indexOf('endstream', streamStart - 1);
-				
-					return pako.inflateRaw(Graph.stringToArrayBuffer(
-						f.substring(streamStart, streamEnd)), {to: 'string'});
+
+					try
+					{
+						return pako.inflateRaw(Graph.stringToArrayBuffer(
+							f.substring(streamStart, streamEnd)), {to: 'string'});
+					}
+					catch (e)
+					{
+						// Continue to next occurrence or extraction method
+					}
 				}
+
+				blockStart = f.indexOf('EmbeddedFile', blockStart + 1);
 			}
 
 			var last = f.indexOf('/ObjStm');
@@ -2420,21 +2502,28 @@
 					return str.join('');
 				};
 
-				var text = pako.inflateRaw(Graph.stringToArrayBuffer(
-					f.substring(streamStart, streamEnd)), {to: 'string'});
-				var subj = text.indexOf('/Subject <');
-
-				// Extracts Subject from PDF 1.4
-				if (subj > 0)
+				try
 				{
-					var temp = text.substring(subj + 14, text.indexOf('>', subj));
+					var text = pako.inflateRaw(Graph.stringToArrayBuffer(
+						f.substring(streamStart, streamEnd)), {to: 'string'});
+					var subj = text.indexOf('/Subject <');
 
-					if (temp != null)
+					// Extracts Subject from PDF 1.4
+					if (subj > 0)
 					{
-						result = hex_to_ascii(temp);
-					}
+						var temp = text.substring(subj + 14, text.indexOf('>', subj));
 
-					break;
+						if (temp != null)
+						{
+							result = hex_to_ascii(temp);
+						}
+
+						break;
+					}
+				}
+				catch (e)
+				{
+					// Continue to next object stream
 				}
 
 				last = f.indexOf('/ObjStm', last + 1);
@@ -2742,6 +2831,7 @@
 			if (config.defaultFonts != null)
 			{
 				Menus.prototype.defaultFonts = config.defaultFonts
+				Editor.addAllowedFontUrls(config.defaultFonts);
 			}
 
 			if (config.presetColors != null)
@@ -2805,6 +2895,18 @@
 					EditorUi.debug('Configuration Error: Array expected for enabledTemplateSections');
 				}
 			}
+
+			if (config.customTemplates != null)
+			{
+				if (Array.isArray(config.customTemplates))
+				{
+					EditorUi.customTemplates = config.customTemplates;
+				}
+				else
+				{
+					EditorUi.debug('Configuration Error: Array expected for customTemplates');
+				}
+			}
 			
 			if (config.styles != null)
 			{
@@ -2862,6 +2964,24 @@
 			if (config.mathOutputSize != null)
 			{
 				Editor.mathOutputSize = config.mathOutputSize;
+			}
+
+			// Default Mermaid config used when inserting/editing Mermaid
+			// diagrams (theme, themeVariables, per-diagram-type options, ...),
+			// letting a deployment enforce a unified Mermaid look. The
+			// security-critical keys (securityLevel, startOnLoad, maxTextSize)
+			// are re-forced in EditorUi.getMermaidConfig after this default is
+			// cloned, so they cannot be weakened here.
+			if (config.mermaid != null)
+			{
+				if (typeof config.mermaid === 'object' && !Array.isArray(config.mermaid))
+				{
+					EditorUi.defaultMermaidConfig = config.mermaid;
+				}
+				else
+				{
+					EditorUi.debug('Configuration Error: Object expected for mermaid');
+				}
 			}
 
 			if (config.pasteAtMousePointer != null)
@@ -2936,6 +3056,27 @@
 			{
 				Editor.enableInlineToolbar = config.enableInlineToolbar;
 			}
+
+			// Handlers are not defined in the embedded graph
+			if (config.enableSizeGuides != null && typeof mxVertexHandler !== 'undefined')
+			{
+				mxVertexHandler.prototype.sizeGuidesEnabled = config.enableSizeGuides;
+			}
+
+			if (config.enablePositionGuides != null && typeof mxGuide !== 'undefined')
+			{
+				mxGuide.prototype.positionEnabled = config.enablePositionGuides;
+			}
+
+			if (config.enableDistanceGuides != null && typeof mxGuide !== 'undefined')
+			{
+				mxGuide.prototype.distanceEnabled = config.enableDistanceGuides;
+			}
+
+			if (config.defaultTransparentGroups != null)
+			{
+				Editor.defaultTransparentGroups = config.defaultTransparentGroups;
+			}
 			
 			if (config.oneDriveInlinePicker != null)
 			{
@@ -2977,9 +3118,34 @@
 				Editor.darkColorVar = config.darkColorVar;
 			}
 
+			if (config.defaultPageBackgroundColor != null)
+			{
+				Editor.pageBackgroundColor = config.defaultPageBackgroundColor;
+			}
+
+			if (config.defaultDarkPageBackgroundColor != null)
+			{
+				Editor.darkPageBackgroundColor = config.defaultDarkPageBackgroundColor;
+			}
+
+			if (config.defaultGridColor != null)
+			{
+				mxGraphView.prototype.defaultGridColor = config.defaultGridColor;
+			}
+
+			if (config.defaultDarkGridColor != null)
+			{
+				mxGraphView.prototype.defaultDarkGridColor = config.defaultDarkGridColor;
+			}
+
+			// Updates the initial grid color for the current theme
+			mxGraphView.prototype.gridColor = (Editor.isDarkMode()) ?
+				mxGraphView.prototype.defaultDarkGridColor :
+				mxGraphView.prototype.defaultGridColor;
+
 			// Updates colors that depend on Editor.darkColor
 			// LATER: Add event to update darkColor dependencies
-			Graph.prototype.defaultPageBackgroundColor = 'light-dark(#ffffff, ' + Editor.darkColor + ')';
+			Graph.prototype.defaultPageBackgroundColor = Editor.getDefaultPageBackgroundColor();
 			Graph.prototype.shapeBackgroundColor = 'light-dark(#ffffff, var(' +
 				Editor.darkColorVar + ', ' + Editor.darkColor + '))';
 			
@@ -2994,6 +3160,7 @@
 			{
 				Menus.prototype.defaultFonts = config.customFonts.
 					concat(Menus.prototype.defaultFonts);
+				Editor.addAllowedFontUrls(config.customFonts);
 			}
 			
 			if (config.customPresetColors != null)
@@ -3058,6 +3225,19 @@
 			if (config.defaultCustomLibraries != null)
 			{
 				Editor.defaultCustomLibraries = config.defaultCustomLibraries;
+			}
+
+			// Language bundles installed for offline use on startup
+			if (config.defaultLanguages != null)
+			{
+				if (Array.isArray(config.defaultLanguages))
+				{
+					Editor.defaultLanguages = config.defaultLanguages;
+				}
+				else
+				{
+					EditorUi.debug('Configuration Error: Array expected for defaultLanguages');
+				}
 			}
 			
 			// Disables custom libraries
@@ -3763,6 +3943,22 @@
 				((t.angle !== 0) ? ' rotate(' + (t.angle * 180 / Math.PI) + ')' : '') +
 				' scale(' + t.sx + ((t.sy !== t.sx) ? ',' + t.sy : '') + ')');
 
+			// Replicates the implicit clipping of pattern content to the tile
+			// (overflow is hidden on SVG patterns) so that expanded tiles
+			// render exactly like the on-screen pattern, eg. the default
+			// hatch stroke is centered on the tile edge and only half of
+			// its width is visible
+			var tileClipId = clipPrefix + (++clipCounter);
+			var tileClip = svgRoot.ownerDocument.createElementNS(svgNS, 'clipPath');
+			tileClip.setAttribute('id', tileClipId);
+
+			var tileRect = svgRoot.ownerDocument.createElementNS(svgNS, 'rect');
+			tileRect.setAttribute('x', '0');
+			tileRect.setAttribute('y', '0');
+			tileRect.setAttribute('width', pw);
+			tileRect.setAttribute('height', ph);
+			tileClip.appendChild(tileRect);
+
 			// Generate tiles by cloning pattern children
 			var patternChildren = pattern.childNodes;
 
@@ -3773,6 +3969,10 @@
 					var tileGroup = svgRoot.ownerDocument.createElementNS(svgNS, 'g');
 					tileGroup.setAttribute('transform',
 						'translate(' + (tx * pw) + ',' + (ty * ph) + ')');
+
+					// Evaluated in the tile's user space so the shared
+					// rect clips each tile in its local coordinates
+					tileGroup.setAttribute('clip-path', 'url(#' + tileClipId + ')');
 
 					for (var c = 0; c < patternChildren.length; c++)
 					{
@@ -3798,6 +3998,7 @@
 			}
 
 			defs.appendChild(clipPath);
+			defs.appendChild(tileClip);
 
 			// Insert the pattern group after the element's parent group
 			// to maintain correct stacking order
@@ -3843,6 +4044,35 @@
 	};
 
 	/**
+	 * Allows the given font URL to point at the local filesystem. Only for
+	 * URLs that come from the configuration, see Graph.isValidFontUrl.
+	 */
+	Editor.addAllowedFontUrl = function(url)
+	{
+		if (typeof url === 'string' && url.length > 0)
+		{
+			Graph.allowedFontUrls[url] = true;
+		}
+	};
+
+	/**
+	 * Allows the font URLs in a configured font list (customFonts, defaultFonts).
+	 */
+	Editor.addAllowedFontUrls = function(fonts)
+	{
+		if (Array.isArray(fonts))
+		{
+			for (var i = 0; i < fonts.length; i++)
+			{
+				if (fonts[i] != null && typeof fonts[i] === 'object')
+				{
+					Editor.addAllowedFontUrl(fonts[i].fontUrl);
+				}
+			}
+		}
+	};
+
+	/**
 	 * Adds the global fontCss configuration.
 	 */
 	Editor.configureFontCss = function(fontCss)
@@ -3850,6 +4080,22 @@
 		if (fontCss != null)
 		{
 			Editor.prototype.fontCss = fontCss;
+
+			// The configured font CSS is trusted, so its URLs are allowed
+			// even where they point at local files
+			var urls = fontCss.split('url(');
+
+			for (var i = 1; i < urls.length; i++)
+			{
+				var end = urls[i].indexOf(')');
+
+				if (end > 0)
+				{
+					Editor.addAllowedFontUrl(Editor.trimCssUrl(
+						urls[i].substring(0, end)));
+				}
+			}
+
 			var t = document.getElementsByTagName('script')[0];
 			
 			if (t != null && t.parentNode != null)
@@ -4219,6 +4465,168 @@
 	};
 	
 	/**
+	 * Hardens the URL filter in MathJax's ui/safe extension, which decides the
+	 * scheme with /^\s*([a-z\n\r]+):/i and strips only newlines. Browsers ignore
+	 * tab, LF and CR inside a URL, so java<TAB>script:... is not recognised as a
+	 * scheme, falls into the "no scheme, treat as relative" branch and is passed
+	 * through unchanged, then reaches the browser as javascript:. This is the
+	 * same bypass as mathjax/MathJax#2885, whose fix covered LF and CR but not
+	 * tab. Patched here rather than in math4 so the vendored MathJax stays
+	 * unmodified and the fix survives the next MathJax update.
+	 */
+	Editor.safeMathJaxFilterUrl = function(safe, url)
+	{
+		// Normalises the way the URL parser does before reading the scheme
+		var normalized = url.replace(/[\t\n\r]/g, '').replace(/^[\u0000-\u0020]+/, '');
+		var protocol = (normalized.match(/^([a-z][a-z0-9+.\-]*):/i) || [null, ''])[1].toLowerCase();
+		var allow = safe.allow.URLs;
+
+		return (allow === 'all' || (allow === 'safe' &&
+			(safe.options.safeProtocols[protocol] || !protocol))) ? url : null;
+	};
+
+	// Marker so the patch can be reapplied without stacking wrappers
+	Editor.safeMathJaxFilterUrl.drawioPatched = true;
+
+	Editor.patchMathJaxUrlFilter = function(mathJax)
+	{
+		mathJax = (mathJax != null) ? mathJax :
+			((typeof MathJax !== 'undefined') ? MathJax : null);
+
+		if (mathJax == null)
+		{
+			return;
+		}
+
+		// Shared method table, used by documents created from here on
+		var methods = (mathJax._ != null && mathJax._.ui != null &&
+			mathJax._.ui.safe != null && mathJax._.ui.safe.SafeMethods != null) ?
+			mathJax._.ui.safe.SafeMethods.SafeMethods : null;
+
+		if (methods != null && methods.filterURL != null &&
+			!methods.filterURL.drawioPatched)
+		{
+			methods.filterURL = Editor.safeMathJaxFilterUrl;
+		}
+
+		// Safe copies the table into filterMethods in its constructor and
+		// sanitizeNode calls that copy, so a document that already exists
+		// still holds the unpatched function and must be updated separately
+		var doc = (mathJax.startup != null) ? mathJax.startup.document : null;
+
+		if (doc != null && doc.safe != null && doc.safe.filterMethods != null &&
+			doc.safe.filterMethods.filterURL != null &&
+			!doc.safe.filterMethods.filterURL.drawioPatched)
+		{
+			doc.safe.filterMethods.filterURL = Editor.safeMathJaxFilterUrl;
+		}
+	};
+
+	/**
+	 * Stops the TeX \data macro writing arbitrary data attributes into the
+	 * output. MathJax's ui/safe extension is supposed to do this: it documents
+	 * dataPattern, /^data-mjx-/, as the guard on data attribute names. But the
+	 * filter is only wired up for MathML input, where Safe.mmlAttribute maps any
+	 * data-* name onto filterData through an explicit "data-" prefix check. On
+	 * the TeX path Safe.sanitizeNode looks the whole attribute name up in
+	 * filterAttributes, whose only data key is the literal string "data-", so no
+	 * data-* name can ever match and filterData is dead code. \data{name=value}
+	 * therefore writes any attribute it likes, with only the name checked for
+	 * characters that would break the markup, and those attributes are added
+	 * after Graph.sanitizeHtml has run, so DOMPurify never sees them. A host page
+	 * that reads data-* as instructions then executes the value: Confluence AUI
+	 * renders data-aui-notification-info as HTML. Unfixed upstream as of MathJax
+	 * 4.1.3 and reported as GHSA-3cc2-fjw8-2fjq, so it is patched here rather
+	 * than in math4, like the URL filter above.
+	 *
+	 * The filter is applied inside the \data macro rather than in sanitizeNode
+	 * because MathJax puts its own data attributes on the tree for TeX input,
+	 * data-latex on nearly every node plus a long tail (data-latex-item,
+	 * data-break-align, data-vertical-align, data-frame, data-frame-styles,
+	 * data-array-padding, data-padding, data-width-includes-label,
+	 * data-braketbar, data-cramped, ...) that varies by package. Filtering the
+	 * tree would mean maintaining an allowlist of those names and would silently
+	 * drop MathJax's own output whenever the list fell behind. Scoping the swap
+	 * to the macro means only names \data itself supplies are ever tested, so
+	 * normal math cannot be affected however MathJax changes internally.
+	 */
+	Editor.safeMathJaxDataMacro = function(nodeUtil, macro, parser, name)
+	{
+		var setAttribute = nodeUtil.setAttribute;
+
+		// \data parses its content argument before setting any attribute, so the
+		// swap is only live around this one macro and never sees MathJax's own
+		// writes. TeX parsing is synchronous, so restoring in finally is safe.
+		nodeUtil.setAttribute = function(node, attr, value)
+		{
+			if (typeof attr === 'string' && attr.substring(0, 5) === 'data-' &&
+				!attr.match(Editor.safeMathJaxDataPattern))
+			{
+				return;
+			}
+
+			return setAttribute.apply(this, arguments);
+		};
+
+		try
+		{
+			return macro.apply(this, [parser, name]);
+		}
+		finally
+		{
+			nodeUtil.setAttribute = setAttribute;
+		}
+	};
+
+	// Matches the documented ui/safe default for data attribute names
+	Editor.safeMathJaxDataPattern = /^data-mjx-/;
+
+	Editor.patchMathJaxDataMacro = function(mathJax)
+	{
+		mathJax = (mathJax != null) ? mathJax :
+			((typeof MathJax !== 'undefined') ? MathJax : null);
+
+		var tex = (mathJax != null && mathJax._ != null &&
+			mathJax._.input != null) ? mathJax._.input.tex : null;
+
+		if (tex == null || tex.MapHandler == null || tex.NodeUtil == null)
+		{
+			return;
+		}
+
+		// [tex]/html is preloaded in initMath so the macro exists before the
+		// first typeset. With a caller-supplied config it may be autoloaded
+		// later instead, hence the retry on every render from doMathJaxRender
+		var map = tex.MapHandler.MapHandler.getMap('html_macros');
+		var macro = (map != null && map.lookup != null) ? map.lookup('data') : null;
+
+		if (macro == null || macro._func == null || macro._func.drawioPatched)
+		{
+			return;
+		}
+
+		var nodeUtil = tex.NodeUtil['default'];
+		var original = macro._func;
+
+		var fn = function(parser, name)
+		{
+			return Editor.safeMathJaxDataMacro(nodeUtil, original, parser, name);
+		};
+
+		fn.drawioPatched = true;
+		macro._func = fn;
+	};
+
+	/**
+	 * Hardens the ui/safe extension before the first typeset.
+	 */
+	Editor.patchMathJaxSafeFilters = function(mathJax)
+	{
+		Editor.patchMathJaxUrlFilter(mathJax);
+		Editor.patchMathJaxDataMacro(mathJax);
+	};
+
+	/**
 	 * Initializes math typesetting and loads respective code.
 	 */
 	Editor.initMath = function(src, config)
@@ -4250,6 +4658,8 @@
 			
 			Editor.doMathJaxRender = function(container)
 			{
+				Editor.patchMathJaxSafeFilters();
+
 				// Disables automatic line breaking for inline math to
 				// avoid unwanted breaks in narrow label containers
 				if (MathJax.startup != null && MathJax.startup.output != null &&
@@ -4312,7 +4722,7 @@
 				{
 					load: [(urlParams['math-output'] == 'html') ?
 						'output/chtml' : 'output/svg', 'input/tex',
-						'input/asciimath', 'ui/safe'],
+						'input/asciimath', 'ui/safe', '[tex]/html'],
 					paths: {
 						'fonts': DRAW_MATH_URL + '/fonts'
 					}
@@ -5659,7 +6069,8 @@
 		
         if (this.cachedFonts == null) 
         {
-        	this.cachedFonts = {};
+        	// Null prototype: keyed by font URLs parsed from the diagram's extFonts
+        	this.cachedFonts = Object.create(null);
         }
 
         var finish = mxUtils.bind(this, function()
@@ -6024,7 +6435,7 @@
 			// Handles special case where background is null but transparent is false
 			if (bg == null && transparentBackground == false)
 			{
-				bg = 'light-dark(#ffffff,' + Editor.darkColor + ')';
+				bg = Editor.getDefaultPageBackgroundColor();
 			}
 
 			this.convertImages(graph.getSvg(null, null, border, noCrop, null, ignoreSelection,
@@ -6452,7 +6863,7 @@
 		td = document.createElement('td');
 		td.style.fontSize = '10pt';
 		td.style.width = '100px';
-		mxUtils.write(td, mxResources.get('name', null, 'Name') + ':');
+		mxUtils.write(td, mxResources.get('name') + ':');
 		
 		row.appendChild(td);
 		
@@ -6469,7 +6880,7 @@
 		
 		td = document.createElement('td');
 		td.style.fontSize = '10pt';
-		mxUtils.write(td, mxResources.get('type', null, 'Type') + ':');
+		mxUtils.write(td, mxResources.get('type') + ':');
 		
 		row.appendChild(td);
 		
@@ -6478,32 +6889,32 @@
 
 		var boolOption = document.createElement('option');
 		boolOption.setAttribute('value', 'bool');
-		mxUtils.write(boolOption, mxResources.get('bool', null, 'Boolean'));
+		mxUtils.write(boolOption, mxResources.get('bool'));
 		typeSelect.appendChild(boolOption);
 		
 		var clrOption = document.createElement('option');
 		clrOption.setAttribute('value', 'color');
-		mxUtils.write(clrOption, mxResources.get('color', null, 'Color'));
+		mxUtils.write(clrOption, mxResources.get('color'));
 		typeSelect.appendChild(clrOption);
 		
 		var enumOption = document.createElement('option');
 		enumOption.setAttribute('value', 'enum');
-		mxUtils.write(enumOption, mxResources.get('enum', null, 'Enumeration'));
+		mxUtils.write(enumOption, mxResources.get('enum'));
 		typeSelect.appendChild(enumOption);
 
 		var floatOption = document.createElement('option');
 		floatOption.setAttribute('value', 'float');
-		mxUtils.write(floatOption, mxResources.get('float', null, 'Float'));
+		mxUtils.write(floatOption, mxResources.get('float'));
 		typeSelect.appendChild(floatOption);
 
 		var intOption = document.createElement('option');
 		intOption.setAttribute('value', 'int');
-		mxUtils.write(intOption, mxResources.get('int', null, 'Int'));
+		mxUtils.write(intOption, mxResources.get('int'));
 		typeSelect.appendChild(intOption);
 		
 		var strOption = document.createElement('option');
 		strOption.setAttribute('value', 'string');
-		mxUtils.write(strOption, mxResources.get('string', null, 'String'));
+		mxUtils.write(strOption, mxResources.get('string'));
 		typeSelect.appendChild(strOption);
 
 		td = document.createElement('td');
@@ -6516,7 +6927,7 @@
 
 		td = document.createElement('td');
 		td.style.fontSize = '10pt';
-		mxUtils.write(td, mxResources.get('dispName', null, 'Display Name') + ':');
+		mxUtils.write(td, mxResources.get('dispName') + ':');
 		
 		row.appendChild(td);
 		
@@ -6533,7 +6944,7 @@
 
 		td = document.createElement('td');
 		td.style.fontSize = '10pt';
-		mxUtils.write(td, mxResources.get('enumList', null, 'Enum List') + ' (csv):');
+		mxUtils.write(td, mxResources.get('enumList') + ' (csv):');
 		
 		listRow.appendChild(td);
 		
@@ -6572,7 +6983,7 @@
 		td.style.paddingTop = '22px';
 		td.colSpan = 2;
 		
-		var addBtn = mxUtils.button(mxResources.get('add', null, 'Add'), mxUtils.bind(this, function()
+		var addBtn = mxUtils.button(mxResources.get('add'), mxUtils.bind(this, function()
 		{
 	    	var name = nameInput.value;
 
@@ -6914,7 +7325,14 @@
 	        {name: 'position', dispName: 'Callout Position', type: 'float', min:0, max:1, defVal: 0.5},
 	        {name: 'position2', dispName: 'Callout Tip Position', type: 'float', min:0, max:1, defVal: 0.5}
 	    ];
-		
+
+		mxCellRenderer.defaultShapes['wedgeCallout'].prototype.customProperties = [
+	        {name: 'arcSize', dispName: 'Arc Size', type: 'float', min:0, defVal: mxConstants.LINE_ARCSIZE},
+	        {name: 'tipX', dispName: 'Tip X', type: 'float', min:-100, max:100, defVal: -0.25},
+	        {name: 'tipY', dispName: 'Tip Y', type: 'float', min:-100, max:100, defVal: 1},
+	        {name: 'base', dispName: 'Callout Width', type: 'float', min:0, defVal: 20}
+	    ];
+
 		mxCellRenderer.defaultShapes['folder'].prototype.customProperties = [
 	        {name: 'tabWidth', dispName: 'Tab Width', type: 'float'},
 	        {name: 'tabHeight', dispName: 'Tab Height', type: 'float'},
@@ -7780,7 +8198,7 @@
 								// Auto is the property's default: REMOVE the key
 								// (null unsets it in setCellStyles) instead of
 								// writing jettySize=auto into the style.
-								newVal = (type == 'numbers') ? inputVal.match(/\d+/g).map(Number).join(' ') :
+								newVal = (type == 'numbers') ? inputVal.match(/\d*\.?\d+/g).map(Number).join(' ') :
 									(inputVal === 'auto' && prop.allowAuto && prop.defVal == 'auto') ? null :
 									encodeURIComponent((type == 'int'? parseInt(inputVal) : inputVal) + '');
 							}
@@ -8366,6 +8784,53 @@
 	Graph.customFontElements = Object.create(null);
 
 	/**
+	 * Font URLs that are allowed to point at the local filesystem. Populated
+	 * from the configuration (customFonts, defaultFonts, fontCss) by
+	 * Editor.addAllowedFontUrl. Null prototype as the keys are URLs.
+	 */
+	Graph.allowedFontUrls = Object.create(null);
+
+	/**
+	 * Returns true if the given font URL may be loaded. Font URLs come from
+	 * untrusted diagram content: a cell style's fontSource, a label's
+	 * data-font-src attribute and the file's extFonts attribute all end up
+	 * here. The desktop app resolves file:// URLs and absolute paths through
+	 * the main process, so an unchecked font URL is a read of an arbitrary
+	 * local file whose bytes are then embedded in the export. Only http(s),
+	 * data: and relative URLs are accepted, plus the local paths named in the
+	 * configuration.
+	 */
+	Graph.isValidFontUrl = function(url)
+	{
+		if (typeof url !== 'string' || url.length == 0)
+		{
+			return false;
+		}
+
+		if (Graph.allowedFontUrls[url])
+		{
+			return true;
+		}
+
+		// The check must run on the string the URL parser will see, not the
+		// raw one: leading and trailing C0 controls and spaces are stripped
+		// and tab, LF and CR are removed anywhere in the URL, so " file:..."
+		// and "file<tab>:..." would otherwise read as relative URLs here and
+		// still be fetched as file: URLs. Spaces inside the URL are kept as
+		// they are legal in a relative path.
+		var test = url.replace(/^[\x00-\x20]+/, '').replace(
+			/[\x00-\x20]+$/, '').replace(/[\t\n\r]/g, '');
+
+		// Anything with a scheme other than http(s) and data: is refused,
+		// which covers file: and Windows drive letters (C:\...), and so is
+		// anything starting with a slash or backslash, which covers absolute
+		// paths (/etc/passwd), UNC paths and protocol-relative URLs. What is
+		// left is relative URLs, which resolve against the app itself.
+		return /^https?:\/\//i.test(test) || /^data:/i.test(test) ||
+			(!/^[a-zA-Z][a-zA-Z0-9+.\-]*:/.test(test) && !/^[\\\/]/.test(test));
+	};
+
+	/**
 	 * Returns true if the given font URL references a Google font.
 	 */
 	Graph.isGoogleFontUrl = function(url)
@@ -8458,7 +8923,7 @@
 	 */
 	Graph.addFont = function(name, url, callback, elementLookup)
 	{
-		if (name != null && name.length > 0 && url != null && url.length > 0)
+		if (name != null && name.length > 0 && Graph.isValidFontUrl(url))
 		{
 			elementLookup = (elementLookup != null) ?
 				elementLookup : Graph.customFontElements;
@@ -8561,7 +9026,8 @@
 			
 			if (url != null)
 			{
-				var name = (elts[i].nodeName == 'FONT') ?
+				// Node name is lowercase in XML documents (eg. SVG export)
+				var name = (elts[i].nodeName.toUpperCase() == 'FONT') ?
 					elts[i].getAttribute('face') :
 					elts[i].style.fontFamily;
 	
@@ -9233,21 +9699,30 @@
 	Graph.prototype.getCustomFonts = function(lookup)
 	{
 		lookup = (lookup != null) ? lookup : Graph.customFontElements;
-		var fonts = this.extFonts;
+		var fonts = [];
 
-		if (fonts != null)
+		// This is the single funnel for embedExtFonts and getExtFontCss, which
+		// fetch the font and inline it in the export, so the fonts that came
+		// from the file (extFonts) are filtered here too
+		if (this.extFonts != null)
 		{
-			fonts = fonts.slice();
-		}
-		else
-		{
-			fonts = [];
+			for (var i = 0; i < this.extFonts.length; i++)
+			{
+				if (Graph.isValidFontUrl(this.extFonts[i].url))
+				{
+					fonts.push(this.extFonts[i]);
+				}
+			}
 		}
 
 		for (var key in lookup)
 		{
 			var font = lookup[key];
-			fonts.push({name: font.name, url: font.url});
+
+			if (Graph.isValidFontUrl(font.url))
+			{
+				fonts.push({name: font.name, url: font.url});
+			}
 		}
 
 		return fonts;
@@ -10285,7 +10760,7 @@
 				}
 			});
 
-			var executeNextAction = mxUtils.bind(this, function()
+			var dispatchNextAction = mxUtils.bind(this, function()
 			{
 				// Bail out if the graph was torn down (e.g. presentation /
 				// lightbox view closed) mid-animation — a deferred step must
@@ -10328,8 +10803,27 @@
 
 						if (this.isCustomLink(action.open))
 						{
+							// A failed link (customLinkClicked shows the error
+							// dialog and returns false, e.g. pageNotFound)
+							// aborts the chain. The abort must reset the
+							// execution flags like the teardown guard above —
+							// leaving executingCustomActions latched sends
+							// every later call into the already-executing
+							// branch, silently disabling all custom links
+							// until the page is reloaded
+							// [jgraph/drawio-desktop#2161]. done() still fires
+							// so a waiting animation player unwinds instead of
+							// hanging on a step that never completes.
 							if (!this.customLinkClicked(action.open, cell))
 							{
+								this.executingCustomActions = false;
+								this.stoppingCustomActions = false;
+
+								if (done != null)
+								{
+									done();
+								}
+
 								return;
 							}
 						}
@@ -10553,26 +11047,75 @@
 
 					if (action.viewbox != null)
 					{
-						if (action.viewbox.smooth === true && !stop)
+						var vb = action.viewbox;
+
+						// Dynamic cell-bound viewbox: with a cells/tags/layers
+						// selector present, the box derives from the union of
+						// the resolved cells' bounds at execution time — the
+						// link follows the cells as the diagram evolves — and
+						// any static x/y/width/height is ignored. An
+						// unresolvable selector (e.g. only hidden cells, no
+						// state) skips the action, like scroll does.
+						if (vb.cells != null || vb.tags != null || vb.layers != null)
 						{
-							// Block the action chain until the smooth
-							// transition finishes so consecutive viewbox /
-							// scroll steps don't overrun each other. During
-							// stop we fall through to the instant snap below.
-							waitCounter++;
-							this.smoothFitWindow(action.viewbox,
-								action.viewbox.border, waitAndExecute);
+							var vbBounds = this.getBoundingBox(
+								this.getCellsForAction(vb));
+
+							if (vbBounds != null)
+							{
+								// State bounds are screen coords in the editor
+								// but graph coords in useCssTransforms mode
+								// (validate runs at scale 1, translate 0) —
+								// same normalization as fitDiagramToWindow.
+								var vbScale = (this.useCssTransforms) ? 1 : this.view.scale;
+								var vbTrans = (this.useCssTransforms) ?
+									new mxPoint(0, 0) : this.view.translate;
+
+								// Dynamic border is breathing room per side
+								// (screen px, like scroll's border). The fit
+								// implementations reserve the border once
+								// across the axis (clientWidth - border) and
+								// centre, which yields border/2 per side —
+								// invisible for typical values after scale
+								// quantization — so double it here.
+								var vbBorder = (vb.border != null && vb.border !== '' &&
+									!isNaN(parseFloat(vb.border))) ?
+									2 * parseFloat(vb.border) : null;
+
+								vb = {x: vbBounds.x / vbScale - vbTrans.x,
+									y: vbBounds.y / vbScale - vbTrans.y,
+									width: Math.max(1, vbBounds.width / vbScale),
+									height: Math.max(1, vbBounds.height / vbScale),
+									border: vbBorder, smooth: vb.smooth};
+							}
+							else
+							{
+								vb = null;
+							}
 						}
-						else if (this.useCssTransforms)
+
+						if (vb != null)
 						{
-							// Regular fitWindow only zooms in chromeless mode
-							// (no scrollbars to pan), so we recreate the pan
-							// ourselves via fitBoundsCssTransform.
-							this.fitBoundsCssTransform(action.viewbox, action.viewbox.border);
-						}
-						else
-						{
-							this.fitWindow(action.viewbox, action.viewbox.border);
+							if (vb.smooth === true && !stop)
+							{
+								// Block the action chain until the smooth
+								// transition finishes so consecutive viewbox /
+								// scroll steps don't overrun each other. During
+								// stop we fall through to the instant snap below.
+								waitCounter++;
+								this.smoothFitWindow(vb, vb.border, waitAndExecute);
+							}
+							else if (this.useCssTransforms)
+							{
+								// Regular fitWindow only zooms in chromeless mode
+								// (no scrollbars to pan), so we recreate the pan
+								// ourselves via fitBoundsCssTransform.
+								this.fitBoundsCssTransform(vb, vb.border);
+							}
+							else
+							{
+								this.fitWindow(vb, vb.border);
+							}
 						}
 					}
 
@@ -10735,6 +11278,29 @@
 					{
 						done();
 					}
+				}
+			});
+
+			// An action that throws (e.g. a broken action body) must not
+			// leave executingCustomActions latched — that silently disables
+			// all custom links until the page is reloaded — nor leave the
+			// model transaction open. Wraps every dispatch entry (initial,
+			// recursive and the async waitAndExecute continuations) and
+			// rethrows so a synchronous caller still surfaces the error
+			// dialog (graph.customLinkClicked catches via handleError).
+			var executeNextAction = mxUtils.bind(this, function()
+			{
+				try
+				{
+					dispatchNextAction();
+				}
+				catch (e)
+				{
+					this.executingCustomActions = false;
+					this.stoppingCustomActions = false;
+					endUpdate();
+
+					throw e;
 				}
 			});
 
@@ -11612,11 +12178,13 @@
 	mxStencilRegistry.libraries['ibmcloud'] = [STENCIL_PATH + '/ibm_cloud.xml'];
 	mxStencilRegistry.libraries['cabinets'] = [SHAPES_PATH + '/mxCabinets.js', STENCIL_PATH + '/cabinets.xml'];
 	mxStencilRegistry.libraries['archimate'] = [SHAPES_PATH + '/mxArchiMate.js'];
+	mxStencilRegistry.libraries['archimate4'] = [SHAPES_PATH + '/mxArchiMate3.js', SHAPES_PATH + '/mxArchiMate4.js'];
 	mxStencilRegistry.libraries['archimate3'] = [SHAPES_PATH + '/mxArchiMate3.js'];
 	mxStencilRegistry.libraries['sysml'] = [SHAPES_PATH + '/mxSysML.js'];
 	mxStencilRegistry.libraries['eip'] = [SHAPES_PATH + '/mxEip.js', STENCIL_PATH + '/eip.xml'];
 	mxStencilRegistry.libraries['networks'] = [SHAPES_PATH + '/mxNetworks.js', STENCIL_PATH + '/networks.xml'];
 	mxStencilRegistry.libraries['networks2'] = [SHAPES_PATH + '/mxNetworks2.js', STENCIL_PATH + '/networks2.xml'];
+	mxStencilRegistry.libraries['atlassian2'] = [SHAPES_PATH + '/mxAtlassian2.js', STENCIL_PATH + '/atlassian2.xml'];
 	mxStencilRegistry.libraries['aws3d'] = [SHAPES_PATH + '/mxAWS3D.js', STENCIL_PATH + '/aws3d.xml'];
 	mxStencilRegistry.libraries['aws4'] = [SHAPES_PATH + '/mxAWS4.js', STENCIL_PATH + '/aws4.xml'];
 	mxStencilRegistry.libraries['aws4b'] = [SHAPES_PATH + '/mxAWS4.js', STENCIL_PATH + '/aws4.xml'];

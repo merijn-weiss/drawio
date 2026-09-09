@@ -8,55 +8,62 @@
  * cache name and __WB_REVISION__ cache keys (so an existing Workbox-populated
  * cache is adopted in place and only changed files are re-fetched), cache-first
  * fetch with all query parameters ignored, directoryIndex/cleanURLs URL
- * variations, stale-entry cleanup on activate and skipWaiting. Revisions are
+ * variations, stale-entry cleanup on activate and skipWaiting. LAZY_MANIFEST
+ * entries (language files) use the same keys but are cached on first use
+ * instead of at install time; installs refresh the lazy entries the client
+ * already has, and offline misses fall back to a stale revision and then to
+ * the precached LAZY_FALLBACK. Revisions are
  * the file's MD5; .html entries append the release version so documents are
  * re-fetched once per release (a cached response pins the HTTP headers it was
  * fetched with, e.g. the CSP, which a header-only change never invalidates).
+ * Cache keys resolve against the registration scope, network fetches against
+ * the script's own directory: registered as stable/service-worker.js with
+ * scope '/', this worker fetches via /stable/ and serves unprefixed.
  */
 'use strict';
 self.skipWaiting();
 
 var MANIFEST = [
-  {"url":"js/bootstrap.js","revision":"98f3075c6094536bd4e22e736a9f5a98"},
+  {"url":"js/bootstrap.js","revision":"4ead21aa3d21115074a854b492b2e7fd"},
   {"url":"js/main.js","revision":"a8d40469d3d72ab4b11059362f3dd825"},
-  {"url":"js/app.min.js","revision":"46c68d0d44082ed75e01daffe7c56e9c"},
-  {"url":"js/extensions.min.js","revision":"beddea49d2bdb9a6e1b016bfa57fd823"},
-  {"url":"js/plantuml/drawio-plantuml.min.js","revision":"64348263302fd084d028d59b2b18525a"},
+  {"url":"js/app.min.js","revision":"e47a1d2de336848d1cf80bf3c13a382f"},
+  {"url":"js/extensions.min.js","revision":"74cc27055b3ad0b65a654cbdd69edd48"},
+  {"url":"js/plantuml/drawio-plantuml.min.js","revision":"60a94e61ef8dba217516092af13e8b7b"},
   {"url":"js/orgchart.min.js","revision":"619d8c4dab47b81868916df31f55478b"},
-  {"url":"js/stencils.min.js","revision":"ffca5e4bdda3e151aab9b88cf26e7404"},
-  {"url":"js/shapes-14-6-5.min.js","revision":"aa5ec1c9cb9bdd04ade903c9ea5224ea"},
-  {"url":"js/math-print.js","revision":"ad9cf0f2f2b614eac58ea72499c1017f"},
-  {"url":"index.html","revision":"9de11c65ec13b24c73ace7042bc529cc-30.4.3"},
-  {"url":"open.html","revision":"d71816b3b00e769fc6019fcdd6921662-30.4.3"},
+  {"url":"js/stencils.min.js","revision":"8350bc2dfb9cce00ad8c5cb4137ea3af"},
+  {"url":"js/shapes-14-6-5.min.js","revision":"2dd5884f665e3a61f789d75eab51fd21"},
+  {"url":"js/math-print.js","revision":"c96445bdae9d555a3a6de81e16ccd6aa"},
+  {"url":"index.html","revision":"9de11c65ec13b24c73ace7042bc529cc-31.4.5"},
+  {"url":"open.html","revision":"d71816b3b00e769fc6019fcdd6921662-31.4.5"},
   {"url":"shortcuts.svg","revision":"e6e8b6ca4cdf380eb5908925fadda599"},
   {"url":"styles/fonts/ArchitectsDaughter-Regular.ttf","revision":"31c2153c0530e32553b31a49b3d70736"},
   {"url":"styles/grapheditor.css","revision":"b7a9b0ba308f6db1dc9d195531e820ab"},
   {"url":"styles/high-contrast.css","revision":"0c0219b1016c8bd6bbf859cfd53b5058"},
   {"url":"js/dropbox/Dropbox-sdk.min.js","revision":"4b9842892aa37b156db0a8364b7a83b0"},
   {"url":"js/onedrive/OneDrive.js","revision":"e863f5e6833892f22492211663e3efe9"},
-  {"url":"js/viewer-static.min.js","revision":"d7e63a60d2ad0fb409d585de53898c49"},
-  {"url":"connect/jira/editor-1-3-3.html","revision":"41dc8af9576b47f359cff19fff7a41c2-30.4.3"},
-  {"url":"connect/jira/viewerPanel-1-3-12.html","revision":"4836f5e4308abe57830e441518364f23-30.4.3"},
-  {"url":"connect/jira/viewerPanel2.html","revision":"0dd1ee1343a46b5c03aedbc587450b84-30.4.3"},
-  {"url":"connect/jira/fullScreenViewer-1-3-3.html","revision":"abed474e47c0c41a5ad2366b4828f77a-30.4.3"},
+  {"url":"js/viewer-static.min.js","revision":"4b52aeaf150609f250edac82d633fd71"},
+  {"url":"connect/jira/editor-1-3-3.html","revision":"41dc8af9576b47f359cff19fff7a41c2-31.4.5"},
+  {"url":"connect/jira/viewerPanel-1-3-12.html","revision":"4836f5e4308abe57830e441518364f23-31.4.5"},
+  {"url":"connect/jira/viewerPanel2.html","revision":"0dd1ee1343a46b5c03aedbc587450b84-31.4.5"},
+  {"url":"connect/jira/fullScreenViewer-1-3-3.html","revision":"abed474e47c0c41a5ad2366b4828f77a-31.4.5"},
   {"url":"connect/jira/viewerPanel.js","revision":"85011efa68d638da560871ee2ab3a6fe"},
   {"url":"connect/jira/spinner.gif","revision":"7d857ab9d86123e93d74d48e958fe743"},
-  {"url":"connect/jira/editor.js","revision":"3dc56c6566abaa7af151a8359e5bb556"},
+  {"url":"connect/jira/editor.js","revision":"6264f470f244aec4b62035bbad03eb5e"},
   {"url":"connect/jira/fullscreen-viewer-init.js","revision":"07043c1ee868dd425f7876da94bbc307"},
   {"url":"connect/jira/fullscreen-viewer.js","revision":"a6be96b8ddc5a25196925713cf34d571"},
   {"url":"plugins/connectJira.js","revision":"d220cad2edf0d6b161505fe12ae3eaa6"},
-  {"url":"plugins/cConf-comments.js","revision":"e4a4b5a0fb22393693d3b62968c50644"},
-  {"url":"plugins/cConf-1-4-8.js","revision":"a8ac41b5a827dc6a28e38ffaf0d4c333"},
-  {"url":"connect/confluence/connectUtils-1-4-8.js","revision":"1ece124d9b3523b536e99aeca5c3b8f5"},
+  {"url":"plugins/cConf-comments.js","revision":"faaee24081d7b0fb9af0add3171feaac"},
+  {"url":"plugins/cConf-1-4-8.js","revision":"3b97d4ae77858b0e90529bd6319bc7de"},
+  {"url":"connect/confluence/connectUtils-1-4-8.js","revision":"bbeb82e0960c92e105ae3da4d39f8123"},
   {"url":"connect/new_common/cac.js","revision":"b52c73de9d22b867a036ad50c6bfdca2"},
   {"url":"connect/gdrive_common/gac.js","revision":"c66fdc50ec87002a502cb0779b73a692"},
   {"url":"connect/onedrive_common/ac.js","revision":"1264ba8705eff0d1337701e5ae962366"},
   {"url":"connect/confluence/viewer-init.js","revision":"c5e51e32ac74414d8d518af83ee2781f"},
-  {"url":"connect/confluence/viewer.js","revision":"9128708cd80881dbf6caa06f2c4ebda8"},
-  {"url":"connect/confluence/viewer-1-4-42.html","revision":"69c1bca25fd4889bf832e8441c972268-30.4.3"},
-  {"url":"connect/confluence/macroEditor-1-4-8.html","revision":"4ad77ae3f08c19eddac932b2fa8c7068-30.4.3"},
+  {"url":"connect/confluence/viewer.js","revision":"092c424361f3c34559cafeafd64407a6"},
+  {"url":"connect/confluence/viewer-1-4-42.html","revision":"69c1bca25fd4889bf832e8441c972268-31.4.5"},
+  {"url":"connect/confluence/macroEditor-1-4-8.html","revision":"4ad77ae3f08c19eddac932b2fa8c7068-31.4.5"},
   {"url":"connect/confluence/includeDiagram-1-4-8.js","revision":"c2bf5b089b99006177ca184d65a4a25e"},
-  {"url":"connect/confluence/includeDiagram.html","revision":"01b04b3f54f1e2e63fcf1df033d24519-30.4.3"},
+  {"url":"connect/confluence/includeDiagram.html","revision":"01b04b3f54f1e2e63fcf1df033d24519-31.4.5"},
   {"url":"connect/confluence/macro-editor.js","revision":"b9000d6c20f30e4068f83bd0b56965ca"},
   {"url":"math4/es5/ui/safe.js","revision":"70818a3a0b12f623d08897c6db834920"},
   {"url":"math4/es5/core.js","revision":"dc3ca1e12b086e5ab44e588a7cb6ebb3"},
@@ -97,65 +104,9 @@ var MANIFEST = [
   {"url":"math4/es5/fonts/mathjax-bboldx-font-extension/svg.js","revision":"9a4ce996090d4b84adaec560859c67be"},
   {"url":"math4/es5/fonts/mathjax-dsfont-font-extension/svg.js","revision":"dec2c6790c441e2a6843f6c11f5b47db"},
   {"url":"math4/es5/fonts/mathjax-mhchem-font-extension/svg.js","revision":"3e8dd442c15bc792d3718e93cf2e6e4a"},
-  {"url":"resources/dia.txt","revision":"b369edbf232b8a5b46a9e93ac62a2b2e"},
-  {"url":"resources/dia_am.txt","revision":"99c2af296bb95e607bca412b7f019fc8"},
-  {"url":"resources/dia_ar.txt","revision":"4c9364cde025c78e2108c647809c22f0"},
-  {"url":"resources/dia_bg.txt","revision":"1e83b2c38eff538f3ade9162ce40a20c"},
-  {"url":"resources/dia_bn.txt","revision":"1ead38547e6c89dd235261128ec060f3"},
-  {"url":"resources/dia_bs.txt","revision":"3636a5f73978adac8c08519baabf1369"},
-  {"url":"resources/dia_ca.txt","revision":"f5d399e0db0b7b8c2d6f0e81737252ea"},
-  {"url":"resources/dia_cs.txt","revision":"fd68f7dd576843af613bd915721ae888"},
-  {"url":"resources/dia_da.txt","revision":"a593fb8b315860eac679ad9b0d530ec5"},
-  {"url":"resources/dia_de.txt","revision":"448622a45ba87d389ddef2857d910502"},
-  {"url":"resources/dia_el.txt","revision":"6b8f2b69cf00158c6eec3f18647eff4b"},
-  {"url":"resources/dia_eo.txt","revision":"edd01281db52be3d47b999b5cb6d6b70"},
-  {"url":"resources/dia_es.txt","revision":"d35a3d0bbf3122d726ee00cc007f7f7b"},
-  {"url":"resources/dia_et.txt","revision":"2f1784b37876168e6fb74c86634795dc"},
-  {"url":"resources/dia_eu.txt","revision":"f3f139c45a9831115be89fb081e123c5"},
-  {"url":"resources/dia_fa.txt","revision":"0272ea9511a2746ddcb49f8e52fef887"},
-  {"url":"resources/dia_fi.txt","revision":"1d2a177a803aea7a0e312eee00393bc2"},
-  {"url":"resources/dia_fil.txt","revision":"b0b0a4aac426dccd417823470c877b95"},
-  {"url":"resources/dia_fr.txt","revision":"3fe4e6d65c1d7217020b6f00bd78126b"},
-  {"url":"resources/dia_gl.txt","revision":"0c2c8a0e02d4ed26d006ed459ebb52f7"},
-  {"url":"resources/dia_gu.txt","revision":"4d05197bc242124f66a837c567d7eb99"},
-  {"url":"resources/dia_he.txt","revision":"e8d3703e697188d3d6c2b2b908eef13a"},
-  {"url":"resources/dia_hi.txt","revision":"c2d78efec2b6d7cadc49d9f0e2712f2e"},
-  {"url":"resources/dia_hr.txt","revision":"d431a70ff2fe279e66e035dc8bc14187"},
-  {"url":"resources/dia_hu.txt","revision":"48cb1b9423d2dbc84b8e7bc0960336a8"},
-  {"url":"resources/dia_id.txt","revision":"9fa7d7b645a76959fff9fbfc4091b65b"},
-  {"url":"resources/dia_it.txt","revision":"6ea35bbea16e995748ff752e61a5022f"},
-  {"url":"resources/dia_ja.txt","revision":"eb064b8f191f369126b663b39ad1d446"},
-  {"url":"resources/dia_kn.txt","revision":"4fd6c35beb3cae9df5f5feb427eba935"},
-  {"url":"resources/dia_ko.txt","revision":"d9c54a3ef30a12873278facf880f898c"},
-  {"url":"resources/dia_lt.txt","revision":"9956ddada0458343cf44dc5a4f6d7afb"},
-  {"url":"resources/dia_lv.txt","revision":"6331677bd4352c1b38df46d5a7386b48"},
-  {"url":"resources/dia_ml.txt","revision":"5b2b988fc80848afd391152897ed736b"},
-  {"url":"resources/dia_mr.txt","revision":"ceea2c3eb485440434308133f4a4ac43"},
-  {"url":"resources/dia_ms.txt","revision":"1846b5c95a2969c0352ecd7cb3e001d1"},
-  {"url":"resources/dia_my.txt","revision":"18454758ce94257d176dc1adc490fdef"},
-  {"url":"resources/dia_nl.txt","revision":"d926dfe72a986d56588ec3000e935ec4"},
-  {"url":"resources/dia_no.txt","revision":"b563b6c300634f15f83ad9bfeab9fd06"},
-  {"url":"resources/dia_pl.txt","revision":"294593fd4614c792ed32a8041d08381e"},
-  {"url":"resources/dia_pt-br.txt","revision":"4e9ac2699018127151679735df67ee11"},
-  {"url":"resources/dia_pt.txt","revision":"6430c4ed694530241ef829493873daba"},
-  {"url":"resources/dia_ro.txt","revision":"4b9b8146b1a9412f0a07373187dbf9ab"},
-  {"url":"resources/dia_ru.txt","revision":"742e546ce390d8f0fe488fd210c833f5"},
-  {"url":"resources/dia_si.txt","revision":"0b93644dadc66dab436136a4ff72b4b7"},
-  {"url":"resources/dia_sk.txt","revision":"4c5af4efbe4e545fe04baccb688f2133"},
-  {"url":"resources/dia_sl.txt","revision":"3fe6420911532ef0dff97785ec2b30a7"},
-  {"url":"resources/dia_sr.txt","revision":"fc33934106f3f95ad7d3a9a026dded03"},
-  {"url":"resources/dia_sv.txt","revision":"3072e614c50830307da75b50a1fb3731"},
-  {"url":"resources/dia_sw.txt","revision":"a3af41e2feb5c1b9d6c0d1beeedab968"},
-  {"url":"resources/dia_ta.txt","revision":"c918602d488853bc17b54fccb61df5d1"},
-  {"url":"resources/dia_te.txt","revision":"1693b4b38e0a8d6434b523b3ed3b6ca2"},
-  {"url":"resources/dia_th.txt","revision":"59ad72cdd804c72219ee2062bedc3804"},
-  {"url":"resources/dia_tr.txt","revision":"3bcbcd2d3855a680541314fce7b6ecd8"},
-  {"url":"resources/dia_uk.txt","revision":"9d551915488dd04135ca1664a12b06d4"},
-  {"url":"resources/dia_vi.txt","revision":"b33181200fab17061b787a7efb0575d7"},
-  {"url":"resources/dia_zh-tw.txt","revision":"100a90b6685a1ba79ad19ff9466c163a"},
-  {"url":"resources/dia_zh.txt","revision":"bd3fe8304fd3d8e03c11043e76629e2f"},
+  {"url":"resources/dia.txt","revision":"a6db51215f4126c312261f55cdbf42ac"},
   {"url":"favicon.ico","revision":"b2bf17349e4b50ce4ba311f079f8bf7d"},
-  {"url":"images/manifest.json","revision":"421b4fae5b46499348d194e1f93558c3"},
+  {"url":"images/manifest.json","revision":"840dccdf2df72f46a63fb3b32ab6100e"},
   {"url":"images/logo.png","revision":"e4e0d092abdb1e668b5ec41a7fe0713c"},
   {"url":"images/drawlogo.svg","revision":"4bf4d14ebcf072d8bd4c5a1c89e88fc6"},
   {"url":"images/drawlogo48.png","revision":"8b13428373aca67b895364d025f42417"},
@@ -191,6 +142,256 @@ var MANIFEST = [
   {"url":"mxgraph/css/common.css","revision":"8d895dc8387694c128232b13e631be39"}
 ];
 
+// Entries cached on first use instead of at install time (language files:
+// one request per client instead of the full set). Revisions and cache keys
+// are derived exactly like MANIFEST entries, so entries that move between
+// the two lists keep their cached bytes.
+var LAZY_MANIFEST = [
+  {"url":"resources/dia_am.txt","revision":"3c3f0e355930a8d10473b736c01e5d20"},
+  {"url":"resources/dia_ar.txt","revision":"89f93e17583575ea44161417dfeccb24"},
+  {"url":"resources/dia_bg.txt","revision":"dd44170f729b93289393ea812a51c504"},
+  {"url":"resources/dia_bn.txt","revision":"af281112140b8ff3f22933ad2333602d"},
+  {"url":"resources/dia_bs.txt","revision":"5074927c9605911d8f53c6158f1cdca1"},
+  {"url":"resources/dia_ca.txt","revision":"93610c936ba3ac6ad3224ca33148c73f"},
+  {"url":"resources/dia_cs.txt","revision":"ff1f288746872bb82d6b6cc5903408af"},
+  {"url":"resources/dia_da.txt","revision":"acbb83efb295e19dbeaa142eb585894d"},
+  {"url":"resources/dia_de.txt","revision":"c9d2d84bce71f8f1fe2629f801aedc19"},
+  {"url":"resources/dia_el.txt","revision":"cd6a18039a16f6c96a43a8c8edeed9ef"},
+  {"url":"resources/dia_eo.txt","revision":"a2cc84b1f9c43745eb440525b258e354"},
+  {"url":"resources/dia_es.txt","revision":"02c8b30284ab1b362dde5a5d8431e3f4"},
+  {"url":"resources/dia_et.txt","revision":"c401c2ea1c9109b205b9c781f0affacd"},
+  {"url":"resources/dia_eu.txt","revision":"8fa6728d6d0417d1285c8d104fd73c19"},
+  {"url":"resources/dia_fa.txt","revision":"bf48314fa420155d833fa3fecc576428"},
+  {"url":"resources/dia_fi.txt","revision":"6d4bc68e31b5a7d2e689574e4eaf0578"},
+  {"url":"resources/dia_fil.txt","revision":"912c405a674ac27dd0b43db859caa15c"},
+  {"url":"resources/dia_fr.txt","revision":"b35979953c989102d4aaef69421652a6"},
+  {"url":"resources/dia_gl.txt","revision":"87b5ddb972d267f97822d259d80a3459"},
+  {"url":"resources/dia_gu.txt","revision":"65356701ea68011b396597cc54752db1"},
+  {"url":"resources/dia_he.txt","revision":"093fc2bf0ed810eb2417a7a65d8c2e6a"},
+  {"url":"resources/dia_hi.txt","revision":"99257ba094a90526cda10795190eb845"},
+  {"url":"resources/dia_hr.txt","revision":"2ec05c09da3f2129b65d8e0276ce8e7e"},
+  {"url":"resources/dia_hu.txt","revision":"1ac984c6ecc63d65101b4bffb55f8701"},
+  {"url":"resources/dia_i18n.txt","revision":"c2ea9905f5fd55f32d62f2bb27516342"},
+  {"url":"resources/dia_id.txt","revision":"2b1c2ea8bdc2983cb6fa06d8e7d1c64d"},
+  {"url":"resources/dia_it.txt","revision":"5d25a425b7114c93771ac3617dbf5004"},
+  {"url":"resources/dia_ja.txt","revision":"abccea300bda41e8267d34e659e1ff33"},
+  {"url":"resources/dia_kl.txt","revision":"8a6d00e7fe62ab5656d5d325dae08f0b"},
+  {"url":"resources/dia_kn.txt","revision":"95683931714acc11aff32724ccaa23d3"},
+  {"url":"resources/dia_ko.txt","revision":"bb92d735b742ad9d2acaa3623736e4ac"},
+  {"url":"resources/dia_lt.txt","revision":"a9b5f7f70614ee7ad2c0d8ffd6d7532f"},
+  {"url":"resources/dia_lv.txt","revision":"611b1b1a6ce845b4e0d46725e5f3494b"},
+  {"url":"resources/dia_ml.txt","revision":"52d1d8cb2885d1bad9031b1ed687c405"},
+  {"url":"resources/dia_mr.txt","revision":"25621a4eff20c922c5ee6a08c1ac135d"},
+  {"url":"resources/dia_ms.txt","revision":"1ffecaf2bcc3333669c087c6e6a2f97d"},
+  {"url":"resources/dia_my.txt","revision":"2a8c250231a049f2bb963b6724ee777f"},
+  {"url":"resources/dia_nl.txt","revision":"98220098c25f0aef3bdd59759ba66287"},
+  {"url":"resources/dia_no.txt","revision":"7efc54de41e45e5a103454bb8947306b"},
+  {"url":"resources/dia_pl.txt","revision":"9c2a2726702ec099321776e7d6fe3e7e"},
+  {"url":"resources/dia_pt.txt","revision":"d9f31d5e110ed761b8444b547f7735c5"},
+  {"url":"resources/dia_pt-br.txt","revision":"af8ca2b4e4422603f1d1b602eff3a752"},
+  {"url":"resources/dia_ro.txt","revision":"0c8596ddbc8b890eb16a97bbe51d3182"},
+  {"url":"resources/dia_ru.txt","revision":"5a73742c3bde9c25529e6c52f27e1a6e"},
+  {"url":"resources/dia_si.txt","revision":"c545ec3352dff05bfc8dd40e15ff1401"},
+  {"url":"resources/dia_sk.txt","revision":"428e78a3ab799d7a612d71e42dc89cee"},
+  {"url":"resources/dia_sl.txt","revision":"24f5833fdb189ef2890afcba6681bead"},
+  {"url":"resources/dia_sr.txt","revision":"14830670710887af6523734c94afd571"},
+  {"url":"resources/dia_sv.txt","revision":"8474ec83061acae7de66acf9f681fd30"},
+  {"url":"resources/dia_sw.txt","revision":"fde7e8823098747fadb056ea8e50d436"},
+  {"url":"resources/dia_ta.txt","revision":"d2bb1c3a4fe019ef812fedfe80a5ddaf"},
+  {"url":"resources/dia_te.txt","revision":"9e9bb5df397fc4d319cc7c7bac0ad43f"},
+  {"url":"resources/dia_th.txt","revision":"aff043bd33e49196b1259b16bb16440a"},
+  {"url":"resources/dia_tr.txt","revision":"2b60ff150438b3e75a5d3bd808cd3247"},
+  {"url":"resources/dia_uk.txt","revision":"7b2bc0c28f219ed81ca888c6030aeb75"},
+  {"url":"resources/dia_vi.txt","revision":"5f4cc81c06d157240a209c5139d40beb"},
+  {"url":"resources/dia_zh.txt","revision":"5af56aa7c9173c214048bfc0bca0864e"},
+  {"url":"resources/dia_zh-tw.txt","revision":"244ccfad197f1835c145e5e5cae0937e"}
+];
+
+// Precached URL served when a lazy entry is requested offline before it was
+// ever cached (the English resources) - null disables the fallback.
+var LAZY_FALLBACK = "resources/dia.txt";
+
+// Dev-mode sources (?dev=1): network-first so edits are always fresh while
+// online, with the cached copy (no revision) answering an offline reload.
+// Cached only when a dev page actually requests them - production pages
+// load the precached bundles instead and never touch these.
+var DEV_MANIFEST = [
+  "js/PreConfig.js",
+  "js/PostConfig.js",
+  "mxgraph/mxClient.js",
+  "styles/default.xml",
+  "js/grapheditor/Actions.js",
+  "js/grapheditor/Dialogs.js",
+  "js/grapheditor/Editor.js",
+  "js/grapheditor/EditorUi.js",
+  "js/grapheditor/Format.js",
+  "js/grapheditor/Graph.js",
+  "js/grapheditor/Init.js",
+  "js/grapheditor/InlineToolbar.js",
+  "js/grapheditor/Menus.js",
+  "js/grapheditor/Shapes.js",
+  "js/grapheditor/Sidebar.js",
+  "js/grapheditor/Toolbar.js",
+  "js/diagramly/App.js",
+  "js/diagramly/ConfigEditor.js",
+  "js/diagramly/DevTools.js",
+  "js/diagramly/Devel.js",
+  "js/diagramly/Dialogs.js",
+  "js/diagramly/DiffSync.js",
+  "js/diagramly/DrawioClient.js",
+  "js/diagramly/DrawioComment.js",
+  "js/diagramly/DrawioFile.js",
+  "js/diagramly/DrawioFilePolling.js",
+  "js/diagramly/DrawioFileSync.js",
+  "js/diagramly/DrawioUser.js",
+  "js/diagramly/DriveClient.js",
+  "js/diagramly/DriveComment.js",
+  "js/diagramly/DriveFile.js",
+  "js/diagramly/DriveLibrary.js",
+  "js/diagramly/DropboxClient.js",
+  "js/diagramly/DropboxFile.js",
+  "js/diagramly/DropboxLibrary.js",
+  "js/diagramly/Editor.js",
+  "js/diagramly/EditorUi.js",
+  "js/diagramly/ElkLayout.js",
+  "js/diagramly/Embed.js",
+  "js/diagramly/EmbedFile.js",
+  "js/diagramly/Extensions.js",
+  "js/diagramly/GitHubClient.js",
+  "js/diagramly/GitHubFile.js",
+  "js/diagramly/GitHubLibrary.js",
+  "js/diagramly/GitLabClient.js",
+  "js/diagramly/GitLabFile.js",
+  "js/diagramly/GitLabLibrary.js",
+  "js/diagramly/GraphViewer.js",
+  "js/diagramly/Init.js",
+  "js/diagramly/LibavoidRouting.js",
+  "js/diagramly/LocalFile.js",
+  "js/diagramly/LocalLibrary.js",
+  "js/diagramly/Menus.js",
+  "js/diagramly/Minimal.js",
+  "js/diagramly/OneDriveClient.js",
+  "js/diagramly/OneDriveFile.js",
+  "js/diagramly/OneDriveLibrary.js",
+  "js/diagramly/P2PCollab.js",
+  "js/diagramly/Pages.js",
+  "js/diagramly/RemoteFile.js",
+  "js/diagramly/RemoteLibrary.js",
+  "js/diagramly/Settings.js",
+  "js/diagramly/Simple.js",
+  "js/diagramly/StorageFile.js",
+  "js/diagramly/StorageLibrary.js",
+  "js/diagramly/Trees.js",
+  "js/diagramly/TrelloClient.js",
+  "js/diagramly/TrelloFile.js",
+  "js/diagramly/TrelloLibrary.js",
+  "js/diagramly/UrlLibrary.js",
+  "js/diagramly/mxFreehand.js",
+  "js/diagramly/mxRuler.js",
+  "js/diagramly/sidebar/Sidebar-AWS.js",
+  "js/diagramly/sidebar/Sidebar-AWS3.js",
+  "js/diagramly/sidebar/Sidebar-AWS3D.js",
+  "js/diagramly/sidebar/Sidebar-AWS4.js",
+  "js/diagramly/sidebar/Sidebar-AWS4b.js",
+  "js/diagramly/sidebar/Sidebar-ActiveDirectory.js",
+  "js/diagramly/sidebar/Sidebar-Advanced.js",
+  "js/diagramly/sidebar/Sidebar-AlibabaCloud.js",
+  "js/diagramly/sidebar/Sidebar-AlliedTelesis.js",
+  "js/diagramly/sidebar/Sidebar-Android.js",
+  "js/diagramly/sidebar/Sidebar-ArchiMate.js",
+  "js/diagramly/sidebar/Sidebar-ArchiMate3.js",
+  "js/diagramly/sidebar/Sidebar-ArchiMate4.js",
+  "js/diagramly/sidebar/Sidebar-Arrows2.js",
+  "js/diagramly/sidebar/Sidebar-Atlassian.js",
+  "js/diagramly/sidebar/Sidebar-Atlassian2.js",
+  "js/diagramly/sidebar/Sidebar-Azure.js",
+  "js/diagramly/sidebar/Sidebar-Azure2.js",
+  "js/diagramly/sidebar/Sidebar-BPMN.js",
+  "js/diagramly/sidebar/Sidebar-Basic.js",
+  "js/diagramly/sidebar/Sidebar-Bootstrap.js",
+  "js/diagramly/sidebar/Sidebar-C4.js",
+  "js/diagramly/sidebar/Sidebar-Cabinet.js",
+  "js/diagramly/sidebar/Sidebar-Cisco.js",
+  "js/diagramly/sidebar/Sidebar-Cisco19.js",
+  "js/diagramly/sidebar/Sidebar-CiscoSafe.js",
+  "js/diagramly/sidebar/Sidebar-Citrix.js",
+  "js/diagramly/sidebar/Sidebar-Citrix2.js",
+  "js/diagramly/sidebar/Sidebar-Cumulus.js",
+  "js/diagramly/sidebar/Sidebar-DFD.js",
+  "js/diagramly/sidebar/Sidebar-Dynamics365.js",
+  "js/diagramly/sidebar/Sidebar-EIP.js",
+  "js/diagramly/sidebar/Sidebar-ER.js",
+  "js/diagramly/sidebar/Sidebar-Electrical.js",
+  "js/diagramly/sidebar/Sidebar-Floorplan.js",
+  "js/diagramly/sidebar/Sidebar-Flowchart.js",
+  "js/diagramly/sidebar/Sidebar-FluidPower.js",
+  "js/diagramly/sidebar/Sidebar-GCP.js",
+  "js/diagramly/sidebar/Sidebar-GCP2.js",
+  "js/diagramly/sidebar/Sidebar-GCP3.js",
+  "js/diagramly/sidebar/Sidebar-GCPIcons.js",
+  "js/diagramly/sidebar/Sidebar-Gmdl.js",
+  "js/diagramly/sidebar/Sidebar-IBM.js",
+  "js/diagramly/sidebar/Sidebar-IBMCloud.js",
+  "js/diagramly/sidebar/Sidebar-Infographic.js",
+  "js/diagramly/sidebar/Sidebar-Ios.js",
+  "js/diagramly/sidebar/Sidebar-Ios7.js",
+  "js/diagramly/sidebar/Sidebar-Kubernetes.js",
+  "js/diagramly/sidebar/Sidebar-LeanMapping.js",
+  "js/diagramly/sidebar/Sidebar-MSCAE.js",
+  "js/diagramly/sidebar/Sidebar-Mockup.js",
+  "js/diagramly/sidebar/Sidebar-Network.js",
+  "js/diagramly/sidebar/Sidebar-Network2.js",
+  "js/diagramly/sidebar/Sidebar-Office.js",
+  "js/diagramly/sidebar/Sidebar-OpenStack.js",
+  "js/diagramly/sidebar/Sidebar-PID.js",
+  "js/diagramly/sidebar/Sidebar-Rack.js",
+  "js/diagramly/sidebar/Sidebar-SAP.js",
+  "js/diagramly/sidebar/Sidebar-Salesforce.js",
+  "js/diagramly/sidebar/Sidebar-Signs.js",
+  "js/diagramly/sidebar/Sidebar-Sitemap.js",
+  "js/diagramly/sidebar/Sidebar-Sysml.js",
+  "js/diagramly/sidebar/Sidebar-ThreatModeling.js",
+  "js/diagramly/sidebar/Sidebar-UML25.js",
+  "js/diagramly/sidebar/Sidebar-VVD.js",
+  "js/diagramly/sidebar/Sidebar-Veeam.js",
+  "js/diagramly/sidebar/Sidebar-Veeam2.js",
+  "js/diagramly/sidebar/Sidebar-WebIcons.js",
+  "js/diagramly/sidebar/Sidebar.js",
+  "js/diagramly/util/mxAsyncCanvas.js",
+  "js/diagramly/util/mxJsCanvas.js",
+  "js/diagramly/vsdx/VsdxExport.js",
+  "js/diagramly/vsdx/bmpDecoder.js",
+  "js/diagramly/vsdx/importer.js",
+  "js/diagramly/vsdx/mxVsdxCanvas2D.js",
+  "js/diagramly/emf/emf-svg.js",
+  "js/diagramly/gif/AnimatedExport.js",
+  "js/diagramly/gif/GifEncoder.js",
+  "js/diagramly/graphml/mxGraphMlCodec.js",
+  "js/diagramly/miro/MiroImporter.js",
+  "js/cryptojs/aes.min.js",
+  "js/deflate/base64.js",
+  "js/deflate/pako.min.js",
+  "js/elk/drawio-elk.min.js",
+  "js/freehand/perfect-freehand.js",
+  "js/gliffy/drawio-gliffy.min.js",
+  "js/jszip/jszip.min.js",
+  "js/libavoid-js/libavoid-routing.js",
+  "js/libavoid-js/libavoid.min.js",
+  "js/mermaid/drawio-mermaid.min.js",
+  "js/onedrive/OneDrive.js",
+  "js/onedrive/OneDriveOrig.js",
+  "js/onedrive/mxODPicker.js",
+  "js/onedrive/mxODPickerV2.js",
+  "js/orgchart/OrgChart.Layout.min.js",
+  "js/orgchart/bridge.collections.min.js",
+  "js/orgchart/bridge.min.js",
+  "js/orgchart/mxOrgChartLayout.js",
+  "js/plantuml/drawio-plantuml.min.js",
+  "js/rough/rough.min.js",
+  "js/sanitizer/purify.min.js",
+  "js/spin/spin.min.js"
+];
+
 // ignoreURLParametersMatching:[/.*/] - strip every query parameter on lookup.
 var IGNORE_ALL_PARAMS = true;
 
@@ -198,9 +399,19 @@ var IGNORE_ALL_PARAMS = true;
 var CACHE_NAME = ['workbox', 'precache-v2', self.registration.scope]
   .filter(function(v) { return v && v.length > 0; }).join('-');
 
+// Cache keys and request matching resolve against the registration scope (the
+// URLs the page requests); network fetches resolve against the script's own
+// directory. Identical for root-registered workers - existing caches are
+// adopted unchanged - but a registration like
+// register('stable/service-worker.js', {scope: '/'}) fetches every entry via
+// its /stable/ prefix while serving it for the unprefixed URL.
+var SCOPE_BASE = self.registration.scope;
+var FETCH_BASE = new URL('./', self.location.href).href;
+var PREFIXED = FETCH_BASE !== SCOPE_BASE;
+
 function swCacheKey(entry)
 {
-  var u = new URL(entry.url, self.location.href);
+  var u = new URL(entry.url, SCOPE_BASE);
 
   if (entry.revision)
   {
@@ -210,19 +421,45 @@ function swCacheKey(entry)
   return u.href;
 }
 
-// Maps each precached URL (no revision) to its cache key (with revision).
+// Maps each precached URL (no revision) to its cache key (with revision), and
+// each cache key to the URL it is fetched from (differs when PREFIXED).
 var urlsToCacheKeys = new Map();
+var cacheKeysToNetworkUrls = new Map();
 
 MANIFEST.forEach(function(e)
 {
-  urlsToCacheKeys.set(new URL(e.url, self.location.href).href, swCacheKey(e));
+  var key = swCacheKey(e);
+  urlsToCacheKeys.set(new URL(e.url, SCOPE_BASE).href, key);
+  cacheKeysToNetworkUrls.set(key, new URL(e.url, FETCH_BASE).href);
+});
+
+// Lazy entries share the network-URL map so a channel-prefixed worker
+// fills them via its own FETCH_BASE, never the other channel's URL.
+var lazyUrlsToCacheKeys = new Map();
+
+LAZY_MANIFEST.forEach(function(e)
+{
+  var key = swCacheKey(e);
+  lazyUrlsToCacheKeys.set(new URL(e.url, SCOPE_BASE).href, key);
+  cacheKeysToNetworkUrls.set(key, new URL(e.url, FETCH_BASE).href);
+});
+
+// Dev entries are keyed by their plain URL (network-first needs no
+// revision - the network is the source of truth while online).
+var devUrls = new Map();
+
+DEV_MANIFEST.forEach(function(u)
+{
+  var key = new URL(u, SCOPE_BASE).href;
+  devUrls.set(key, key);
+  cacheKeysToNetworkUrls.set(key, new URL(u, FETCH_BASE).href);
 });
 
 // Mirrors Workbox generateURLVariations (exact, query-stripped, directoryIndex,
 // cleanURLs) so a request for '/' resolves to the precached 'index.html'.
 function* urlVariations(url)
 {
-  var u = new URL(url, self.location.href);
+  var u = new URL(url, SCOPE_BASE);
   u.hash = '';
   yield u.href;
 
@@ -247,17 +484,41 @@ function* urlVariations(url)
   yield clean.href;
 }
 
-function matchPrecache(url)
+function matchIn(map, url)
 {
   for (var variation of urlVariations(url))
   {
-    if (urlsToCacheKeys.has(variation))
+    if (map.has(variation))
     {
-      return urlsToCacheKeys.get(variation);
+      return map.get(variation);
     }
   }
 
   return undefined;
+}
+
+function matchPrecache(url)
+{
+  return matchIn(urlsToCacheKeys, url);
+}
+
+function matchLazy(url)
+{
+  return matchIn(lazyUrlsToCacheKeys, url);
+}
+
+function matchDev(url)
+{
+  return matchIn(devUrls, url);
+}
+
+// The URL of a cache key without its __WB_REVISION__ parameter - identifies
+// other (stale) revisions of the same lazy entry in the cache.
+function baseUrl(url)
+{
+  var u = new URL(url);
+  u.searchParams.delete('__WB_REVISION__');
+  return u.href;
 }
 
 // A redirected response cannot be served for a navigation; copy it clean.
@@ -273,6 +534,62 @@ function copyRedirected(response)
   });
 }
 
+// Caches a fetched lazy entry under its revisioned key, then drops other
+// revisions of the same URL (kept until now as offline fallback).
+function putLazy(cache, key, response)
+{
+  var prepared = response.redirected ?
+    copyRedirected(response) : Promise.resolve(response);
+
+  return prepared.then(function(res)
+  {
+    return cache.put(key, res);
+  }).then(function()
+  {
+    return cache.keys(new Request(baseUrl(key)), {ignoreSearch: true});
+  }).then(function(requests)
+  {
+    return Promise.all(requests.filter(function(r)
+    {
+      return r.url != key;
+    }).map(function(r)
+    {
+      return cache.delete(r);
+    }));
+  });
+}
+
+// Fetches a lazy entry (via FETCH_BASE when prefixed) and caches it.
+// Rejects on errors and on HTML bodies for non-document entries - the same
+// cache-poisoning guard as the precache install.
+function fetchLazy(cache, key)
+{
+  var req = new Request(cacheKeysToNetworkUrls.get(key),
+    {cache: 'reload', credentials: 'same-origin'});
+
+  return fetch(req).then(function(response)
+  {
+    if (!response || response.status >= 400)
+    {
+      throw new Error('bad-lazy-response: ' + key);
+    }
+
+    var type = response.headers.get('Content-Type') || '';
+    var pathname = new URL(baseUrl(key)).pathname;
+
+    if (type.indexOf('text/html') >= 0 && !pathname.endsWith('.html') &&
+      !pathname.endsWith('.htm'))
+    {
+      throw new Error('bad-lazy-response: ' + key);
+    }
+
+    return putLazy(cache, key, response.clone()).then(function()
+    {
+      return response;
+    });
+  });
+}
+
 self.addEventListener('install', function(event)
 {
   event.waitUntil(caches.open(CACHE_NAME).then(function(cache)
@@ -280,6 +597,27 @@ self.addEventListener('install', function(event)
     return cache.keys().then(function(existing)
     {
       var have = new Set(existing.map(function(r) { return r.url; }));
+      var haveBases = new Set(existing.map(function(r)
+      {
+        return baseUrl(r.url);
+      }));
+
+      // Lazy entries are not downloaded at install, but entries the client
+      // already uses (cached under an older revision) are refreshed so an
+      // update keeps them current. Failures are tolerated and must never
+      // fail the atomic install - the stale revision remains in place as
+      // fallback until the next successful online use.
+      var lazy = LAZY_MANIFEST.map(function(entry)
+      {
+        var key = swCacheKey(entry);
+
+        if (have.has(key) || !haveBases.has(baseUrl(key)))
+        {
+          return Promise.resolve();
+        }
+
+        return fetchLazy(cache, key).then(null, function() { return null; });
+      });
 
       return Promise.all(MANIFEST.map(function(entry)
       {
@@ -291,11 +629,24 @@ self.addEventListener('install', function(event)
           return Promise.resolve();
         }
 
-        var req = new Request(entry.url, {cache: 'reload', credentials: 'same-origin'});
+        var req = new Request(new URL(entry.url, FETCH_BASE).href,
+          {cache: 'reload', credentials: 'same-origin'});
 
         return fetch(req).then(function(response)
         {
           if (!response || response.status >= 400)
+          {
+            throw new Error('bad-precaching-response: ' + entry.url);
+          }
+
+          // An HTML body for a non-document entry is an error page with a
+          // 200 status: caching it would poison the shell until the next
+          // release, so fail the (atomic) install instead.
+          var type = response.headers.get('Content-Type') || '';
+          var pathname = new URL(entry.url, SCOPE_BASE).pathname;
+
+          if (type.indexOf('text/html') >= 0 && !pathname.endsWith('.html') &&
+            !pathname.endsWith('.htm'))
           {
             throw new Error('bad-precaching-response: ' + entry.url);
           }
@@ -305,7 +656,7 @@ self.addEventListener('install', function(event)
 
           return prepared.then(function(res) { return cache.put(key, res); });
         });
-      }));
+      }).concat(lazy));
     });
   }));
 });
@@ -314,17 +665,29 @@ self.addEventListener('activate', function(event)
 {
   var valid = new Set();
   urlsToCacheKeys.forEach(function(key) { valid.add(key); });
+  lazyUrlsToCacheKeys.forEach(function(key) { valid.add(key); });
+  devUrls.forEach(function(key) { valid.add(key); });
 
   event.waitUntil(caches.open(CACHE_NAME).then(function(cache)
   {
     return cache.keys().then(function(keys)
     {
+      var present = new Set(keys.map(function(r) { return r.url; }));
+
       return Promise.all(keys.map(function(request)
       {
         // Drop entries whose revision changed or that left the manifest.
         if (!valid.has(request.url))
         {
-          return cache.delete(request);
+          // A stale revision of a lazy entry survives until its
+          // replacement is cached - it is the offline fallback while the
+          // install-time refresh has not succeeded.
+          var current = lazyUrlsToCacheKeys.get(baseUrl(request.url));
+
+          if (current == null || present.has(current))
+          {
+            return cache.delete(request);
+          }
         }
 
         return Promise.resolve(false);
@@ -332,6 +695,179 @@ self.addEventListener('activate', function(event)
     });
   }));
 });
+
+function respondPrecache(event, key)
+{
+  return caches.open(CACHE_NAME).then(function(cache)
+  {
+    return cache.match(key).then(function(cached)
+    {
+      if (cached)
+      {
+        return cached;
+      }
+
+      // Cache miss on a precached URL: a prefixed worker must refill from its
+      // own fetch base, never from the unprefixed (other-channel) URL.
+      if (!PREFIXED)
+      {
+        return fetch(event.request);
+      }
+
+      return fetch(cacheKeysToNetworkUrls.get(key)).then(function(res)
+      {
+        if (res != null && res.ok)
+        {
+          return res;
+        }
+
+        // The pinned route no longer serves this file: a skewed beta copy
+        // beats a broken page, and a deterministic 404 also drops the
+        // registration so the next start re-registers a coherent channel.
+        if (res != null && res.status == 404)
+        {
+          self.registration.unregister();
+        }
+
+        return fetch(event.request);
+      }, function()
+      {
+        return fetch(event.request);
+      });
+    });
+  });
+}
+
+// Cache-first on the current revision, then network (filling the cache),
+// then a stale prior revision, then the precached LAZY_FALLBACK. A missing
+// lazy entry must never break a working app, so unlike the precache refill
+// path this never unregisters on 404.
+function respondLazy(event, key)
+{
+  return caches.open(CACHE_NAME).then(function(cache)
+  {
+    return cache.match(key).then(function(cached)
+    {
+      if (cached)
+      {
+        return cached;
+      }
+
+      return fetchLazy(cache, key).then(null, function()
+      {
+        return cache.match(new Request(baseUrl(key)),
+          {ignoreSearch: true}).then(function(stale)
+        {
+          if (stale)
+          {
+            return stale;
+          }
+
+          var fb = (LAZY_FALLBACK != null) ? urlsToCacheKeys.get(
+            new URL(LAZY_FALLBACK, SCOPE_BASE).href) : null;
+
+          if (fb == null)
+          {
+            return fetch(event.request);
+          }
+
+          return cache.match(fb).then(function(fallback)
+          {
+            return (fallback != null) ? fallback : fetch(event.request);
+          });
+        });
+      });
+    });
+  });
+}
+
+// Fetches a dev entry (no-cache: revalidate, never trust the HTTP cache)
+// and stores it under its plain URL. Resolves with the response, or null
+// on errors and on HTML bodies for non-document entries (poisoning guard).
+function fetchDev(cache, key)
+{
+  var req = new Request(cacheKeysToNetworkUrls.get(key),
+    {cache: 'no-cache', credentials: 'same-origin'});
+
+  return fetch(req).then(function(response)
+  {
+    if (response == null || !response.ok)
+    {
+      return null;
+    }
+
+    var type = response.headers.get('Content-Type') || '';
+    var pathname = new URL(key).pathname;
+
+    if (type.indexOf('text/html') >= 0 && !pathname.endsWith('.html') &&
+      !pathname.endsWith('.htm'))
+    {
+      return null;
+    }
+
+    var copy = response.clone();
+
+    return (copy.redirected ? copyRedirected(copy) :
+      Promise.resolve(copy)).then(function(res)
+    {
+      return cache.put(key, res);
+    }).then(function()
+    {
+      return response;
+    });
+  });
+}
+
+// Network-first for dev sources: the network is the source of truth while
+// online (edited sources are never stale), the cached copy answers when
+// the network fails (offline dev reload). Error responses are surfaced.
+function respondDev(event, key)
+{
+  return caches.open(CACHE_NAME).then(function(cache)
+  {
+    return fetchDev(cache, key).then(function(response)
+    {
+      if (response != null)
+      {
+        return response;
+      }
+
+      return cache.match(key).then(function(cached)
+      {
+        return (cached != null) ? cached :
+          fetch(cacheKeysToNetworkUrls.get(key));
+      });
+    }, function(err)
+    {
+      return cache.match(key).then(function(cached)
+      {
+        if (cached != null)
+        {
+          return cached;
+        }
+
+        throw err;
+      });
+    });
+  });
+}
+
+// Fills the dev entries missing from the cache. An offline dev reload
+// needs the complete source set - cache-on-use alone leaves every file
+// the session did not (finish) loading as a hole.
+function warmDevEntries(cache)
+{
+  return Promise.all(DEV_MANIFEST.map(function(u)
+  {
+    var key = new URL(u, SCOPE_BASE).href;
+
+    return cache.match(key).then(function(cached)
+    {
+      return (cached != null) ? null :
+        fetchDev(cache, key).then(null, function() { return null; });
+    });
+  }));
+}
 
 self.addEventListener('fetch', function(event)
 {
@@ -342,17 +878,71 @@ self.addEventListener('fetch', function(event)
 
   var key = matchPrecache(event.request.url);
 
+  if (key)
+  {
+    event.respondWith(respondPrecache(event, key));
+    return;
+  }
+
+  var lazyKey = matchLazy(event.request.url);
+
+  if (lazyKey)
+  {
+    event.respondWith(respondLazy(event, lazyKey));
+    return;
+  }
+
+  var devKey = matchDev(event.request.url);
+
   // Not precached - fall back to the network (browser default handling).
-  if (!key)
+  if (!devKey)
   {
     return;
   }
 
-  event.respondWith(caches.open(CACHE_NAME).then(function(cache)
+  event.respondWith(respondDev(event, devKey));
+});
+
+// Warms cache entries for a page. warmLazy caches one lazy entry - the
+// current UI language right after the first install, whose own request was
+// not yet routed through this worker. warmDev fills all missing dev
+// entries so one online dev load yields a complete offline source set.
+// Only URLs in the respective manifests are ever fetched and cached.
+self.addEventListener('message', function(event)
+{
+  var data = event.data;
+
+  if (data != null && data.warmDev == true)
   {
-    return cache.match(key).then(function(cached)
+    event.waitUntil(caches.open(CACHE_NAME).then(function(cache)
     {
-      return cached || fetch(event.request);
-    });
-  }));
+      return warmDevEntries(cache);
+    }));
+  }
+
+  if (data != null && typeof data.warmLazy == 'string')
+  {
+    var key = null;
+
+    try
+    {
+      key = matchLazy(new URL(data.warmLazy, SCOPE_BASE).href);
+    }
+    catch (e)
+    {
+      return;
+    }
+
+    if (key != null)
+    {
+      event.waitUntil(caches.open(CACHE_NAME).then(function(cache)
+      {
+        return cache.match(key).then(function(cached)
+        {
+          return (cached != null) ? null :
+            fetchLazy(cache, key).then(null, function() { return null; });
+        });
+      }));
+    }
+  }
 });

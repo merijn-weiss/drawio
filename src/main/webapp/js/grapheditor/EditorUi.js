@@ -1394,7 +1394,9 @@ EditorUi.prototype.createSelectionState = function()
 
 	if (Editor.enableCustomProperties)
 	{
-		result.customProperties = {};
+		// Null prototype: keyed by property names taken from the customProperties
+		// attribute of a user object, and later deleted from during intersection
+		result.customProperties = Object.create(null);
 		var vertices = result.vertices;
 		var edges = result.edges;
 		
@@ -1753,6 +1755,18 @@ EditorUi.prototype.removeUserDefinedDarkColors = function(cells, includeLabels, 
 	var graph = this.editor.graph;
 	cells = (cells != null) ? cells : graph.getSelectionCells();
 	var keys = Graph.colorStyles;
+
+	// Label colors in styles follow the labels option like
+	// the colors in HTML labels below
+	if (!includeLabels)
+	{
+		keys = keys.filter(function(key)
+		{
+			return key != mxConstants.STYLE_FONTCOLOR &&
+				key != mxConstants.STYLE_LABEL_BORDERCOLOR &&
+				key != mxConstants.STYLE_LABEL_BACKGROUNDCOLOR;
+		});
+	}
 
 	// Element for parsing HTML labels and implementing dark mode colors
 	var tempDiv = document.createElement('div');
@@ -2770,15 +2784,15 @@ EditorUi.prototype.getCellsForShapePicker = function(cell, hovering, showEdges)
 	}
 
 	var cells = [cell, createVertex('whiteSpace=wrap;html=1;'),
-		createVertex('ellipse;whiteSpace=wrap;html=1;', 80, 80),
-		createVertex('rhombus;whiteSpace=wrap;html=1;', 80, 80),
+		createVertex('ellipse;whiteSpace=wrap;html=1;shapeInside=1;', 80, 80),
+		createVertex('rhombus;whiteSpace=wrap;html=1;shapeInside=1;', 80, 80),
 		createVertex('rounded=1;whiteSpace=wrap;html=1;'),
-		createVertex('shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;'),
-		createVertex('shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;', 120, 60),
-		createVertex('shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;', 120, 80),
-		createVertex('shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;', 120, 80),
+		createVertex('shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;'),
+		createVertex('shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;', 120, 60),
+		createVertex('shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;', 120, 80),
+		createVertex('shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;', 120, 80),
 		createVertex('shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;'),
-		createVertex('triangle;whiteSpace=wrap;html=1;', 60, 80),
+		createVertex('triangle;whiteSpace=wrap;html=1;shapeInside=1;', 60, 80),
 		createVertex('shape=document;whiteSpace=wrap;html=1;boundedLbl=1;', 120, 80),
 		createVertex('shape=tape;whiteSpace=wrap;html=1;', 120, 100),
 		createVertex('ellipse;shape=cloud;whiteSpace=wrap;html=1;', 120, 80),
@@ -3781,7 +3795,45 @@ EditorUi.prototype.initCanvas = function()
 	   	{
 	   		mxEvent.removeListener(window, 'resize', autoscaleResize);
 	   	});
-	   	
+
+		// Refits when the container gets its first usable size. The window resize
+		// listener above keeps the current scale, so a viewer that was loaded into
+		// a collapsed or hidden container never fits itself when it is revealed
+		// [jgraph/drawio-dev#647]
+		if (typeof ResizeObserver !== 'undefined' && graph.container != null)
+		{
+			var isEmptyContainer = function()
+			{
+				return graph.container.offsetWidth == 0 || graph.container.offsetHeight == 0;
+			};
+
+			var wasEmpty = isEmptyContainer();
+
+			var containerObserver = new ResizeObserver(mxUtils.bind(this, function()
+			{
+				var empty = isEmptyContainer();
+
+				if (wasEmpty && !empty)
+				{
+					if (graph.isLightboxView())
+					{
+						this.lightboxFit();
+					}
+
+					this.chromelessResize();
+				}
+
+				wasEmpty = empty;
+			}));
+
+			containerObserver.observe(graph.container);
+
+			this.destroyFunctions.push(function()
+			{
+				containerObserver.disconnect();
+			});
+		}
+
 		this.editor.addListener('resetGraphView', mxUtils.bind(this, function()
 		{
 			this.chromelessResize(true);
@@ -3874,7 +3926,7 @@ EditorUi.prototype.initCanvas = function()
 					{
 						window.location.href = backUrl;
 						mxEvent.consume(evt);
-					}), Editor.backImage, mxResources.get('back', null, 'Back'));
+					}), Editor.backImage, mxResources.get('back'));
 				}
 			}
 			
@@ -4163,7 +4215,7 @@ EditorUi.prototype.initCanvas = function()
 					}
 					
 					mxEvent.consume(evt);
-				}), Editor.refreshImage, mxResources.get('refresh', null, 'Refresh'));
+				}), Editor.refreshImage, mxResources.get('refresh'));
 			}
 
 			if (toolbarConfig.fullscreenBtn != null && window.self !== window.top)
@@ -4180,7 +4232,7 @@ EditorUi.prototype.initCanvas = function()
 					}
 					
 					mxEvent.consume(evt);
-				}), Editor.fullscreenImage, mxResources.get('openInNewWindow', null, 'Open in New Window'));
+				}), Editor.fullscreenImage, mxResources.get('openInNewWindow'));
 			}
 			
 			if (!toolbarConfig.noCloseBtn && ((toolbarConfig.closeBtn && window.self === window.top) ||
@@ -4598,44 +4650,61 @@ EditorUi.prototype.initCanvas = function()
 		}
 	};
 	
-	graph.lazyZoom = function(zoomIn, ignoreCursorPosition, delay, factor)
+	graph.lazyZoom = function(zoomIn, ignoreCursorPosition, delay, factor, smooth)
 	{
 		factor = (factor != null) ? factor : this.zoomFactor;
 
 		// TODO: Fix ignored cursor position if scrollbars are disabled
 		ignoreCursorPosition = ignoreCursorPosition || !graph.scrollbars;
-		
+
 		if (ignoreCursorPosition)
 		{
 			cursorPosition = new mxPoint(
 				graph.container.offsetLeft + graph.container.clientWidth / 2,
 				graph.container.offsetTop + graph.container.clientHeight / 2);
 		}
-		
-		// Switches to 5% zoom steps below 15%
-		if (zoomIn)
+
+		if (smooth)
 		{
-			if (this.view.scale * this.cumulativeZoomFactor <= 0.15)
+			// Continuous (pinch) zoom accumulates the exact gesture factor
+			// with 1% rounding. Factor 1 keeps an externally assigned
+			// cumulativeZoomFactor unchanged (iOS gesture scale).
+			if (factor != 1)
 			{
-				this.cumulativeZoomFactor *= (this.view.scale + 0.05) / this.view.scale;
-			}
-			else
-			{
-				this.cumulativeZoomFactor *= factor;
-				this.cumulativeZoomFactor = Math.round(this.view.scale * this.cumulativeZoomFactor * 100) / 100 / this.view.scale;
+				// Switches to 5% zoom steps below 15%
+				if (zoomIn)
+				{
+					if (this.view.scale * this.cumulativeZoomFactor <= 0.15)
+					{
+						this.cumulativeZoomFactor *= (this.view.scale + 0.05) / this.view.scale;
+					}
+					else
+					{
+						this.cumulativeZoomFactor *= factor;
+						this.cumulativeZoomFactor = Math.round(this.view.scale * this.cumulativeZoomFactor * 100) / 100 / this.view.scale;
+					}
+				}
+				else
+				{
+					if (this.view.scale * this.cumulativeZoomFactor <= 0.15)
+					{
+						this.cumulativeZoomFactor *= (this.view.scale - 0.05) / this.view.scale;
+					}
+					else
+					{
+						this.cumulativeZoomFactor /= factor;
+						this.cumulativeZoomFactor = Math.round(this.view.scale * this.cumulativeZoomFactor * 100) / 100 / this.view.scale;
+					}
+				}
 			}
 		}
 		else
 		{
-			if (this.view.scale * this.cumulativeZoomFactor <= 0.15)
-			{
-				this.cumulativeZoomFactor *= (this.view.scale - 0.05) / this.view.scale;
-			}
-			else
-			{
-				this.cumulativeZoomFactor /= factor;
-				this.cumulativeZoomFactor = Math.round(this.view.scale * this.cumulativeZoomFactor * 100) / 100 / this.view.scale;
-			}
+			// Discrete zoom steps move to the adjacent stop on the ladder
+			// of getZoomSteps so that repeated steps share the same stops
+			// from any start scale and always land on exactly 100%
+			this.cumulativeZoomFactor = this.getZoomStep(this.view.scale *
+				this.cumulativeZoomFactor, zoomIn) / this.view.scale;
 		}
 
 		this.cumulativeZoomFactor = Math.max(0.05, Math.min(this.view.scale * this.cumulativeZoomFactor, 160)) / this.view.scale;
@@ -4792,6 +4861,7 @@ EditorUi.prototype.initCanvas = function()
 						cursorPosition = mousePos;
 						forcedZoom = force;
 						var factor = graph.zoomFactor;
+						var smooth = false;
 						var delay = null;
 
 						// Slower zoom for pinch gesture on trackpad with max delta to
@@ -4800,15 +4870,17 @@ EditorUi.prototype.initCanvas = function()
 							Math.round(evt.deltaY) != evt.deltaY)
 						{
 							factor = 1 + (Math.abs(evt.deltaY) / 20) * (factor - 1);
+							smooth = true;
 						}
 						// Slower zoom for pinch gesture on touch screens
 						else if (evt.movementY != null && evt.type == 'pointermove')
 						{
 							factor = 1 + (Math.max(1, Math.abs(evt.movementY)) / 20) * (factor - 1);
+							smooth = true;
 							delay = -1;
 						}
 
-						graph.lazyZoom(up, null, delay, factor);
+						graph.lazyZoom(up, null, delay, factor, smooth);
 
 						// Computes combined zoom origin when mouse moves during
 						// a zoom sequence to avoid viewport jump at the final DOM
@@ -4871,11 +4943,12 @@ EditorUi.prototype.initCanvas = function()
 		}
 	}), graph.container);
 	
-	// Uses fast zoom for pinch gestures on iOS
+	// Uses fast zoom for pinch gestures on iOS where evt.scale is the
+	// absolute gesture scale, so no further factor must be applied
 	graph.panningHandler.zoomGraph = function(evt)
 	{
 		graph.cumulativeZoomFactor = evt.scale;
-		graph.lazyZoom(evt.scale > 0, true);
+		graph.lazyZoom(evt.scale > 1, true, null, 1, true);
 		mxEvent.consume(evt);
 	};
 };
@@ -7224,6 +7297,12 @@ EditorUi.prototype.showLinkDialog = function(value, btnLabel, fn)
  */
 EditorUi.prototype.showDataDialog = function(cell)
 {
+	// Accepts an array of cells, unwraps arrays with less than two cells
+	if (cell instanceof Array)
+	{
+		cell = (cell.length > 1) ? cell : cell[0];
+	}
+
 	if (cell != null && typeof window.EditDataDialog !== 'undefined')
 	{
 		var editDataDialogConfig = window.MondrianDialogConfig ? MondrianDialogConfig.editData : null;
@@ -7438,53 +7517,6 @@ EditorUi.prototype.createKeyHandler = function(editor)
 		graphFireMouseEvent.apply(this, arguments);
 	};
 
-	// Helper function to center the given cells in the viewport if they are
-	// not fully visible, so that a selection that is moved or resized with
-	// the cursor keys stays in view
-	function scrollCellsToVisible(cells)
-	{
-		var handler = graph.graphHandler;
-		var c = graph.container;
-		var b = null;
-
-		if (handler != null && handler.first != null)
-		{
-			if (handler.bounds != null)
-			{
-				// Cells are not moved until the change is committed so the
-				// pending preview offset is added to the start bounds
-				b = mxRectangle.fromRectangle(handler.bounds);
-				b.x += handler.currentDx;
-				b.y += handler.currentDy;
-			}
-		}
-		else
-		{
-			b = graph.view.getBounds(cells);
-		}
-
-		if (b != null && c != null &&
-			(b.x < c.scrollLeft || b.y < c.scrollTop ||
-			b.x + b.width > c.scrollLeft + c.clientWidth ||
-			b.y + b.height > c.scrollTop + c.clientHeight))
-		{
-			var t = graph.view.translate;
-			var tr = new mxPoint(t.x, t.y);
-
-			if (graph.scrollRectToVisible(new mxRectangle(
-				b.getCenterX() - t.x - c.clientWidth / 2,
-				b.getCenterY() - t.y - c.clientHeight / 2,
-				c.clientWidth, c.clientHeight)))
-			{
-				// Triggers an update via the view's event source
-				var tr2 = new mxPoint(t.x, t.y);
-				graph.view.translate.x = tr.x;
-				graph.view.translate.y = tr.y;
-				graph.view.setTranslate(tr2.x, tr2.y);
-			}
-		}
-	};
-
 	// Helper function to move cells with the cursor keys
 	function nudge(keyCode, stepSize, resize)
 	{
@@ -7616,8 +7648,6 @@ EditorUi.prototype.createKeyHandler = function(editor)
 						}
 					}
 				}
-
-				scrollCellsToVisible(cells);
 			}
 		}
 	};

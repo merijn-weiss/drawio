@@ -174,6 +174,12 @@
 	EditorUi.enabledTemplateSections = null;
 
 	/**
+	 * Specifies additional templates to be added to the sections of the
+	 * templates dialog. Null means no additional templates are added.
+	 */
+	EditorUi.customTemplates = null;
+
+	/**
 	 * Specifies the URL for the diffsync cache.
 	 */
 	EditorUi.cacheUrl = window.REALTIME_URL;
@@ -251,6 +257,17 @@
 	};
 
 	/**
+	 * Returns true if the native Gliffy converter (drawio-gliffy) is
+	 * loaded with its convert API. Conversion happens locally, so no
+	 * conversion service or network access is needed.
+	 */
+	EditorUi.isNativeGliffySupported = function()
+	{
+		return typeof mxGliffyToDrawio !== 'undefined' &&
+			typeof mxGliffyToDrawio.convert === 'function';
+	};
+
+	/**
 	 * Default Mermaid config without using foreign objects in flowcharts.
 	 */
 	EditorUi.defaultMermaidConfig = {};
@@ -292,6 +309,37 @@
 	    	numberSectionStyles:4,
 	    	axisFormat:'%Y-%m-%d'
 	    }
+	};
+
+	/**
+	 * Returns the Mermaid config to store in a newly inserted diagram cell (and
+	 * a configured image): a clone of the configured default
+	 * (EditorUi.defaultMermaidConfig, set via the `mermaid` config key) when one
+	 * is set, else **null**. Storing the config makes the cell self-describing so
+	 * it renders the same across deployments instead of adopting whatever default
+	 * is active where it is next edited. Returning null when unconfigured keeps
+	 * the previous behavior byte-for-byte (cells store config:null, like before
+	 * the config key existed), so a deployment that sets no `mermaid` config sees
+	 * no change at all. The security keys (securityLevel, startOnLoad,
+	 * maxTextSize) are re-applied per parse by getMermaidConfig, so they are not
+	 * stored here; parsing with a null config resolves to the same default.
+	 */
+	EditorUi.getInsertMermaidConfig = function()
+	{
+		return EditorUi.isMermaidConfigured() ?
+			mxUtils.clone(EditorUi.defaultMermaidConfig) : null;
+	};
+
+	/**
+	 * Returns true when a Mermaid config has been set via the `mermaid` config
+	 * key (a non-empty EditorUi.defaultMermaidConfig). Used to decide whether a
+	 * new image follows that config or keeps the previous image look
+	 * (legacyMermaidConfig) - see parseMermaidImage.
+	 */
+	EditorUi.isMermaidConfigured = function()
+	{
+		return EditorUi.defaultMermaidConfig != null &&
+			Object.keys(EditorUi.defaultMermaidConfig).length > 0;
 	};
 
 	/**
@@ -786,13 +834,22 @@
 	EditorUi.prototype.maxPrintPageCount = 1000;
 
 	/**
+	 * Maximum canvas area in pixels for image exports in embed mode. If an
+	 * export exceeds this area at the requested scale, the scale is reduced
+	 * until the output fits within the budget, so that generating the image
+	 * cannot crash the browser tab by running out of memory. 67108864 is
+	 * 8192 x 8192 px, ie. 256 MB of RGBA pixel data. Use 0 to disable.
+	 */
+	EditorUi.prototype.maxCanvasExportArea = 67108864;
+
+	/**
 	 * Holds the current file.
 	 */
 	EditorUi.prototype.currentFile = null;
 
 	/**
-	 * Specifies if PDF export should be done via print dialog. Default is
-	 * false which uses the PhantomJS backend to create the PDF.
+	 * Forces PDF export via the print dialog. Default is false, which uses
+	 * the export service if one is available (see isPrintPdfExport).
 	 */
 	EditorUi.prototype.printPdfExport = false;
 	
@@ -938,6 +995,12 @@
 	{
 		this.shareCursorPosition = value;
 
+		if (Editor.isSettingsEnabled())
+		{
+			mxSettings.settings.shareCursorPosition = value;
+			mxSettings.save();
+		}
+
 		this.fireEvent(new mxEventObject('shareCursorPositionChanged'));
 	};
 
@@ -955,6 +1018,12 @@
 	EditorUi.prototype.setShowRemoteCursors = function(value)
 	{
 		this.showRemoteCursors = value;
+
+		if (Editor.isSettingsEnabled())
+		{
+			mxSettings.settings.showRemoteCursors = value;
+			mxSettings.save();
+		}
 
 		this.fireEvent(new mxEventObject('showRemoteCursorsChanged'));
 	};
@@ -1036,6 +1105,28 @@
 		// ignored in the desktop app where all resources are local
 		return this.isOfflineApp() || (!navigator.onLine && !EditorUi.isElectronApp) ||
 			(!ignoreStealth && (urlParams['stealth'] == '1' || urlParams['lockdown'] == '1'));
+	};
+
+	/**
+	 * Returns true if a server-side export service is configured and the app
+	 * is not offline. EXPORT_URL must be an absolute HTTP(S) or root-relative
+	 * URL. Null, empty and other values (such as the placeholder in the
+	 * PreConfig.js of the public build) mean that no service is available.
+	 */
+	EditorUi.prototype.isRemoteExportEnabled = function()
+	{
+		return !this.isOffline() && typeof EXPORT_URL === 'string' &&
+			/^(https?:\/\/|\/)/i.test(EXPORT_URL);
+	};
+
+	/**
+	 * Returns true if PDF export should use the print dialog instead of the
+	 * export service. This is the case if printPdfExport is set or if no
+	 * export service is available.
+	 */
+	EditorUi.prototype.isPrintPdfExport = function()
+	{
+		return this.printPdfExport || !this.isRemoteExportEnabled();
 	};
 
 	/**
@@ -2223,7 +2314,10 @@
 	 */
 	EditorUi.prototype.anonymizePatch = function(patch)
 	{
-		patch = mxUtils.clone(patch);
+		// Patches are JSON and their id-keyed maps have null prototypes, for which
+		// mxUtils.clone returns null (it needs a callable constructor), so it would
+		// blank this whole report. JSON round-trip is a faithful deep copy here.
+		patch = JSON.parse(JSON.stringify(patch));
 
 		if (patch[EditorUi.DIFF_INSERT] != null)
 		{
@@ -2791,7 +2885,7 @@
 				try
 				{
 					var layerIds = decodeURIComponent(urlParams['layer-ids']).split(' ');
-					var layerIdsMap = {};
+					var layerIdsMap = Object.create(null);
 					
 					for (var i = 0; i < layerIds.length; i++)
 					{
@@ -5179,34 +5273,19 @@
 										doImport(xml, 'text/xml');
 									}, null, img);
 								}
-								else if (new XMLHttpRequest().upload && this.isRemoteFileFormat(data, img) && file != null)
+								else if (this.isGliffyData(data, img) && file != null)
 								{
-									if (this.isExternalDataComms())
-									{
-										this.parseFile(file, mxUtils.bind(this, function(xhr)
-										{
-											if (xhr.readyState == 4)
-											{
-												this.spinner.stop();
-												
-												if (xhr.status >= 200 && xhr.status <= 299)
-												{
-													doImport(xhr.responseText, 'text/xml');
-												}
-												else
-												{
-													this.handleError({message: mxResources.get((xhr.status == 413) ?
-														'drawingTooLarge' : 'invalidOrMissingFile')},
-														mxResources.get('errorLoadingFile'));
-												}
-											}
-										}));
-									}
-									else
+									this.importGliffy(data, mxUtils.bind(this, function(xml)
 									{
 										this.spinner.stop();
-										this.showError(mxResources.get('error'), mxResources.get('notInOffline'));
-									}
+										doImport(xml, 'text/xml');
+									}), mxUtils.bind(this, function(err)
+									{
+										this.spinner.stop();
+										this.handleError({message: mxResources.get((err != null && err.status == 413) ?
+											'drawingTooLarge' : 'invalidOrMissingFile')},
+											mxResources.get('errorLoadingFile'));
+									}), img);
 								}
 								else
 								{
@@ -5491,8 +5570,8 @@
 			return tab;
 		}
 
-		var editorTabBtn = createTab(mxResources.get('editor', null, 'Editor'), true);
-		var jsonTabBtn = createTab(mxResources.get('formatJson', null, 'JSON'), false);
+		var editorTabBtn = createTab(mxResources.get('editor'), true);
+		var jsonTabBtn = createTab(mxResources.get('formatJson'), false);
 
 		tabBar.appendChild(editorTabBtn);
 		tabBar.appendChild(jsonTabBtn);
@@ -5578,28 +5657,20 @@
 		div.appendChild(jsonContent);
 
 		// Tab switching
+		function styleTab(btn, active)
+		{
+			btn.style.borderBottomColor = active ? '#29b6f2' : 'transparent';
+			btn.style.fontWeight = active ? 'bold' : 'normal';
+			btn.style.color = active ? '' : '#888';
+		}
+
 		function setActiveTab(tab)
 		{
 			if (tab === activeTab) return;
 
-			if (tab === 'json')
-			{
-				if (latestEditorConfig != null)
-				{
-					textarea.value = JSON.stringify(latestEditorConfig, null, 2);
-				}
-
-				editorContent.style.display = 'none';
-				jsonContent.style.display = '';
-				jsonTabBtn.style.borderBottomColor = '#29b6f2';
-				jsonTabBtn.style.fontWeight = 'bold';
-				jsonTabBtn.style.color = '';
-				editorTabBtn.style.borderBottomColor = 'transparent';
-				editorTabBtn.style.fontWeight = 'normal';
-				editorTabBtn.style.color = '#888';
-				textarea.focus();
-			}
-			else
+			// Leaving the JSON tab adopts its (valid) content, entering it
+			// renders the current config
+			if (activeTab === 'json')
 			{
 				try
 				{
@@ -5608,15 +5679,20 @@
 					configEditor.setConfig(obj);
 				}
 				catch (e) {}
+			}
+			else if (tab === 'json' && latestEditorConfig != null)
+			{
+				textarea.value = JSON.stringify(latestEditorConfig, null, 2);
+			}
 
-				editorContent.style.display = '';
-				jsonContent.style.display = 'none';
-				editorTabBtn.style.borderBottomColor = '#29b6f2';
-				editorTabBtn.style.fontWeight = 'bold';
-				editorTabBtn.style.color = '';
-				jsonTabBtn.style.borderBottomColor = 'transparent';
-				jsonTabBtn.style.fontWeight = 'normal';
-				jsonTabBtn.style.color = '#888';
+			editorContent.style.display = (tab === 'editor') ? '' : 'none';
+			jsonContent.style.display = (tab === 'json') ? '' : 'none';
+			styleTab(editorTabBtn, tab === 'editor');
+			styleTab(jsonTabBtn, tab === 'json');
+
+			if (tab === 'json')
+			{
+				textarea.focus();
 			}
 
 			activeTab = tab;
@@ -5654,7 +5730,7 @@
 					var btn = mxUtils.button(label, function(e)
 					{
 						// Sync textarea from editor before calling button handler
-						if (activeTab === 'editor' && latestEditorConfig != null)
+						if (activeTab !== 'json' && latestEditorConfig != null)
 						{
 							textarea.value = JSON.stringify(latestEditorConfig, null, 2);
 						}
@@ -5683,10 +5759,28 @@
 
 		var applyBtn = mxUtils.button(mxResources.get('apply'), function()
 		{
+			// Nothing edited (eg. only offline languages toggled, which
+			// take effect immediately) - close without the restart notice
+			if (!modified)
+			{
+				closeDialog();
+				return;
+			}
+
 			var newValue;
 
-			if (activeTab === 'editor')
+			if (activeTab !== 'json')
 			{
+				var invalid = configEditor.getInvalidFields();
+
+				if (invalid.length > 0)
+				{
+					editorUi.handleError({message: mxResources.get('invalidInput') +
+						': ' + invalid.join(', ')});
+
+					return;
+				}
+
 				newValue = (latestEditorConfig != null && Object.keys(latestEditorConfig).length > 0) ?
 					JSON.stringify(latestEditorConfig, null, 2) : '';
 			}
@@ -5763,6 +5857,257 @@
 			}, null, null, new mxRectangle(0, 0, w, 400));
 
 		textarea.scrollTop = 0;
+	};
+
+	/**
+	 * Shows the offline languages dialog: bundles are cached on first use
+	 * by the service worker and can be installed and removed here. The
+	 * checkboxes act immediately; the UI language itself is chosen in the
+	 * language menu.
+	 */
+	EditorUi.prototype.showLanguageDialog = function()
+	{
+		var editorUi = this;
+
+		var div = document.createElement('div');
+		div.style.position = 'absolute';
+		div.style.top = '10px';
+		div.style.bottom = '10px';
+		div.style.left = '16px';
+		div.style.right = '16px';
+
+		var content = document.createElement('div');
+		content.style.position = 'absolute';
+		content.style.left = '0';
+		content.style.right = '0';
+		content.style.top = '0';
+		content.style.bottom = '46px';
+		content.style.overflow = 'auto';
+		div.appendChild(content);
+
+		// Updated in place by the window online/offline listeners while
+		// the dialog is open
+		var languageRows = [];
+
+		// The explicitly selected language as in the language menu -
+		// mxClient.language falls back to the browser locale, which is
+		// not what the UI loaded. With "Automatic" nothing is pinned:
+		// the resolved bundle is re-cached on the next start.
+		function getSelectedLanguage()
+		{
+			var current = mxLanguage;
+
+			if (urlParams['lang'] == null && isLocalStorage)
+			{
+				current = mxSettings.settings.language;
+			}
+
+			return current;
+		}
+
+		function updateLanguageStates()
+		{
+			var current = getSelectedLanguage();
+			var offline = navigator.onLine === false;
+
+			var installed = Object.create(null);
+
+			for (var i = 0; i < languageRows.length; i++)
+			{
+				var entry = languageRows[i];
+				installed[entry.code] = entry.box.checked;
+
+				// English ships precached, the bundle in use would be
+				// re-downloaded on the next start, and installing needs
+				// the network
+				entry.box.disabled = entry.code == 'en' ||
+					(entry.code == current && entry.box.checked) ||
+					(offline && !entry.box.checked);
+				entry.box.style.cursor = entry.box.disabled ? '' : 'pointer';
+				entry.row.style.cursor = entry.box.disabled ? 'default' : 'pointer';
+
+				if (offline && !entry.box.checked)
+				{
+					entry.row.setAttribute('title', mxResources.get('notInOffline'));
+				}
+				else
+				{
+					entry.row.removeAttribute('title');
+				}
+			}
+		}
+
+		editorUi.getOfflineLanguages(function(codes)
+		{
+			var installed = Object.create(null);
+
+			for (var i = 0; i < codes.length; i++)
+			{
+				installed[codes[i]] = true;
+			}
+
+			// All selectable languages sorted by native name
+			var entries = [];
+
+			for (var code in mxLanguageMap)
+			{
+				if (code != 'i18n' && mxLanguageMap[code] != '')
+				{
+					entries.push({code: code, name: mxLanguageMap[code]});
+				}
+			}
+
+			entries.sort(function(a, b)
+			{
+				return a.name.localeCompare(b.name);
+			});
+
+			var help = document.createElement('div');
+			help.style.padding = '8px 4px 0 4px';
+			help.style.color = '#888';
+			mxUtils.write(help, mxResources.get('offlineLanguages',
+				null, 'Languages available offline'));
+			content.appendChild(help);
+
+			var grid = document.createElement('div');
+			grid.style.display = 'grid';
+			grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(170px, 1fr))';
+			grid.style.gap = '2px 16px';
+			grid.style.padding = '8px 4px';
+
+			// The gaps and padding belong to the grid, not the rows - a
+			// uniform pointer keeps the cursor steady across them; the
+			// rows are labels that toggle their install checkbox (rows
+			// that cannot act override it with 'default')
+			grid.style.cursor = 'pointer';
+
+			for (var i = 0; i < entries.length; i++)
+			{
+				(function(code, name)
+				{
+					var row = document.createElement('label');
+					row.style.display = 'flex';
+					row.style.alignItems = 'center';
+					row.style.padding = '4px';
+					row.style.overflow = 'hidden';
+					row.style.whiteSpace = 'nowrap';
+
+					// Fixed-size slot so the checkbox can make way for
+					// the spinner while a bundle is loading
+					var cell = document.createElement('span');
+					cell.style.display = 'inline-flex';
+					cell.style.alignItems = 'center';
+					cell.style.justifyContent = 'center';
+					cell.style.position = 'relative';
+					cell.style.width = '16px';
+					cell.style.height = '16px';
+					cell.style.margin = '0 8px 0 0';
+					cell.style.flexShrink = '0';
+
+					var box = document.createElement('input');
+					box.setAttribute('type', 'checkbox');
+					box.style.margin = '0';
+					box.checked = code == 'en' || installed[code] == true;
+					languageRows.push({code: code, box: box, row: row});
+
+					// The UA checkbox cursor does not inherit the row's
+					// pointer - kept in sync with the disabled state in
+					// updateLanguageStates
+
+					mxEvent.addListener(box, 'change', function()
+					{
+						box.style.display = 'none';
+						var spinner = editorUi.createSpinner(null, null, 4);
+						spinner.spin(cell);
+
+						// Reflects the actual cache state afterwards - a
+						// failed install (eg. connection lost) reverts
+						var done = function()
+						{
+							editorUi.getOfflineLanguages(function(codes)
+							{
+								spinner.stop();
+								box.style.display = '';
+								box.checked = mxUtils.indexOf(codes, code) >= 0;
+								updateLanguageStates();
+							});
+
+							editorUi.updateOfflineLanguages();
+						};
+
+						if (box.checked)
+						{
+							// Fetching through the service worker caches
+							// the bundle as a side effect (lazy route)
+							fetch('resources/dia_' + code + '.txt')
+								.then(done, done);
+						}
+						else
+						{
+							editorUi.removeOfflineLanguage(code, done);
+						}
+					});
+
+					cell.appendChild(box);
+					row.appendChild(cell);
+
+					var label = document.createElement('span');
+					label.style.overflow = 'hidden';
+					label.style.textOverflow = 'ellipsis';
+
+					// The dialog inherits a line-height equal to the font
+					// size - overflow:hidden would clip descenders
+					label.style.lineHeight = 'normal';
+					mxUtils.write(label, name);
+					row.appendChild(label);
+					grid.appendChild(row);
+				})(entries[i].code, entries[i].name);
+			}
+
+			content.appendChild(grid);
+			updateLanguageStates();
+		});
+
+		// Keeps the checkbox and dropdown states in sync with
+		// connectivity changes; removed when the dialog closes
+		var connectivityListener = function()
+		{
+			updateLanguageStates();
+		};
+
+		mxEvent.addListener(window, 'online', connectivityListener);
+		mxEvent.addListener(window, 'offline', connectivityListener);
+
+		// Buttons
+		var buttons = document.createElement('div');
+		buttons.style.position = 'absolute';
+		buttons.style.left = '0';
+		buttons.style.right = '0';
+		buttons.style.bottom = '0';
+		buttons.style.height = '46px';
+		buttons.style.display = 'flex';
+		buttons.style.whiteSpace = 'nowrap';
+		buttons.style.alignItems = 'center';
+		buttons.style.justifyContent = 'end';
+		buttons.style.paddingTop = '10px';
+		buttons.style.paddingBottom = '10px';
+		buttons.style.boxSizing = 'border-box';
+
+		var closeBtn = mxUtils.button(mxResources.get('close'), function()
+		{
+			editorUi.hideDialog();
+		});
+
+		closeBtn.setAttribute('title', 'Escape');
+		closeBtn.className = 'geBtn gePrimaryBtn';
+		buttons.appendChild(closeBtn);
+		div.appendChild(buttons);
+
+		this.showDialog(div, 480, 460, true, true, function()
+		{
+			mxEvent.removeListener(window, 'online', connectivityListener);
+			mxEvent.removeListener(window, 'offline', connectivityListener);
+		});
 	};
 
 	/**
@@ -6375,7 +6720,7 @@
 		div.style.whiteSpace = 'nowrap';
 
 		var hd = document.createElement('h3');
-		mxUtils.write(hd, mxResources.get('formatAnimatedGif', null, 'Animated GIF'));
+		mxUtils.write(hd, mxResources.get('formatAnimatedGif'));
 		div.appendChild(hd);
 
 		// --- Settings section ---
@@ -6387,14 +6732,14 @@
 		formRow.className = 'geDialogFormRow';
 		var lbl = document.createElement('span');
 		lbl.className = 'geDialogFormLabel';
-		mxUtils.write(lbl, mxResources.get('speed', null, 'Speed') + ':');
+		mxUtils.write(lbl, mxResources.get('speed') + ':');
 		formRow.appendChild(lbl);
 		var fpsSelect = document.createElement('select');
 
 		var fpsOptions = [
-			{label: mxResources.get('slow', null, 'Slow'), value: 8},
-			{label: mxResources.get('medium', null, 'Medium'), value: 15},
-			{label: mxResources.get('fast', null, 'Fast'), value: 24}
+			{label: mxResources.get('slow'), value: 8},
+			{label: mxResources.get('medium'), value: 15},
+			{label: mxResources.get('fast'), value: 24}
 		];
 
 		for (var i = 0; i < fpsOptions.length; i++)
@@ -6433,7 +6778,7 @@
 		formRow.className = 'geDialogFormRow';
 		lbl = document.createElement('span');
 		lbl.className = 'geDialogFormLabel';
-		mxUtils.write(lbl, mxResources.get('borderWidth', null, 'Border Width') + ':');
+		mxUtils.write(lbl, mxResources.get('borderWidth') + ':');
 		formRow.appendChild(lbl);
 		var borderInput = document.createElement('input');
 		borderInput.setAttribute('type', 'text');
@@ -6446,12 +6791,12 @@
 		formRow.className = 'geDialogFormRow';
 		lbl = document.createElement('span');
 		lbl.className = 'geDialogFormLabel';
-		mxUtils.write(lbl, mxResources.get('loops', null, 'Loops') + ':');
+		mxUtils.write(lbl, mxResources.get('loops') + ':');
 		formRow.appendChild(lbl);
 		var loopSelect = document.createElement('select');
 
 		var loopOptions = [
-			{label: mxResources.get('forever', null, 'Forever'), value: 0},
+			{label: mxResources.get('forever'), value: 0},
 			{label: '1', value: 1},
 			{label: '3', value: 3},
 			{label: '5', value: 5}
@@ -6551,7 +6896,7 @@
 					((this.editor.graph.background != null &&
 					  this.editor.graph.background != mxConstants.NONE) ?
 						this.editor.graph.background :
-						'light-dark(#ffffff,' + Editor.darkColor + ')')
+						Editor.getDefaultPageBackgroundColor())
 			});
 		}), null, mxResources.get('export'),
 			'https://www.drawio.com/doc/faq/export-diagram');
@@ -6576,26 +6921,24 @@
 
 					if (blob != null)
 					{
-						var filename = this.getBaseFilename() + '.gif';
+						// Routes the result through the standard save dialog
+						// (device/browser/cloud) like the other image exports
+						var reader = new FileReader();
 
-						if (typeof navigator.msSaveBlob === 'function')
+						reader.onload = mxUtils.bind(this, function()
 						{
-							navigator.msSaveBlob(blob, filename);
-						}
-						else
-						{
-							var a = document.createElement('a');
-							a.href = URL.createObjectURL(blob);
-							a.download = filename;
-							document.body.appendChild(a);
-							a.click();
+							var uri = reader.result;
+							this.saveData(this.getBaseFilename() + '.gif', 'gif',
+								uri.substring(uri.lastIndexOf(',') + 1),
+								'image/gif', true);
+						});
 
-							setTimeout(function()
-							{
-								document.body.removeChild(a);
-								URL.revokeObjectURL(a.href);
-							}, 0);
-						}
+						reader.onerror = mxUtils.bind(this, function(e)
+						{
+							this.handleError(e);
+						});
+
+						reader.readAsDataURL(blob);
 					}
 				}), mxUtils.bind(this, function(e)
 				{
@@ -7153,6 +7496,30 @@
 						mxEvent.addListener(img, 'click', mxUtils.bind(this, function()
 						{
 							this.openInNewWindow(data.substring(data.indexOf(',') + 1), 'image/png', true);
+
+							// Some platforms like Forge don't allow opening a new window, so we also copy the image to the clipboard
+							if (navigator.clipboard != null && typeof ClipboardItem === 'function')
+							{
+								this.writeImageToClipboard(data, canvas.width, canvas.height, 'image/png',
+									mxUtils.bind(this, function()
+									{
+										var msg = mxResources.get('imageClicked');
+
+										// Auto-closing banner notification if available, otherwise modal alert
+										if (this.showBanner != null)
+										{
+											this.showBanner('ImageClicked', msg, null, false, true);
+										}
+										else
+										{
+											this.alert(msg);
+										}
+									}), mxUtils.bind(this, function(e)
+									{
+										this.handleError(e);
+									}));
+							}
+
 							clickHandler.apply(this, arguments);
 						}));
 				   	}), null, this.thumbImageCache, null, mxUtils.bind(this, function(e)
@@ -7378,9 +7745,27 @@
 	 * export time and the script contains no dynamic parts. The script only
 	 * runs where the SVG is the document, eg. opened in a browser tab or via
 	 * an object tag, not when the SVG is shown with an img tag.
+	 *
+	 * That guarantee only covers the attributes createSvgImageExport writes on
+	 * its own icon wrappers. Labels are copied into the export as markup, so any
+	 * other element carrying the attribute came from the diagram and its value
+	 * was never sanitized for this use. Those are dropped here before the script
+	 * is added, so only the wrappers this export created are ever bound.
 	 */
 	EditorUi.prototype.addSvgIconHandlers = function(svgRoot)
 	{
+		var candidates = svgRoot.querySelectorAll('[data-icon-content]');
+
+		for (var i = 0; i < candidates.length; i++)
+		{
+			// The wrappers are SVG g elements that also carry the icon type
+			if (candidates[i].nodeName != 'g' ||
+				!candidates[i].hasAttribute('data-icon'))
+			{
+				candidates[i].removeAttribute('data-icon-content');
+			}
+		}
+
 		if (svgRoot.querySelector('[data-icon-content]') == null)
 		{
 			return;
@@ -7467,7 +7852,7 @@
 			'fo.setAttribute("height", ph);\n' +
 			'active = icon;\n' +
 			'}\n' +
-			'var icons = document.querySelectorAll("[data-icon-content]");\n' +
+			'var icons = document.querySelectorAll("g[data-icon][data-icon-content]");\n' +
 			'for (var i = 0; i < icons.length; i++) {\n' +
 			'(function(icon) {\n' +
 			'icon.addEventListener("click", function(evt) {\n' +
@@ -10055,6 +10440,10 @@
 		   		err({message: mxResources.get('unknownError')});
 		   	}), null, true, (retina) ? 2 : 1, null, shadow, null, null, Editor.defaultBorder);
 		}
+		else if (!this.isRemoteExportEnabled())
+		{
+			err({message: mxResources.get('notAvailable')});
+		}
 		else
 		{
 			var data = this.getFileData(true);
@@ -10405,6 +10794,14 @@
 		}
 		
 		return {scale: scale, border: border};
+	};
+	
+	/**
+	 * 
+	 */
+	EditorUi.prototype.getPdfFileProperties = function(node)
+	{
+		return {notes: node != null && node.getAttribute('notes') == 'true'};
 	};
 	
 	/**
@@ -11417,8 +11814,68 @@
 				delayed();
 			}
 		}), onerror);
-	};	
-	
+	};
+
+	/**
+	 * Imports the given Gliffy data with the client-side converter,
+	 * mirroring importVisio/importGraphML: loads the converter bundle on
+	 * demand and returns the diagram XML via done. Conversion is local
+	 * only - the editor never posts diagram data to a conversion service.
+	 * error receives an object whose status is 413 when a converter limit
+	 * was hit, so the existing caller messaging keeps working
+	 * (413 -> diagramTooLarge).
+	 */
+	EditorUi.prototype.importGliffy = function(data, done, error, filename)
+	{
+		var handleError = mxUtils.bind(this, function(e)
+		{
+			if (error != null)
+			{
+				var limitHit = typeof mxGliffyToDrawio !== 'undefined' &&
+					typeof mxGliffyToDrawio.LimitExceededException === 'function' &&
+					e instanceof mxGliffyToDrawio.LimitExceededException;
+
+				error({status: (limitHit) ? 413 : 500,
+					message: (e != null && e.message != null) ? e.message :
+						mxResources.get('serviceUnavailableOrBlocked')});
+			}
+		});
+
+		this.loadGliffy(mxUtils.bind(this, function()
+		{
+			var xml = null;
+
+			try
+			{
+				xml = mxGliffyToDrawio.convert(data);
+			}
+			catch (e)
+			{
+				handleError(e);
+				return;
+			}
+
+			if (xml != null)
+			{
+				try
+				{
+					EditorUi.logEvent({category: 'GLIFFY-IMPORT-FILE',
+						action: 'size_' + data.length});
+				}
+				catch (e)
+				{
+					// ignore
+				}
+
+				done(xml);
+			}
+			else
+			{
+				handleError(null);
+			}
+		}), handleError);
+	};
+
 	/**
 	 * Export the diagram to VSDX
 	 */
@@ -12250,12 +12707,30 @@
 								// draw.io XML into the mermaid parser (surfacing as a
 								// bogus "Unsupported diagram type: <mxfile").
 								var parsed = Editor.extractGraphModelFromText(result);
+								var partial = false;
+
+								// A response cut off mid-model (eg. by an output
+								// limit) has no closing tag so nothing was extracted:
+								// repair the truncation and re-extract so the complete
+								// prefix of the diagram still renders, flagged as
+								// partial for the caller
+								if ((parsed == null || parsed[1] == '') &&
+									result.indexOf('<mxGraphModel') >= 0)
+								{
+									var repaired = Editor.repairTruncatedXml(result);
+
+									if (repaired != null)
+									{
+										parsed = Editor.extractGraphModelFromText(repaired);
+										partial = parsed[1] != '';
+									}
+								}
 
 								if (parsed != null && parsed[1] != '')
 								{
 									if (timeout.clear())
 									{
-										success(parsed[1]);
+										success(parsed[1], partial);
 									}
 								}
 								else if (mxUtils.trim(result).charAt(0) == '<')
@@ -12287,7 +12762,7 @@
 												// Wrap in an editable mermaid group (carries the
 												// source for double-click edit), as the insert dialog does
 												success(mxMermaidToDrawio.wrapGroup(
-													xml, mermaid, null));
+													xml, mermaid, EditorUi.getInsertMermaidConfig()));
 											}
 										}), handleError);
 									}), handleError, retry);
@@ -12739,8 +13214,83 @@
 	};
 
 	/**
+	 * Loads the native Gliffy converter extension (mirrors loadPlantUml:
+	 * a self-contained bundle defining mxGliffyToDrawio, NOT part of
+	 * extensions.min.js, fetched only when a Gliffy file is imported).
+	 * Unlike loadPlantUml, concurrent callers queue on the in-flight load
+	 * instead of proceeding before the script arrives — a multi-file drop
+	 * converts several Gliffy files back to back.
+	 */
+	EditorUi.prototype.loadGliffy = function(success, error)
+	{
+		if (EditorUi.isNativeGliffySupported())
+		{
+			window.setTimeout(success, 0);
+		}
+		else
+		{
+			if (this.gliffyLoadQueue == null)
+			{
+				this.gliffyLoadQueue = [];
+			}
+
+			this.gliffyLoadQueue.push({success: success, error: error});
+
+			if (!this.loadingGliffy)
+			{
+				this.loadingGliffy = true;
+
+				var isDev = (typeof urlParams !== 'undefined' && urlParams['dev'] == '1') ||
+					(window.location.search && window.location.search.indexOf('dev=1') >= 0);
+
+				var done = mxUtils.bind(this, function(err)
+				{
+					this.loadingGliffy = false;
+					var queue = this.gliffyLoadQueue;
+					this.gliffyLoadQueue = null;
+
+					for (var i = 0; i < queue.length; i++)
+					{
+						try
+						{
+							if (err == null && EditorUi.isNativeGliffySupported())
+							{
+								queue[i].success();
+							}
+							else if (queue[i].error != null)
+							{
+								queue[i].error(err);
+							}
+						}
+						catch (e)
+						{
+							if (queue[i].error != null)
+							{
+								queue[i].error(e);
+							}
+						}
+					}
+				});
+
+				mxscript((isDev ? '' : window.DRAWIO_SERVER_URL) +
+					'js/gliffy/drawio-gliffy.min.js', function()
+					{
+						done(null);
+					}, null, null, null, done);
+			}
+		}
+	};
+
+	/**
 	 * Parses the given PlantUML source with the native converter and returns
 	 * diagram XML via `success`. Loads the converter bundle on demand.
+	 *
+	 * `success` is called as (xml, warnings), where warnings is the converter's
+	 * list of user-facing strings for input it could not use (a dropped line, an
+	 * ignored directive). They are soft: the XML is complete and usable, so
+	 * callers that are user-initiated pass them to showPlantUmlWarnings, and
+	 * background callers ignore them. Always an array, empty for bundles
+	 * predating the warnings channel.
 	 */
 	EditorUi.prototype.parsePlantUmlDiagram = function(data, config, success, error)
 	{
@@ -12762,7 +13312,18 @@
 			{
 				try
 				{
-					success(mxPlantUmlToDrawio.parseText(data, config));
+					var xml = mxPlantUmlToDrawio.parseText(data, config);
+
+					// Soft diagnostics for lines the converter dropped or
+					// directives it ignored. Read directly after the parse so a
+					// later parse cannot overwrite them, and handed to the
+					// caller rather than shown here: the silent refresh paths
+					// (eg. refreshMermaidImage) must not raise a notice.
+					// Bundles older than the warnings channel have no
+					// lastWarnings, which yields an empty list.
+					success(xml, (typeof mxPlantUmlToDrawio.lastWarnings !== 'undefined' &&
+						mxPlantUmlToDrawio.lastWarnings != null) ?
+						mxPlantUmlToDrawio.lastWarnings.slice() : []);
 				}
 				catch (e)
 				{
@@ -12786,10 +13347,47 @@
 	 */
 	EditorUi.prototype.parsePlantUmlImage = function(text, success, error)
 	{
-		this.parsePlantUmlDiagram(text, null, mxUtils.bind(this, function(xml)
+		this.parsePlantUmlDiagram(text, null, mxUtils.bind(this, function(xml, warnings)
 		{
-			success(this.createMermaidImageXml(text, null, xml, null, null, 'plantUmlData'));
+			// The warnings are about the source, not the representation, so
+			// they pass through to the caller unchanged
+			success(this.createMermaidImageXml(text, null, xml, null, null,
+				'plantUmlData'), warnings);
 		}), error);
+	};
+
+	/**
+	 * Maximum number of PlantUML parse warnings listed by showPlantUmlWarnings
+	 * before the rest are summarized.
+	 */
+	EditorUi.prototype.maxPlantUmlWarnings = 10;
+
+	/**
+	 * Shows the given PlantUML parse warnings (see parsePlantUmlDiagram) in the
+	 * non-modal, auto-fading alert. The parse succeeded and the diagram is
+	 * already inserted or previewed, so this only informs: it must never block
+	 * or undo that, which is why it is not routed through handleError/showError.
+	 * No-op for an empty list, and where showAlert is unavailable.
+	 */
+	EditorUi.prototype.showPlantUmlWarnings = function(warnings)
+	{
+		if (warnings != null && warnings.length > 0 && this.showAlert != null)
+		{
+			var shown = warnings.slice(0, this.maxPlantUmlWarnings);
+
+			if (warnings.length > shown.length)
+			{
+				shown.push(mxResources.get('andNMore',
+					[warnings.length - shown.length]));
+			}
+
+			// showAlert writes its argument as HTML and the warnings quote the
+			// user's own source (the dropped line), so they are escaped here.
+			// The alert is styled white-space:pre-wrap, so the newlines break
+			// the lines without any markup of our own.
+			this.showAlert(mxUtils.htmlEntities(mxResources.get('plantUmlWarnings') +
+				'\n' + shown.join('\n')));
+		}
 	};
 
 	/**
@@ -12891,18 +13489,26 @@
 
 	/**
 	 * Parses the given Mermaid source and returns, via success, the XML for a
-	 * shape=image cell rendering the result (see createMermaidImageXml). Parses
-	 * with EditorUi.legacyMermaidConfig (the config previous versions used for
-	 * Mermaid images) so the image matches the legacy look; the stored config
-	 * stays null, matching legacy image cells (the double-click edit path uses
-	 * legacyMermaidConfig for image cells regardless of the stored config).
+	 * shape=image cell rendering the result (see createMermaidImageXml). When a
+	 * Mermaid config is set (the `mermaid` config key), new images follow it —
+	 * like editable diagrams — and store the resolved config so the cell is
+	 * self-describing and renders the same across deployments. When none is set,
+	 * new images keep the previous image look: they parse with
+	 * EditorUi.legacyMermaidConfig and store a null config, exactly like legacy
+	 * image cells. The parse gets a throwaway clone (getMermaidConfig stamps the
+	 * security keys on it), so the stored config stays clean.
 	 */
 	EditorUi.prototype.parseMermaidImage = function(text, success, error)
 	{
-		this.parseMermaidDiagram(text, mxUtils.clone(EditorUi.legacyMermaidConfig),
+		var configured = EditorUi.isMermaidConfigured();
+		var parseConfig = mxUtils.clone(configured ?
+			EditorUi.defaultMermaidConfig : EditorUi.legacyMermaidConfig);
+		var storeConfig = configured ? parseConfig : null;
+
+		this.parseMermaidDiagram(text, mxUtils.clone(parseConfig),
 			mxUtils.bind(this, function(xml)
 		{
-			success(this.createMermaidImageXml(text, null, xml));
+			success(this.createMermaidImageXml(text, storeConfig, xml));
 		}), error);
 	};
 
@@ -12999,6 +13605,14 @@
 		{
 			var border = this.getMermaidImageBorder(cell, obj.border);
 			var ignore = function() {};
+
+			// Re-render must reproduce the same image, so it re-parses with the
+			// cell's own stored config and writes it back unchanged: a
+			// self-describing image (non-null config) keeps its config, a legacy
+			// image (null config) keeps parsing with legacyMermaidConfig and
+			// stays null. PlantUML keeps its null contract.
+			var storeConfig = (dataAttr == 'plantUmlData' || obj.config == null) ?
+				null : obj.config;
 			var apply = mxUtils.bind(this, function(xml)
 			{
 				// Skips stale applies: if the padding changed again while the
@@ -13009,7 +13623,7 @@
 					graph.model.beginUpdate();
 					try
 					{
-						this.updateMermaidImage(cell, obj.data, null, xml,
+						this.updateMermaidImage(cell, obj.data, storeConfig, xml,
 							border, dataAttr);
 					}
 					finally
@@ -13025,8 +13639,8 @@
 			}
 			else
 			{
-				this.parseMermaidDiagram(obj.data,
-					mxUtils.clone(EditorUi.legacyMermaidConfig), apply, ignore);
+				this.parseMermaidDiagram(obj.data, mxUtils.clone((obj.config != null) ?
+					obj.config : EditorUi.legacyMermaidConfig), apply, ignore);
 			}
 		}
 	};
@@ -13122,27 +13736,19 @@
 		crop = (crop != null) ? crop : true;
 		resizeImages = (resizeImages != null) ? resizeImages : true;
 		
-		// Handles special case for Gliffy data which requires async server-side for parsing
+		// Handles special case for Gliffy data which is converted asynchronously
 		if (text != null)
 		{
-			if (Graph.fileSupport && new XMLHttpRequest().upload && this.isRemoteFileFormat(text))
+			if (Graph.fileSupport && this.isGliffyData(text))
 			{
-				if (this.isOffline())
+				// Fixes possible parsing problems with ASCII 160 (non-breaking space).
+				// No error handler: failures stay silent here, as they were
+				// when the XHR callback ignored non-2xx responses.
+				this.importGliffy(text.replace(/\s+/g,' '), mxUtils.bind(this, function(xml)
 				{
-					this.showError(mxResources.get('error'), mxResources.get('notInOffline'));
-				}
-				else
-				{
-					// Fixes possible parsing problems with ASCII 160 (non-breaking space)
-					this.parseFileData(text.replace(/\s+/g,' '), mxUtils.bind(this, function(xhr)
-					{
-						if (xhr.readyState == 4 && xhr.status >= 200 && xhr.status <= 299)
-						{
-							this.editor.graph.setSelectionCells(this.insertTextAt(
-								xhr.responseText, dx, dy, true));
-						}
-					}));
-				}
+					this.editor.graph.setSelectionCells(this.insertTextAt(
+						xml, dx, dy, true));
+				}));
 
 				// Returns empty cells array as it is aysynchronous
 				return [];
@@ -13375,11 +13981,21 @@
 	};
 	
 	/**
-	 * Returns true for Gliffy data.
+	 * Returns true for Gliffy data (the modern JSON save format), which is
+	 * converted with the local client-side converter (see importGliffy).
+	 */
+	EditorUi.prototype.isGliffyData = function(data, filename)
+	{
+		return /(\"contentType\":\s*\"application\/gliffy\+json\")/.test(data);
+	};
+
+	/**
+	 * Deprecated alias for isGliffyData, kept for external callers: Gliffy
+	 * conversion is local, no remote conversion service is involved.
 	 */
 	EditorUi.prototype.isRemoteFileFormat = function(data, filename)
 	{
-		return /(\"contentType\":\s*\"application\/gliffy\+json\")/.test(data);
+		return this.isGliffyData(data, filename);
 	};
 	
 	/**
@@ -13560,29 +14176,15 @@
 		            	{
 		                	gliffyLatestVer.zipEntry.async("string").then(function(data)
 		                	{
-		                		if (new XMLHttpRequest().upload && ui.isRemoteFileFormat(data, file.name))
+		                		if (ui.isGliffyData(data, file.name))
 		                		{
-									if (ui.isOffline())
+									ui.importGliffy(data, function(xml)
 									{
-										ui.showError(mxResources.get('error'), mxResources.get('notInOffline'), null, onerror);
-									}
-									else
+										success(xml);
+									}, function()
 									{
-										ui.parseFileData(data, mxUtils.bind(this, function(xhr)
-										{
-											if (xhr.readyState == 4)
-											{
-												if (xhr.status >= 200 && xhr.status <= 299)
-												{
-													success(xhr.responseText);
-												}
-												else
-												{
-													onerror();
-												}
-											}
-										}), file.name);
-									}
+										onerror();
+									}, file.name);
 		                		}
 		                		else
 		            			{
@@ -13707,44 +14309,40 @@
 
 			this.importVisio(file, handleResult);
 		}
-		else if (new XMLHttpRequest().upload && this.isRemoteFileFormat(data, filename))
+		else if (this.isGliffyData(data, filename))
 		{
-			if (this.isOffline())
+			//  LATER: done and async are a hack before making this asynchronous
+			async = true;
+
+			// Returns empty cells array as it is aysynchronous
+			var importData = mxUtils.bind(this, function(data)
 			{
-				this.showError(mxResources.get('error'), mxResources.get('notInOffline'));
+				this.importGliffy(data, handleResult, mxUtils.bind(this, function(err)
+				{
+					if (done != null)
+					{
+						done(null);
+						this.showError(mxResources.get('error'),
+							(err != null && err.status == 413) ? mxResources.get('diagramTooLarge') :
+								mxResources.get('unknownError'));
+					}
+				}), filename);
+			});
+
+			if (data != null)
+			{
+				importData(data);
 			}
 			else
 			{
-				//  LATER: done and async are a hack before making this asynchronous
-				async = true;
+				var reader = new FileReader();
 
-				// Returns empty cells array as it is aysynchronous
-				var parseCallback = mxUtils.bind(this, function(xhr)
+				reader.onload = function()
 				{
-					if (xhr.readyState == 4)
-					{
-						if (xhr.status >= 200 && xhr.status <= 299)
-						{
-							handleResult(xhr.responseText);
-						}
-						else if (done != null)
-						{
-							done(null);
-							this.showError(mxResources.get('error'),
-								xhr.status == 413 ? mxResources.get('diagramTooLarge') :
-									mxResources.get('unknownError'));
-						}
-					}
-				});
+					importData(reader.result);
+				};
 
-				if (data != null)
-				{
-					this.parseFileData(data, parseCallback, filename);
-				}
-				else
-				{
-					this.parseFile(file, parseCallback, filename);
-				}
+				reader.readAsText(file);
 			}
 		}
 		else if (data.indexOf('PK') == 0 && file != null)
@@ -14294,51 +14892,7 @@
 	};
 	
 	/**
-	 * Parses the file using XHR2 via the server. File can be a blob or file object.
-	 * Filename is an optional parameter for blobs (that do not have a filename).
-	 */
-	EditorUi.prototype.parseFile = function(file, fn, filename)
-	{
-		filename = (filename != null) ? filename : file.name;
-
-		var reader = new FileReader();
-
-        reader.onload = mxUtils.bind(this, function()
-		{
-			this.parseFileData(reader.result, fn, filename)
-        });
-
-        reader.readAsText(file);
-	};
-
-	//TODO Use this version of the function instead of creating a Blob then read it again
-	EditorUi.prototype.parseFileData = function(data, fn, filename)
-	{
-
-		var xhr = new XMLHttpRequest();
-		xhr.open('POST', OPEN_URL);
-		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-
-		xhr.onreadystatechange = function()
-		{
-			fn(xhr);
-		};
-		
-		xhr.send('format=xml&filename=' + encodeURIComponent(filename) + '&data=' + encodeURIComponent(data));
-		
-		try
-		{
-			EditorUi.logEvent({category: 'GLIFFY-IMPORT-FILE',
-				action: 'size_' + file.size});
-		}
-		catch (e)
-		{
-			// ignore
-		}
-	};
-	
-	/**
-	 * 
+	 *
 	 */
 	EditorUi.prototype.isResampleImageSize = function(size, thresh)
 	{
@@ -14831,7 +15385,7 @@
 	    		// insert paths
 	    		var config = isGroup ? obj.config : null;
 
-	    		ui.parsePlantUmlDiagram(text, config, function(xml)
+	    		ui.parsePlantUmlDiagram(text, config, function(xml, warnings)
 	    		{
 	    			ui.spinner.stop();
 
@@ -14889,6 +15443,11 @@
 	    				{
 	    					graph.getModel().endUpdate();
 	    				}
+
+	    				// Reports what the converter could not use, once the
+	    				// apply succeeded: the cell keeps the new content. A
+	    				// failed apply reports its own error instead
+	    				ui.showPlantUmlWarnings(warnings);
 	    			}
 	    			catch (e)
 	    			{
@@ -14903,10 +15462,14 @@
 				if (ui.spinner.spin(document.body, mxResources.get('loading')))
 				{
 					ui.parsePlantUmlDiagram(text, isGroup ? obj.config : null,
-						function(xml)
+						function(xml, warnings)
 					{
 						ui.spinner.stop();
 						ui.showPreviewTooltip(xml, evt);
+
+						// Reports what the converter could not use, after the
+						// preview is up: the tooltip stays open
+						ui.showPlantUmlWarnings(warnings);
 					}, function(e)
 					{
 						ui.spinner.stop();
@@ -14926,6 +15489,14 @@
 			var style = graph.getCurrentCellStyle(cell);
 			var isImage = mxUtils.getValue(style, mxConstants.STYLE_SHAPE, '') ==
 				mxConstants.SHAPE_IMAGE;
+
+			// A legacy image cell is an image with no stored config (created
+			// before images became self-describing). It keeps the previous look
+			// by re-parsing with legacyMermaidConfig and stays null; every other
+			// case reuses the cell's stored config (or the configured default
+			// when it has none) and persists it - see the config resolution in
+			// the apply and preview handlers below.
+			var legacyImage = isImage && obj.config == null;
 
 			// Diagram (editable group) vs Image (static SVG) output dropdown,
 			// mirroring the Insert > Mermaid dialog and letting the user switch
@@ -14972,15 +15543,31 @@
 
 	    		var asImage = typeSelect.value == 'mermaidImage';
 
-	    		// The parse config depends on the TARGET type, not the source:
-	    		// images re-parse with EditorUi.legacyMermaidConfig (so they match
-	    		// the previous default look), the editable diagram uses the
-	    		// diagram's stored config (null for a cell that was an image). The
+	    		// A legacy image re-edited as an image keeps its previous look and
+	    		// the null contract (parse with legacyMermaidConfig, store null).
+	    		// Every other case is self-describing: reuse the cell's stored
+	    		// config, or the configured default when it has none (a legacy
+	    		// cell being converted, or an old null diagram), and persist that
+	    		// same config so the cell renders identically across deployments.
 	    		// config is cloned per parse call so getMermaidConfig's in-place
-	    		// edits (securityLevel, startOnLoad, ...) never mutate the shared
-	    		// template or get saved.
-	    		var config = asImage ? EditorUi.legacyMermaidConfig :
-	    			(isImage ? null : obj.config);
+	    		// edits (securityLevel, startOnLoad, ...) never mutate the stored
+	    		// config or the shared default template.
+	    		var config, storeConfig;
+
+	    		if (asImage && legacyImage)
+	    		{
+	    			config = EditorUi.legacyMermaidConfig;
+	    			storeConfig = null;
+	    		}
+	    		else
+	    		{
+	    			// getInsertMermaidConfig() is null when unconfigured, so an
+	    			// old null diagram re-edited without a config stays null (no
+	    			// change); a configured deployment adopts and persists its config.
+	    			config = (obj.config != null) ? obj.config :
+	    				EditorUi.getInsertMermaidConfig();
+	    			storeConfig = config;
+	    		}
 
 	    		ui.parseMermaidDiagram(text, mxUtils.clone(config), function(xml)
 	    		{
@@ -14998,28 +15585,29 @@
 	    					if (isImage && asImage)
 	    					{
 	    						// Keep image cells as images: re-render the SVG and
-	    						// update the cell in place. Stored config stays null
-	    						// (legacy image-cell format); see parseMermaidImage.
-	    						// The padding follows the groupPadding style (legacy
-	    						// stored border as fallback), see getMermaidImageBorder.
-	    						ui.updateMermaidImage(cell, text, null, xml,
+	    						// update the cell in place. storeConfig is null for a
+	    						// legacy image (keeps that format) and the resolved
+	    						// config for a self-describing one. The padding follows
+	    						// the groupPadding style (legacy stored border as
+	    						// fallback), see getMermaidImageBorder.
+	    						ui.updateMermaidImage(cell, text, storeConfig, xml,
 	    							ui.getMermaidImageBorder(cell, obj.border));
 	    					}
 	    					else if (!isImage && !asImage)
 	    					{
-	    						ui.replaceLockedGroupChildren(cell, xml, text, config);
+	    						ui.replaceLockedGroupChildren(cell, xml, text, storeConfig);
 	    					}
 	    					else
 	    					{
 	    						// Output type changed: swap the cell for the other
 	    						// representation, keeping its position. The padding
 	    						// follows the old cell across the switch (its
-	    						// groupPadding style, or a legacy stored border);
-	    						// the diagram uses a null config.
+	    						// groupPadding style, or a legacy stored border); the
+	    						// new cell stores the resolved config (self-describing).
 	    						var border = ui.getMermaidImageBorder(cell, obj.border);
 	    						var inserted = ui.replaceMermaidCell(cell, asImage ?
-	    							ui.createMermaidImageXml(text, null, xml, null, border) :
-	    							mxMermaidToDrawio.wrapGroup(xml, text, config));
+	    							ui.createMermaidImageXml(text, storeConfig, xml, null, border) :
+	    							mxMermaidToDrawio.wrapGroup(xml, text, storeConfig));
 
 	    						if (!asImage && border != null)
 	    						{
@@ -15043,12 +15631,13 @@
 			{
 				// Previews the parse result the apply would produce, in the
 				// zoomable tooltip, keeping the dialog open. Uses the same
-				// config selection as the apply handler above.
+				// parse-config selection as the apply handler above.
 				if (ui.spinner.spin(document.body, mxResources.get('loading')))
 				{
-					var config = (typeSelect.value == 'mermaidImage') ?
+					var config = (typeSelect.value == 'mermaidImage' && legacyImage) ?
 						EditorUi.legacyMermaidConfig :
-						(isImage ? null : obj.config);
+						((obj.config != null) ? obj.config :
+							EditorUi.getInsertMermaidConfig());
 
 					ui.parseMermaidDiagram(text, mxUtils.clone(config),
 						function(xml)
@@ -15760,6 +16349,7 @@
 			this.altShiftActions[81] = 'copyStyle'; // Alt+Shift+Q
 			this.altShiftActions[87] = 'pasteStyle'; // Alt+Shift+W
 			this.altShiftActions[83] = 'synchronize'; // Alt+Shift+S
+			this.ctrlAltActions[84] = 'runLastLayout'; // Ctrl+Alt+T
 
 			// Applies custom keyboard shortcuts from the configuration
 			// after the default bindings so that they take precedence
@@ -16378,14 +16968,25 @@
 			try
 			{
 				// Automatically updates theme when system setting changes
-				window.matchMedia('(prefers-color-scheme: dark)')
-					.addEventListener('change', mxUtils.bind(this, function (e)
+				var darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+				var darkModeListener = mxUtils.bind(this, function (e)
+				{
+					if (this.isAutoDarkMode())
 					{
-						if (this.isAutoDarkMode())
-						{
-							this.setDarkMode(e.matches);
-						}
-					}));
+						this.setDarkMode(e.matches);
+					}
+				});
+
+				darkModeMediaQuery.addEventListener('change', darkModeListener);
+
+				// The media query outlives this instance so the listener must
+				// be removed or it fires on destroyed instances (eg. after a
+				// lightbox preview was closed)
+				this.destroyFunctions.push(function()
+				{
+					darkModeMediaQuery.removeEventListener('change', darkModeListener);
+				});
 			}
 			catch (e)
 			{
@@ -18046,7 +18647,19 @@
 		return this.pages != null && (urlParams['pages'] != '0' ||
 			this.pages.length > 1 || Editor.pagesVisible);
 	};
-	
+
+	/**
+	 * Returns true if the theme menu should be visible.
+	 */
+	EditorUi.prototype.isThemeMenuVisible = function()
+	{
+		// themes=1 shows the menu in embed mode except with a fixed theme,
+		// ie. where the ui or sketch URL parameter overrides the setting
+		return (urlParams['embed'] != '1' || (urlParams['themes'] == '1' &&
+			urlParams['ui'] == null && urlParams['sketch'] != '1')) &&
+			urlParams['extAuth'] != '1' && this.mode != App.MODE_ATLAS;
+	};
+
 	/**
 	 * Overrides image dialog to add image search and Google+.
 	 */
@@ -18654,9 +19267,205 @@
 			mxResources.add(RESOURCE_BASE, null, mxUtils.bind(this, function()
 			{
 				this.spinner.stop();
+				this.updateOfflineLanguages();
+
+				// Dialog texts are static - closes open dialogs so they
+				// reopen in the new language (a dialog with unsaved
+				// changes can veto the close and stops the loop)
+				while (this.dialog != null)
+				{
+					var dlg = this.dialog;
+					this.hideDialog(true);
+
+					if (this.dialog == dlg)
+					{
+						break;
+					}
+				}
+
 				this.fireEvent(new mxEventObject('languageChanged'));
+
+				// The startup flow depends on the splash dialog - reopens
+				// it in the new language instead of leaving no dialog
+				if (this.getCurrentFile() == null &&
+					typeof this.showSplash === 'function')
+				{
+					this.showSplash();
+				}
 			}));
 		}
+	};
+
+	/**
+	 * Scans the service worker precache for language bundles and invokes
+	 * the callback with the sorted language codes and whether the default
+	 * (English) bundle is present.
+	 */
+	EditorUi.prototype.getOfflineLanguages = function(fn)
+	{
+		var done = function(codes, hasDefault)
+		{
+			fn((codes != null) ? codes : [], hasDefault == true);
+		};
+
+		try
+		{
+			if (typeof caches !== 'undefined')
+			{
+				caches.keys().then(function(names)
+				{
+					var scans = [];
+
+					for (var i = 0; i < names.length; i++)
+					{
+						if (names[i].substring(0, 19) == 'workbox-precache-v2')
+						{
+							scans.push(caches.open(names[i]).then(function(cache)
+							{
+								return cache.keys();
+							}));
+						}
+					}
+
+					return Promise.all(scans);
+				}).then(function(results)
+				{
+					var codes = Object.create(null);
+					var hasDefault = false;
+
+					for (var i = 0; i < results.length; i++)
+					{
+						for (var j = 0; j < results[i].length; j++)
+						{
+							var match = /\/resources\/dia(?:_([a-z0-9-]+))?\.txt$/.exec(
+								new URL(results[i][j].url).pathname);
+
+							if (match != null)
+							{
+								if (match[1] != null)
+								{
+									codes[match[1]] = true;
+								}
+								else
+								{
+									hasDefault = true;
+								}
+							}
+						}
+					}
+
+					done(Object.keys(codes).sort(), hasDefault);
+				})['catch'](function()
+				{
+					done(null, false);
+				});
+
+				return;
+			}
+		}
+		catch (e)
+		{
+			// ignore
+		}
+
+		done(null, false);
+	};
+
+	/**
+	 * Scans the service worker precache for language bundles and stores
+	 * which languages are available offline. Asynchronous - the result is
+	 * used by isLanguageAvailableOffline from the next call on.
+	 */
+	EditorUi.prototype.updateOfflineLanguages = function()
+	{
+		this.getOfflineLanguages(mxUtils.bind(this, function(codes, hasDefault)
+		{
+			var available = Object.create(null);
+
+			if (hasDefault)
+			{
+				available['en'] = true;
+			}
+
+			for (var i = 0; i < codes.length; i++)
+			{
+				available[codes[i]] = true;
+			}
+
+			this.offlineLanguages = available;
+		}));
+	};
+
+	/**
+	 * Removes the cached bundle for the given language from the service
+	 * worker precache and invokes the callback when done. The bundle is
+	 * re-downloaded on the next use of that language, and installs stop
+	 * refreshing it (the refresh only covers cached entries).
+	 */
+	EditorUi.prototype.removeOfflineLanguage = function(code, fn)
+	{
+		try
+		{
+			if (typeof caches !== 'undefined' && /^[a-z0-9-]+$/.test(code))
+			{
+				caches.keys().then(function(names)
+				{
+					var deletes = [];
+
+					for (var i = 0; i < names.length; i++)
+					{
+						if (names[i].substring(0, 19) == 'workbox-precache-v2')
+						{
+							deletes.push(caches.open(names[i]).then(function(cache)
+							{
+								return cache.keys().then(function(requests)
+								{
+									return Promise.all(requests.filter(function(req)
+									{
+										return new URL(req.url).pathname.endsWith(
+											'/resources/dia_' + code + '.txt');
+									}).map(function(req)
+									{
+										return cache.delete(req);
+									}));
+								});
+							}));
+						}
+					}
+
+					return Promise.all(deletes);
+				}).then(mxUtils.bind(this, function()
+				{
+					this.updateOfflineLanguages();
+					fn();
+				}))['catch'](function()
+				{
+					fn();
+				});
+
+				return;
+			}
+		}
+		catch (e)
+		{
+			// ignore
+		}
+
+		fn();
+	};
+
+	/**
+	 * Returns true if switching to the given language produces a translated
+	 * UI right now. Bundles are cached by the service worker on first use
+	 * (see GenerateServiceWorker), so while offline only cached bundles -
+	 * and English, which is always precached - are available. Returns true
+	 * when online or without scan results (no service worker, eg. desktop).
+	 */
+	EditorUi.prototype.isLanguageAvailableOffline = function(id)
+	{
+		return navigator.onLine !== false || this.offlineLanguages == null ||
+			this.offlineLanguages['en'] != true || id == '' || id == 'en' ||
+			this.offlineLanguages[id] == true;
 	};
 
 	/**
@@ -19122,6 +19931,12 @@
 	 * and after every theme rebuild (updateDefaultStyles); clearDefaultStyle (the
 	 * method) leaves the persisted value alone — only the explicit "Clear Default
 	 * Style" action clears it.
+	 *
+	 * The persisted keys are applied ON TOP of the current default instead of
+	 * replacing it, so keys that were added to the default after the style was
+	 * persisted are kept. Replacing it dropped the fonts of a defaultEdgeStyle
+	 * added via Editor.configure (or of a theme switched to later) for every new
+	 * edge and edge label, while vertices still used them.
 	 */
 	EditorUi.prototype.restorePersistedEdgeStyle = function()
 	{
@@ -19131,7 +19946,24 @@
 
 		if (persistedEdgeStyle != null)
 		{
-			graph.currentEdgeStyle = mxUtils.clone(persistedEdgeStyle);
+			graph.currentEdgeStyle = mxUtils.clone(graph.defaultEdgeStyle);
+
+			// Skips prototype keys as the persisted style comes from local storage
+			for (var key in persistedEdgeStyle)
+			{
+				if (key != '__proto__' && key != 'constructor' && key != 'prototype')
+				{
+					graph.currentEdgeStyle[key] = persistedEdgeStyle[key];
+				}
+			}
+
+			// A persisted fontFamily without a fontSource is a system font, so the
+			// default's fontSource must not survive the merge (see pasteCellStyles)
+			if (persistedEdgeStyle['fontFamily'] != null &&
+				persistedEdgeStyle['fontSource'] == null)
+			{
+				delete graph.currentEdgeStyle['fontSource'];
+			}
 
 			if (graph.defaultEdgeStyle['edgeStyle'] != 'orthogonalEdgeStyle')
 			{
@@ -19214,8 +20046,7 @@
 						Array.isArray(link.actions[0].animation.steps))
 					{
 						var sc = link.actions[0].animation.steps.length;
-						result = mxResources.get('effects', null,
-							'Effects') + ' (' + sc + ')';
+						result = mxResources.get('effects') + ' (' + sc + ')';
 					}
 					else if (first != '')
 					{
@@ -19957,8 +20788,23 @@
 					{
 						if (xml.substring(0, 20).replace(/\s/g, '').indexOf('{"isProtected":') == 0)
 						{
+							var unavailable = mxUtils.bind(this, function()
+							{
+								this.handleError({message: mxResources.get('serviceUnavailableOrBlocked')});
+							});
+
 							var delayed = mxUtils.bind(this, function ()
 							{
+								// The script tag fires onload for any 200 response, so hosts
+								// that answer with an SPA fallback instead of the bundle load
+								// without an error and leave MiroImporter undefined
+								if (typeof MiroImporter === 'undefined')
+								{
+									unavailable();
+
+									return;
+								}
+
 								try
 								{
 									var miro = new MiroImporter();
@@ -19973,7 +20819,10 @@
 
 							if (typeof MiroImporter === 'undefined')
 							{
-								mxscript('js/diagramly/miro/MiroImporter.js', delayed);
+								// MiroImporter ships in extensions.min.js, the raw source
+								// under js/diagramly is not served on all hosts
+								mxscript(window.DRAWIO_SERVER_URL + 'js/extensions.min.js',
+									delayed, null, null, null, unavailable);
 							}
 							else
 							{
@@ -20716,7 +21565,7 @@
 					if (!args.shadows)
 					{
 						css += 'g[style*="filter: drop-shadow("] {\n' +
-							'  filter: none !important;{\n' +
+							'  filter: none !important;\n' +
 							'}\n';
 					}
 
@@ -20891,7 +21740,7 @@
 						if (Graph.isCssFontUrl(fontUrl))
 						{
 							pv.wnd.document.writeln('<link rel="stylesheet" href="' +
-								mxUtils.htmlEntities(fontUrl) +
+								mxUtils.htmlEntities(Graph.rewriteGoogleFontUrl(fontUrl)) +
 								'" charset="UTF-8" type="text/css">');
 						}
 						else
@@ -21250,27 +22099,16 @@
 												this.openLocalFile(xml, null, true);
 											}
 										}
-										else if (this.isRemoteFileFormat(data))
+										else if (this.isGliffyData(data))
 										{
-											if (this.isOffline())
+											this.importGliffy(data, mxUtils.bind(this, function(xml)
 											{
-												this.showError(mxResources.get('error'), mxResources.get('notInOffline'));
-											}
-											else
+												this.openLocalFile(xml, null, true);
+											}), mxUtils.bind(this, function(err)
 											{
-												new mxXmlRequest(OPEN_URL, 'format=xml&data=' + encodeURIComponent(data)).send(mxUtils.bind(this, function(req)
-												{
-													if (req.getStatus() >= 200 && req.getStatus() <= 299)
-													{
-														this.openLocalFile(req.getText(), null, true);
-													}
-													else
-													{
-														this.showError(mxResources.get('error'), req.getStatus() == 413? mxResources.get('diagramTooLarge') :
-																			mxResources.get('unknownError'));
-													}
-												}));
-											}
+												this.showError(mxResources.get('error'), (err != null && err.status == 413) ? mxResources.get('diagramTooLarge') :
+													mxResources.get('unknownError'));
+											}));
 										}
 										else if (/^https?:\/\//.test(data))
 										{
@@ -21457,35 +22295,19 @@
 					handleResult(xml);
 				}));
 			}
-			else if (Graph.fileSupport && new XMLHttpRequest().upload &&
-				this.isRemoteFileFormat(data, name))
+			else if (Graph.fileSupport && this.isGliffyData(data, name))
 			{
-				if (this.isOffline())
+				this.importGliffy(data, mxUtils.bind(this, function(xml)
 				{
 					this.spinner.stop();
-					this.showError(mxResources.get('error'), mxResources.get('notInOffline'));
-				}
-				else
+					handleResult(xml);
+				}), mxUtils.bind(this, function(err)
 				{
-					this.parseFile(file, mxUtils.bind(this, function(xhr)
-					{
-						if (xhr.readyState == 4)
-						{
-							this.spinner.stop();
-							
-							if (xhr.status >= 200 && xhr.status <= 299)
-							{
-								handleResult(xhr.responseText);
-							}
-							else
-							{
-								this.handleError({message: mxResources.get((xhr.status == 413) ?
-									'drawingTooLarge' : 'invalidOrMissingFile')},
-									mxResources.get('errorLoadingFile'));
-							}
-						}
-					}));
-				}
+					this.spinner.stop();
+					this.handleError({message: mxResources.get((err != null && err.status == 413) ?
+						'drawingTooLarge' : 'invalidOrMissingFile')},
+						mxResources.get('errorLoadingFile'));
+				}), name);
 			}
 			else if (this.isLucidChartData(data))
 			{
@@ -21987,6 +22809,95 @@
 	};
 
 	/**
+	 * Returns a validated copy of the given viewbox, or null. A viewbox is
+	 * {x, y, width, height} in graph (model) coordinates plus an optional
+	 * border in screen pixels; a JSON string is accepted too. This is the
+	 * object used by the viewbox URL parameter, the embed protocol's load
+	 * option and its viewbox action, so all three take the same value.
+	 * Rejects anything that would feed NaN or a zero size into fitWindow.
+	 */
+	EditorUi.parseViewBox = function(value)
+	{
+		try
+		{
+			if (typeof value === 'string')
+			{
+				value = JSON.parse(value);
+			}
+
+			if (value != null && typeof value === 'object')
+			{
+				var x = parseFloat(value.x);
+				var y = parseFloat(value.y);
+				var w = parseFloat(value.width);
+				var h = parseFloat(value.height);
+				var b = (value.border != null && value.border !== '') ?
+					parseFloat(value.border) : null;
+
+				if (isFinite(x) && isFinite(y) && isFinite(w) && isFinite(h) &&
+					w > 0 && h > 0 && (b == null || (isFinite(b) && b >= 0)))
+				{
+					return {x: x, y: y, width: w, height: h, border: b};
+				}
+			}
+		}
+		catch (e)
+		{
+			// ignore invalid JSON
+		}
+
+		return null;
+	};
+
+	/**
+	 * Returns the parsed viewbox URL parameter, or null if it is absent or
+	 * invalid (see EditorUi.parseViewBox).
+	 */
+	EditorUi.getViewBoxParam = function()
+	{
+		var vb = null;
+
+		if (urlParams['viewbox'] != null)
+		{
+			try
+			{
+				vb = EditorUi.parseViewBox(decodeURIComponent(urlParams['viewbox']));
+			}
+			catch (e)
+			{
+				// malformed percent-encoding
+			}
+
+			if (vb == null)
+			{
+				console.error('Ignoring invalid viewbox URL parameter');
+			}
+		}
+
+		return vb;
+	};
+
+	/**
+	 * Shows the given viewbox (see EditorUi.parseViewBox) in the graph
+	 * container. Regular fitWindow only zooms in chromeless mode (no
+	 * scrollbars to pan), so that mode goes through fitBoundsCssTransform
+	 * like the viewbox animation step does.
+	 */
+	EditorUi.prototype.applyViewBox = function(vb)
+	{
+		var graph = this.editor.graph;
+
+		if (graph.useCssTransforms)
+		{
+			graph.fitBoundsCssTransform(vb, vb.border);
+		}
+		else
+		{
+			graph.fitWindow(vb, vb.border);
+		}
+	};
+
+	/**
 	 * Adds the buttons for embedded mode.
 	 */
 	EditorUi.prototype.createLoadMessage = function(eventName)
@@ -22483,6 +23394,94 @@
 	};
 
 	/**
+	 * Runs the layouts defined in the diagram's childLayout styles via
+	 * Graph.executeAllChildLayouts (nested children before their parents) and
+	 * invokes the optional done callback. Used by the #create hash's
+	 * applyLayouts option — the layout manager only runs childLayouts when
+	 * the model changes, so a freshly opened file keeps its stored positions
+	 * unless they are applied explicitly. ELK layouts in JSON childLayout
+	 * specs need the elk bundle, which loads asynchronously — wait for it
+	 * like executeLayoutSpec does, but only when such a spec is present, so
+	 * diagrams with legacy string layouts (flowLayout, treeLayout, …) stay
+	 * independent of the bundle. After the wait times out the layouts still
+	 * run best-effort: the legacy layouts apply and the ELK containers are
+	 * skipped (with a console error from the layout manager).
+	 */
+	EditorUi.prototype.applyChildLayouts = function(done)
+	{
+		var graph = this.editor.graph;
+
+		var run = function()
+		{
+			try
+			{
+				graph.executeAllChildLayouts();
+			}
+			catch (e)
+			{
+				// A broken childLayout (unknown layout name, container-unsafe
+				// layout) must not abort the caller's flow — done still runs,
+				// like the layout manager's own error handling in getLayout.
+				if (window.console != null)
+				{
+					console.error(e);
+				}
+			}
+
+			if (done != null)
+			{
+				done();
+			}
+		};
+
+		var needsElk = function()
+		{
+			if (typeof ElkLayout !== 'undefined')
+			{
+				return false;
+			}
+
+			var cells = graph.getChildLayoutCells();
+
+			for (var i = 0; i < cells.length; i++)
+			{
+				try
+				{
+					var list = Graph.decodeChildLayout(
+						graph.getCellStyle(cells[i])['childLayout']);
+
+					for (var j = 0; list != null && j < list.length; j++)
+					{
+						if (list[j] != null && typeof Graph.elkLayoutAlgorithms[
+							list[j].layout] === 'string')
+						{
+							return true;
+						}
+					}
+				}
+				catch (e)
+				{
+					// Malformed childLayout — the layout manager skips it too
+				}
+			}
+
+			return false;
+		};
+
+		if (needsElk())
+		{
+			this.whenScriptReady(function()
+			{
+				return typeof ElkLayout !== 'undefined';
+			}, run, run);
+		}
+		else
+		{
+			run();
+		}
+	};
+
+	/**
 	 * Adds the buttons for embedded mode.
 	 */
 	/**
@@ -22794,7 +23793,15 @@
 						// Accepts a custom-layout array or any shorthand
 						// accepted by resolveLayoutList (preset names,
 						// 'libavoid'), same as the load "layout" option.
-						this.executeLayoutSpec(data.layouts);
+						// Reports completion with the common state fields so
+						// the host can follow up with a fit or viewbox action
+						// once the cells have moved.
+						this.executeLayoutSpec(data.layouts, mxUtils.bind(this, function()
+						{
+							var msg = this.createLoadMessage('layout');
+							msg.message = data;
+							parent.postMessage(JSON.stringify(msg), '*');
+						}));
 
 						return;
 					}
@@ -23051,6 +24058,24 @@
 
 						return;
 					}
+					else if (data.action == 'viewbox')
+					{
+						// Same object as the viewbox URL parameter and the
+						// load option (see EditorUi.parseViewBox); an invalid
+						// value leaves the view unchanged but still replies
+						var vb = EditorUi.parseViewBox(data.viewbox);
+
+						if (vb != null)
+						{
+							this.applyViewBox(vb);
+						}
+
+						var msg = this.createLoadMessage('viewbox');
+						msg.message = data;
+						parent.postMessage(JSON.stringify(msg), '*');
+
+						return;
+					}
 					else if (data.action == 'fullscreenChanged')
 					{
 						var scrollState = null;
@@ -23197,7 +24222,7 @@
 										{
 											var graphModel = graph.model;
 											var layers = graphModel.getChildCells(graphModel.getRoot());
-											var layerIdsMap = {};
+											var layerIdsMap = Object.create(null);
 											
 											for (var i = 0; i < data.layerIds.length; i++)
 											{
@@ -23216,7 +24241,25 @@
 										{
 											theme = Editor.isDarkMode() ? 'dark' : 'light';
 										}
-										
+
+										// Reduces scale for very large diagrams so that the export
+										// stays within maxCanvasExportArea and generating the
+										// image cannot crash the browser tab by running out
+										// of memory
+										if (data.width == null && this.maxCanvasExportArea > 0)
+										{
+											var b = graph.getGraphBounds();
+											var border = (data.border != null) ? data.border : 0;
+											var w = Math.ceil(b.width / graph.view.scale) + 2 * border;
+											var h = Math.ceil(b.height / graph.view.scale) + 2 * border;
+											var s = (data.scale != null) ? data.scale : 1;
+
+											if (w * h * s * s > this.maxCanvasExportArea)
+											{
+												data.scale = Math.sqrt(this.maxCanvasExportArea / (w * h));
+											}
+										}
+
 										this.editor.exportToCanvas(mxUtils.bind(this, function(canvas)
 										{
 											processUri(canvas.toDataURL('image/png'));
@@ -23236,6 +24279,10 @@
 									}
 
 									graphReady();
+								}
+								else if (!this.isRemoteExportEnabled())
+								{
+									processUri(null);
 								}
 								else
 								{
@@ -23536,7 +24583,30 @@
 
 						this.embedExitPoint = null;
 
-						if (data.scale != null)
+						// viewbox: shows the given diagram region after loading
+						// (same {x, y, width, height, border} object as the
+						// viewbox URL parameter, see EditorUi.parseViewBox).
+						// Takes precedence over scale and fit and over the
+						// page's stored initial view. The URL parameter is the
+						// fallback when the message carries none of the three
+						// view options, so a host can set the initial view in
+						// the iframe URL alone (jgraph/drawio#4763).
+						var viewbox = EditorUi.parseViewBox(data.viewbox);
+
+						if (viewbox == null && data.viewbox == null &&
+							data.scale == null && data.fit == null)
+						{
+							viewbox = EditorUi.getViewBoxParam();
+						}
+
+						if (viewbox != null)
+						{
+							afterLoad = mxUtils.bind(this, function()
+							{
+								this.applyViewBox(viewbox);
+							});
+						}
+						else if (data.scale != null)
 						{
 							var customScale = data.scale;
 							var scaleBorder = (data.scaleBorder != null) ?
@@ -23641,7 +24711,7 @@
 								graph.maxFitScale = maxFitScale;
 								
 								graph.fit(2 * border, null, null, null, null, null, h0);
-								this.setPageVisible(false);
+								this.setPageVisible(urlParams['pv'] == '1');
 
 								if (this.minInlineWidth != null &&
 									graph.getGraphBounds().width < this.minInlineWidth)
@@ -23760,7 +24830,9 @@
 										// Opt in per descriptor with image:true to load the
 										// parsed diagram as a static SVG image cell (carrying
 										// the mermaid source for re-editing), matching the
-										// legacy image insert. Uses the previous mermaid config.
+										// legacy image insert. New images follow the configured
+										// Mermaid config, or the legacy look when unset
+										// (see parseMermaidImage).
 										this.parseMermaidImage(data.data, afterMermaid, onMermaidError);
 									}
 									else
@@ -23781,7 +24853,7 @@
 											if (data.wrap)
 											{
 												xml = mxMermaidToDrawio.wrapGroup(xml, data.data,
-													null, {normalize: true});
+													EditorUi.getInsertMermaidConfig(), {normalize: true});
 											}
 
 											afterMermaid(xml);
@@ -24066,7 +25138,10 @@
 						this.addListener('mathEnabledChanged', changeListener);
 						this.addListener('gridEnabledChanged', changeListener);
 						this.addListener('guidesEnabledChanged', changeListener);
+						this.addListener('tooltipsEnabledChanged', changeListener);
 						this.addListener('pageViewChanged', changeListener);
+						this.addListener('connectionPointsChanged', changeListener);
+						this.addListener('connectionArrowsChanged', changeListener);
 					}
 
 					// Runs afterLoad before sending the load response so that
@@ -24121,32 +25196,23 @@
 					this.handleError(e);
 				}), filename);
 			}
-			else if (data != null && typeof data.substring === 'function' && new XMLHttpRequest().upload && this.isRemoteFileFormat(data, ''))
+			else if (data != null && typeof data.substring === 'function' && this.isGliffyData(data, ''))
 			{
-				if (this.isOffline())
+				this.importGliffy(data, mxUtils.bind(this, function(xml)
 				{
-					this.showError(mxResources.get('error'), mxResources.get('notInOffline'));
-				}
-				else
-				{
-					// Asynchronous parsing via server
-					this.parseFileData(data, mxUtils.bind(this, function(xhr)
+					if (xml.substring(0, 13) == '<mxGraphModel')
 					{
-						if (xhr.readyState == 4)
-						{
-							if (xhr.status >= 200 && xhr.status <= 299 &&
-								xhr.responseText.substring(0, 13) == '<mxGraphModel')
-							{
-								doLoad(xhr.responseText, evt);
-							}
-							else
-							{
-								this.handleError({message: xhr.status == 413? mxResources.get('diagramTooLarge') : 
-										mxResources.get('unknownError')});
-							}
-						}
-					}), '');
-				}
+						doLoad(xml, evt);
+					}
+					else
+					{
+						this.handleError({message: mxResources.get('unknownError')});
+					}
+				}), mxUtils.bind(this, function(err)
+				{
+					this.handleError({message: (err != null && err.status == 413) ? mxResources.get('diagramTooLarge') :
+							mxResources.get('unknownError')});
+				}), '');
 			}
 			else if (data != null && typeof data.substring === 'function' && this.isLucidChartData(data))
 			{
@@ -24823,7 +25889,7 @@
     		var allCells = [];
 			var parents = [];
     		var cells = [];
-    		var dups = {};
+    		var dups = Object.create(null);
     		
     		if (lines.length > 0)
     		{
@@ -25141,7 +26207,7 @@
 						
 						if (labelname != null && labels != null)
 						{
-							var tempLabel = labels[newCell.getAttribute(labelname)];
+							var lbKey = newCell.getAttribute(labelname); var tempLabel = (lbKey != null && Object.prototype.hasOwnProperty.call(labels, lbKey)) ? labels[lbKey] : null;
 							
 							if (tempLabel != null)
 							{
@@ -25156,7 +26222,7 @@
 
 						if (stylename != null && styles != null)
 						{
-							var tempStyle = styles[newCell.getAttribute(stylename)];
+							var stKey = newCell.getAttribute(stylename); var tempStyle = (stKey != null && Object.prototype.hasOwnProperty.call(styles, stKey)) ? styles[stKey] : null;
 							
 							if (tempStyle != null)
 							{
@@ -26139,6 +27205,10 @@
 								false, false, b, true, false, 'jpeg', grid);
 						}
 					}
+					else if (!editorUi.isRemoteExportEnabled())
+					{
+						editorUi.handleError({message: mxResources.get('notAvailable')});
+					}
 					else 
 					{
 						var extras = {globalVars: graph.getExportVariables()};
@@ -26605,8 +27675,14 @@
 	EditorUi.prototype.handleRemoteInvokeResponse = function(msg)
 	{
 		var msgMarkers = msg.msgMarkers;
-		var callback = this.remoteInvokeCallbacks[msgMarkers.callbackId];
-		
+		// The id comes from the message, so it must be a real array index. A key
+		// such as __proto__ would otherwise read Array.prototype and, on the
+		// write below, replace the array's prototype and break every later push.
+		var callbackId = (msgMarkers != null) ? msgMarkers.callbackId : null;
+		var callback = (typeof callbackId === 'number' && callbackId >= 0 &&
+			callbackId < this.remoteInvokeCallbacks.length) ?
+			this.remoteInvokeCallbacks[callbackId] : null;
+
 		if (callback == null)
 		{
 			throw new Error('No callback for ' + ((msgMarkers != null) ? msgMarkers.callbackId : 'null'));
@@ -26620,7 +27696,7 @@
 			callback.callback.apply(this, msg.resp);
 		}
 			
-		this.remoteInvokeCallbacks[msgMarkers.callbackId] = null; //set it to null only to keep the index
+		this.remoteInvokeCallbacks[callbackId] = null; //set it to null only to keep the index
 	};
 
 	EditorUi.prototype.remoteInvoke = function(remoteFn, remoteFnArgs, msgMarkers, callback, error)
@@ -26690,7 +27766,11 @@
 		{
 			//Remote invoke are allowed to call functions in AC
 			var funtionName = msg.funtionName;
-			var functionInfo = this.remoteInvokableFns[funtionName];
+			// Own property only: the name comes from the message, so an inherited
+			// member such as constructor or toString would otherwise pass as a
+			// whitelist entry and skip the allowedDomains origin check below
+			var functionInfo = (funtionName != null && Object.prototype.hasOwnProperty.call(
+				this.remoteInvokableFns, funtionName)) ? this.remoteInvokableFns[funtionName] : null;
 			
 			if (functionInfo != null && typeof this[funtionName] === 'function')
 			{
@@ -27302,20 +28382,99 @@
 	};
 
 	/**
-	 * Get the people that can be mentioned in comments
+	 * Are free-typed addresses offered as mention targets. Only relevant
+	 * for backends whose mention tokens are email-based.
 	 */
-	EditorUi.prototype.getMentionCandidates = function(success, error)
+	EditorUi.prototype.freeMentionsSupported = function()
+	{
+		var file = this.getCurrentFile();
+
+		return file != null? file.freeMentionsSupported() : false;
+	};
+
+	/**
+	 * Are mention candidates searched server-side as the user types. If
+	 * true, getMentionCandidates is called with the typed query and its
+	 * results are shown unfiltered, otherwise the candidates are fetched
+	 * once and filtered locally.
+	 */
+	EditorUi.prototype.mentionsLiveSearch = function()
+	{
+		var file = this.getCurrentFile();
+
+		return file != null? file.mentionsLiveSearch() : false;
+	};
+
+	/**
+	 * Does the backend notify mentioned people. If false, a hint is shown
+	 * in the comment composer when a mention is inserted.
+	 */
+	EditorUi.prototype.mentionNotificationsSupported = function()
+	{
+		var file = this.getCurrentFile();
+
+		return file != null? file.mentionNotificationsSupported() : true;
+	};
+
+	/**
+	 * Get the people that can be mentioned in comments. query is the text
+	 * typed after the @ and is only passed with mentionsLiveSearch.
+	 */
+	EditorUi.prototype.getMentionCandidates = function(success, error, query)
 	{
 		var file = this.getCurrentFile();
 
 		if (file != null)
 		{
-			file.getMentionCandidates(success, error);
+			file.getMentionCandidates(success, error, query);
 		}
 		else
 		{
 			success([]);
 		}
+	};
+
+	/**
+	 * Returns the plain text token that represents a mention of the given
+	 * user in the comment content. The default is the +email token that
+	 * Drive detects server-side. Backends override this in pairs with
+	 * parseMentionTokens.
+	 */
+	EditorUi.prototype.serializeMention = function(user)
+	{
+		return '+' + user.email;
+	};
+
+	/**
+	 * Returns the given comment content split into plain text segments
+	 * and mention objects ({id, email, displayName, pictureUrl}) for
+	 * rendering. The default parses the +email/@email tokens written by
+	 * serializeMention.
+	 */
+	EditorUi.prototype.parseMentionTokens = function(content)
+	{
+		var re = /[+@]([A-Za-z0-9.!#$%&'*/=?^_`{|}~+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})/g;
+		var segments = [];
+		var last = 0;
+		var match = null;
+
+		while ((match = re.exec(content)) != null)
+		{
+			if (match.index > last)
+			{
+				segments.push(content.substring(last, match.index));
+			}
+
+			segments.push({email: match[1]});
+			last = match.index + match[0].length;
+		}
+
+		if (last < content.length)
+		{
+			segments.push(content.substring(last));
+		}
+
+		return segments;
 	};
 
 	/**
@@ -27981,6 +29140,9 @@ var CommentsWindow = function(editorUi, x, y, w, h, saveCallback)
 	var readOnly = !editorUi.canComment();
 	var canReplyToReplies = editorUi.canReplyToReplies();
 	var mentionsEnabled = editorUi.mentionsSupported();
+	var liveMentions = mentionsEnabled && editorUi.mentionsLiveSearch();
+	var freeMentions = mentionsEnabled && editorUi.freeMentionsSupported();
+	var mentionNotifications = !mentionsEnabled || editorUi.mentionNotificationsSupported();
 	var anchorsEnabled = editorUi.anchoredCommentsSupported();
 	var mentionCandidates = [];
 	var pendingScrollCell = null;
@@ -28028,8 +29190,10 @@ var CommentsWindow = function(editorUi, x, y, w, h, saveCallback)
 	};
 
 	// Loads the people with access to the file for resolving mention
-	// tokens to names and for the composer autocompletion
-	if (mentionsEnabled)
+	// tokens to names and for the composer autocompletion. With live
+	// search there is no prefetched list, names come from the parsed
+	// mention tokens instead.
+	if (mentionsEnabled && !liveMentions)
 	{
 		editorUi.getMentionCandidates(function(candidates)
 		{
@@ -28064,19 +29228,28 @@ var CommentsWindow = function(editorUi, x, y, w, h, saveCallback)
 		return email;
 	};
 
-	function createMentionChip(email)
+	function createMentionChip(user)
 	{
 		var chip = document.createElement('span');
 		chip.className = 'geCommentMention';
-		chip.setAttribute('data-email', email);
+		chip.setAttribute('data-mention', editorUi.serializeMention(user));
+
+		// Keeps the label updatable when the candidate list arrives after
+		// the chip was rendered (see getMentionCandidates above)
+		if (user.email != null)
+		{
+			chip.setAttribute('data-email', user.email);
+		}
+
 		chip.contentEditable = 'false';
-		mxUtils.write(chip, '@' + resolveMentionName(email));
+		mxUtils.write(chip, '@' + (user.displayName || ((user.email != null) ?
+			resolveMentionName(user.email) : user.id)));
 
 		return chip;
 	};
 
 	// Writes the comment content into the given element, rendering
-	// +email/@email mention tokens as name chips
+	// mention tokens as name chips (see EditorUi.parseMentionTokens)
 	function writeCommentText(elt, content)
 	{
 		elt.innerText = '';
@@ -28088,24 +29261,18 @@ var CommentsWindow = function(editorUi, x, y, w, h, saveCallback)
 		}
 		else
 		{
-			var re = /[+@]([A-Za-z0-9.!#$%&'*/=?^_`{|}~+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})/g;
-			var last = 0;
-			var match = null;
+			var segments = editorUi.parseMentionTokens(content);
 
-			while ((match = re.exec(content)) != null)
+			for (var i = 0; i < segments.length; i++)
 			{
-				if (match.index > last)
+				if (typeof segments[i] === 'string')
 				{
-					mxUtils.write(elt, content.substring(last, match.index));
+					mxUtils.write(elt, segments[i]);
 				}
-
-				elt.appendChild(createMentionChip(match[1]));
-				last = match.index + match[0].length;
-			}
-
-			if (last < content.length)
-			{
-				mxUtils.write(elt, content.substring(last));
+				else
+				{
+					elt.appendChild(createMentionChip(segments[i]));
+				}
 			}
 		}
 	};
@@ -28519,10 +29686,11 @@ var CommentsWindow = function(editorUi, x, y, w, h, saveCallback)
 			addJumpChip(icon, chipLabel, (page != null) ?
 				(page.getName() || mxResources.get('page')) : null, page == null);
 		}
-		else if (editable)
+		else if (editable && editorUi.currentPage != null)
 		{
 			// Menu to attach the comment to the selected shape, the
-			// current page or the current viewport
+			// current page or the current viewport. Requires a current
+			// page, eg. headless UIs used by integrations have none.
 			var attach = document.createElement('a');
 			attach.className = 'geCommentAnchorChip geCommentAnchorAttach';
 			attach.setAttribute('title', mxResources.get('attach'));
@@ -28658,8 +29826,9 @@ var CommentsWindow = function(editorUi, x, y, w, h, saveCallback)
 	};
 
 	// Returns the content of the given comment editor. Mention chips are
-	// serialized as +email tokens which Drive detects server-side and
-	// notifies the mentioned person about
+	// serialized as the backend's mention tokens (see
+	// EditorUi.serializeMention) which the backend turns into
+	// notifications for the mentioned people
 	function getCommentEditorValue(elt)
 	{
 		if (elt.nodeName == 'TEXTAREA')
@@ -28685,9 +29854,9 @@ var CommentsWindow = function(editorUi, x, y, w, h, saveCallback)
 							result.push('\n');
 						}
 						else if (child.getAttribute != null &&
-							child.getAttribute('data-email') != null)
+							child.getAttribute('data-mention') != null)
 						{
-							result.push('+' + child.getAttribute('data-email'));
+							result.push(child.getAttribute('data-mention'));
 						}
 						else
 						{
@@ -28719,6 +29888,22 @@ var CommentsWindow = function(editorUi, x, y, w, h, saveCallback)
 		var selected = 0;
 		var matches = [];
 		var current = null;
+		var searchThread = null;
+		var noNotifyHint = null;
+
+		// Backends that cannot notify mentioned people disclose that in
+		// the composer when the first mention is inserted
+		function showNoNotifyHint()
+		{
+			if (!mentionNotifications && noNotifyHint == null)
+			{
+				noNotifyHint = document.createElement('div');
+				noNotifyHint.style.cssText = 'font-size:11px;opacity:0.7;padding:2px 0;';
+				mxUtils.write(noNotifyHint, mxResources.get('mentionNoNotify',
+					null, 'People you mention are not notified'));
+				elt.parentNode.insertBefore(noNotifyHint, elt.nextSibling);
+			}
+		};
 
 		function hideMenu()
 		{
@@ -28775,10 +29960,11 @@ var CommentsWindow = function(editorUi, x, y, w, h, saveCallback)
 			var rest = node.nodeValue.substring(current.end);
 			node.nodeValue = node.nodeValue.substring(0, current.start);
 
-			var chip = createMentionChip(candidate.email);
+			var chip = createMentionChip(candidate);
 			var space = document.createTextNode('\u00a0' + rest);
 			node.parentNode.insertBefore(chip, node.nextSibling);
 			chip.parentNode.insertBefore(space, chip.nextSibling);
+			showNoNotifyHint();
 
 			var sel = window.getSelection();
 			var range = document.createRange();
@@ -28801,10 +29987,45 @@ var CommentsWindow = function(editorUi, x, y, w, h, saveCallback)
 				return;
 			}
 
-			var query = current.query.toLowerCase();
-			matches = [];
+			if (liveMentions)
+			{
+				// Debounced server-side search, results are shown unfiltered.
+				// Responses for a query that is no longer current are dropped.
+				if (searchThread != null)
+				{
+					window.clearTimeout(searchThread);
+				}
 
-			for (var i = 0; i < mentionCandidates.length && matches.length < 6; i++)
+				searchThread = window.setTimeout(function()
+				{
+					searchThread = null;
+
+					if (current == null)
+					{
+						return;
+					}
+
+					var query = current.query;
+
+					editorUi.getMentionCandidates(function(candidates)
+					{
+						if (current != null && current.query == query)
+						{
+							showMenu(candidates.slice(0, 6));
+						}
+					}, function()
+					{
+						// Keeps the previous menu on search errors
+					}, query);
+				}, 300);
+
+				return;
+			}
+
+			var query = current.query.toLowerCase();
+			var newMatches = [];
+
+			for (var i = 0; i < mentionCandidates.length && newMatches.length < 6; i++)
 			{
 				var cand = mentionCandidates[i];
 
@@ -28812,20 +30033,21 @@ var CommentsWindow = function(editorUi, x, y, w, h, saveCallback)
 					(cand.displayName != null && cand.displayName.toLowerCase().indexOf(query) >= 0) ||
 					(cand.email != null && cand.email.toLowerCase().indexOf(query) >= 0))
 				{
-					matches.push(cand);
+					newMatches.push(cand);
 				}
 			}
 
 			// Offers a complete typed address as a mention target, eg. for
 			// people with access via a domain-wide share
-			if (/^[A-Za-z0-9.!#$%&'*/=?^_`{|}~+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/.test(current.query))
+			if (freeMentions &&
+				/^[A-Za-z0-9.!#$%&'*/=?^_`{|}~+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/.test(current.query))
 			{
 				var exists = false;
 
-				for (var i = 0; i < matches.length; i++)
+				for (var i = 0; i < newMatches.length; i++)
 				{
-					if (matches[i].email != null &&
-						matches[i].email.toLowerCase() == query)
+					if (newMatches[i].email != null &&
+						newMatches[i].email.toLowerCase() == query)
 					{
 						exists = true;
 						break;
@@ -28834,9 +30056,16 @@ var CommentsWindow = function(editorUi, x, y, w, h, saveCallback)
 
 				if (!exists)
 				{
-					matches.push({email: current.query});
+					newMatches.push({email: current.query});
 				}
 			}
+
+			showMenu(newMatches);
+		};
+
+		function showMenu(newMatches)
+		{
+			matches = newMatches;
 
 			if (matches.length == 0)
 			{

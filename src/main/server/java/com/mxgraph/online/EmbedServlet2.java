@@ -34,6 +34,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.concurrent.ScheduledFuture;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -404,9 +405,19 @@ public class EmbedServlet2 extends HttpServlet
 		{
 			HashSet<String> completed = new HashSet<String>();
 			int sizeLimit = Utils.MAX_SIZE;
+			// One budget for every fetch= in this request, not one each,
+			// otherwise n urls buy the caller n times the wait.
+			long expiresAt = System.currentTimeMillis() + Utils.HTTP_TOTAL_BUDGET;
 
 			for (int i = 0; i < urls.length; i++)
 			{
+				long remaining = expiresAt - System.currentTimeMillis();
+
+				if (remaining <= 0)
+				{
+					break;
+				}
+
 				InetAddress validatedAddr;
 
 				// Checks if URL already fetched to avoid duplicates. Uses the
@@ -417,27 +428,43 @@ public class EmbedServlet2 extends HttpServlet
 				{
 					completed.add(urls[i]);
 					URL url = new URL(urls[i]);
+					// openPinnedConnection applies Utils.HTTP_TIMEOUT to both the
+					// connect and the read: fetch= is an attacker-supplied URL,
+					// so without it a host that answers slowly on purpose pins
+					// this thread, and several fetch= values pin it for a
+					// multiple of that.
 					URLConnection connection = Utils.openPinnedConnection(url, validatedAddr);
 					((HttpURLConnection) connection).setInstanceFollowRedirects(false);
 					connection.setRequestProperty("User-Agent", "draw.io");
-					ByteArrayOutputStream stream = new ByteArrayOutputStream();
-					String contentLength = connection.getHeaderField("Content-Length");
 
-					// If content length is available, use it to enforce maximum size
-					if (contentLength != null && Long.parseLong(contentLength) > sizeLimit)
+					ScheduledFuture<?> deadline = Utils.setDeadline(
+							(HttpURLConnection) connection, remaining);
+
+					try
 					{
-						break;
-					}
+						ByteArrayOutputStream stream = new ByteArrayOutputStream();
+						String contentLength = connection.getHeaderField("Content-Length");
 
-					sizeLimit -= Utils.copyRestricted(connection.getInputStream(), stream);
-					setCachedUrls += "GraphViewer.cachedUrls['"
-							+ StringEscapeUtils.escapeEcmaScript(urls[i])
-							+ "'] = decodeURIComponent('"
-							+ StringEscapeUtils.escapeEcmaScript(
-									Utils.encodeURIComponent(
-											stream.toString("UTF-8"),
-											Utils.CHARSET_FOR_URL_ENCODING))
-							+ "');";
+						// If content length is available, use it to enforce maximum size
+						if (contentLength != null && Long.parseLong(contentLength) > sizeLimit)
+						{
+							break;
+						}
+
+						sizeLimit -= Utils.copyRestricted(connection.getInputStream(), stream);
+						setCachedUrls += "GraphViewer.cachedUrls['"
+								+ StringEscapeUtils.escapeEcmaScript(urls[i])
+								+ "'] = decodeURIComponent('"
+								+ StringEscapeUtils.escapeEcmaScript(
+										Utils.encodeURIComponent(
+												stream.toString("UTF-8"),
+												Utils.CHARSET_FOR_URL_ENCODING))
+								+ "');";
+					}
+					finally
+					{
+						Utils.clearDeadline(deadline);
+					}
 				}
 			}
 		}
@@ -461,6 +488,22 @@ public class EmbedServlet2 extends HttpServlet
 		writer.println("<html>");
 		writer.println("<body>");
 		writer.println("Deployed: " + lastModified);
+
+		// The deployed GAE version id (e.g. "31-0-2"), in dots form when it
+		// is a release version - see EmbedServlet.writeStats (the
+		// release-monitor watchdog reads /embed.js?stats, this servlet
+		// mirrors it for /embed2.js)
+		String applicationVersion = SystemProperty.applicationVersion.get();
+		int dot = applicationVersion.lastIndexOf(".");
+		String versionId = dot > 0 ? applicationVersion.substring(0, dot)
+				: applicationVersion;
+		writer.println("GAEVersionId: " + versionId);
+
+		if (versionId.matches("\\d+-\\d+-\\d+"))
+		{
+			writer.println("Version: " + versionId.replace('-', '.'));
+		}
+
 		writer.println("</body>");
 		writer.println("</html>");
 		writer.flush();

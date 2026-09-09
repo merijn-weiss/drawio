@@ -29,7 +29,8 @@ DrawioConfigEditor.installCss = function()
 
 /**
  * Builds a configuration editor in the given container. Returns an API with
- * setConfig, setDarkMode, setHighContrast and getConfig methods.
+ * setConfig, setDarkMode, setHighContrast, getConfig and getInvalidFields
+ * methods.
  *
  * options:
  *   initialConfig    - starting configuration object
@@ -50,8 +51,9 @@ DrawioConfigEditor.install = function(container, options)
 	var config = {};
 	var fontLists = { defaultFonts: [], customFonts: [] };
 	var colorLists = { presetColors: [], customPresetColors: [], defaultColors: [] };
-	var tagLists = { enabledLibraries: [], defaultCustomLibraries: [], hideMenuItems: [], hideMenus: [], enabledTemplateSections: [] };
+	var tagLists = { enabledLibraries: [], defaultCustomLibraries: [], hideMenuItems: [], hideMenus: [], enabledTemplateSections: [], defaultLanguages: [] };
 	var schemeData = { defaultColorSchemes: [], customColorSchemes: [] };
+	var invalidFields = {};
 	var editorContext = options.editorContext || {};
 	var isDesktop = (options.isDesktop != null) ? options.isDesktop :
 		(navigator.userAgent.indexOf('Electron') >= 0);
@@ -71,116 +73,278 @@ DrawioConfigEditor.install = function(container, options)
 		return div.innerHTML;
 	}
 
+	// Text-node serialization leaves quotes intact, so double-quoted
+	// attribute values additionally need quote escaping
+	function escapeAttr(str)
+	{
+		return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+	}
+
 	function q(selector) { return container.querySelector(selector); }
 	function qAll(selector) { return container.querySelectorAll(selector); }
+
+	// Returns the translation for the given resource key, or null to keep
+	// the built-in English text. Translations are only ever assigned as
+	// text (nodeValue/textContent/attribute values), never concatenated
+	// into markup: resource values can be overridden via the "resources"
+	// configuration and must not reach innerHTML.
+	function translate(key)
+	{
+		if (typeof mxResources !== 'undefined')
+		{
+			var value = mxResources.get(key);
+
+			// A missing key is echoed back as the key itself
+			if (value != null && value.length > 0 && value != key)
+			{
+				return value;
+			}
+		}
+
+		return null;
+	}
+
+	// Like translate, but shows the key for a missing translation (which
+	// only happens for the dia_i18n preview pseudo-language)
+	function resolve(key)
+	{
+		var value = translate(key);
+
+		return (value != null) ? value : key;
+	}
+
+	// Derives the resource key for a config key (version -> cfgVersion)
+	function configResourceKey(key)
+	{
+		return 'cfg' + key.charAt(0).toUpperCase() + key.substring(1);
+	}
+
+	// Sets the given text as the element's leading text node, keeping any
+	// element children (badges, code tags) in place
+	function setTextNode(el, text)
+	{
+		if (el.firstChild == null || el.firstChild.nodeType != 3)
+		{
+			el.insertBefore(el.ownerDocument.createTextNode(''), el.firstChild);
+		}
+
+		el.firstChild.nodeValue = text;
+	}
+
+	// Fills the template texts from the resources: field labels, their
+	// help texts, section titles (via their data-i18n key) and the search
+	// placeholder. The template ships without English texts - dia.txt is
+	// the single source. A field id that collides with a toggle key uses
+	// the 'Field' suffix (probed first - it only exists for collisions).
+	// A missing translation shows the resource key for labels and titles
+	// (only the dia_i18n preview pseudo-language) and hides help texts.
+	// See translate() for why this never writes markup.
+	function localizeTemplate()
+	{
+		qAll('label[for^="cfg-"]').forEach(function(label)
+		{
+			var key = configResourceKey(label.getAttribute('for').substring(4));
+			var name = (translate(key + 'Field') != null) ? key + 'Field' : key;
+			var text = translate(name);
+
+			// A few labels have no resource key (multi-line template
+			// constructs) and keep their built-in English text
+			if (text != null)
+			{
+				label.textContent = text;
+			}
+			else if (label.textContent === '')
+			{
+				label.textContent = name;
+			}
+
+			var field = label.closest('.field');
+			var helpEl = (field != null) ? field.querySelector('.field__help') : null;
+			var help = translate(name + 'Help');
+
+			if (helpEl != null && help != null)
+			{
+				helpEl.textContent = help;
+			}
+		});
+
+		// Section titles, detached help texts and list-editor labels and
+		// buttons carry their resource key explicitly
+		qAll('[data-i18n]').forEach(function(el)
+		{
+			el.textContent = resolve(el.getAttribute('data-i18n'));
+		});
+
+		var search = q('#searchInput');
+		var placeholder = translate('cfgSearchSettings');
+
+		if (search != null && placeholder != null)
+		{
+			search.setAttribute('placeholder', placeholder);
+		}
+	}
+
+	// Applies the toggle texts for the current language from the resources
+	// (a missing translation shows the resource key, which only happens for
+	// the dia_i18n preview pseudo-language) - text nodes only, see
+	// translate(). Callable again after a language switch.
+	function localizeToggles()
+	{
+		Object.keys(toggleGroups).forEach(function(containerId)
+		{
+			var fields = qAll('#' + containerId + ' .toggle-field');
+
+			toggleGroups[containerId].forEach(function(toggle, i)
+			{
+				var field = fields[i];
+
+				if (field == null)
+				{
+					return;
+				}
+
+				var key = toggle.i18n || configResourceKey(toggle.key);
+				var name = translate(key);
+				var help = translate(key + 'Help');
+
+				setTextNode(field.querySelector('.toggle-field__name'),
+					(name != null) ? name : key);
+				setTextNode(field.querySelector('.toggle-field__help'),
+					(help != null) ? help + ' ' : '');
+
+				var badgeEl = field.querySelector('.toggle-field__experimental');
+
+				if (badgeEl != null)
+				{
+					badgeEl.setAttribute('title', resolve('cfgExperimental'));
+				}
+
+				var buttons = field.querySelectorAll('.tri-toggle button');
+				var titles = [resolve('cfgNotSet'), resolve('cfgEnabled'),
+					resolve('disabled')];
+
+				for (var j = 0; j < buttons.length; j++)
+				{
+					buttons[j].setAttribute('title', titles[j]);
+				}
+			});
+		});
+	}
+
+	localizeTemplate();
 
 	// ============================================
 	// TOGGLE DEFINITIONS
 	// ============================================
 	var toggleGroups = {
 		'general-toggles': [
-			{ key: 'override', name: 'Override', help: 'Ignore user settings stored in the browser so the defaults in this configuration always apply' },
-			{ key: 'compact', name: 'Compact UI', help: 'Enable compact user interface mode' },
-			{ key: 'noAutoFocus', name: 'No Auto Focus', help: 'Disable auto-focus on startup' },
-			{ key: 'showSplashOnStart', name: 'Show Splash on Start', help: 'Show the splash screen with storage options on startup' },
-			{ key: 'updateDefaultStyle', name: 'Update Default Style', help: 'Update defaults when styles change' },
-			{ key: 'mathOutputSize', name: 'Math Output Size', help: 'Size labels, view bounds and initial fit to the rendered math output instead of the formula source' },
-			{ key: 'browserTranslate', name: 'Browser Translate', help: 'Mirror diagram text for browser translation engines (e.g. Chrome Translate)' }
+			{ key: 'override' },
+			{ key: 'compact' },
+			{ key: 'noAutoFocus' },
+			{ key: 'showSplashOnStart' },
+			{ key: 'updateDefaultStyle' },
+			{ key: 'mathOutputSize' },
+			{ key: 'browserTranslate' }
 		],
 		'canvas-toggles': [
-			{ key: 'defaultPageVisible', name: 'Page Visible', help: 'Show page outline on canvas' },
-			{ key: 'defaultGridEnabled', name: 'Grid Enabled', help: 'Show grid on canvas' },
-			{ key: 'defaultConnectable', name: 'Default Connectable', help: 'Shapes are connectable by default' },
-			{ key: 'defaultConnectionArrowsEnabled', name: 'Connection Arrows', help: 'Show arrows when hovering connections' },
-			{ key: 'copyOnConnect', name: 'Copy on Connect', help: 'Create a copy of the source shape for connections that end on the canvas' },
-			{ key: 'defaultFoldingEnabled', name: 'Folding Enabled', help: 'Enable shape folding (collapse/expand)' },
-			{ key: 'zoomWheel', name: 'Zoom with Mouse Wheel', help: 'Use mouse wheel for zoom without modifiers' },
-			{ key: 'simpleLabels', name: 'Simple Labels', help: 'Disable word wrap and HTML for labels' },
-			{ key: 'optimizeHtmlLabels', name: 'Optimize HTML Labels', help: 'Remove unnecessary spans from HTML labels when editing stops' },
-			{ key: 'stopEditingOnEnter', name: 'Stop Editing on Enter', help: 'Enter key stops label editing, Shift+Enter inserts a line break' },
-			{ key: 'pasteAtMousePointer', name: 'Paste at Mouse', help: 'Paste elements at mouse pointer location' },
-			{ key: 'fitDiagramOnLoad', name: 'Fit Diagram on Load', help: 'Fit diagram to window on load' },
-			{ key: 'fitDiagramOnPage', name: 'Fit Diagram on Page', help: 'Fit diagram to page size' },
-			{ key: 'selectParentLayer', name: 'Select Parent Layer', help: 'Selects parent layer for current selection' },
-			{ key: 'enableInlineToolbar', name: 'Inline Toolbar', help: 'Enable the inline toolbar on selection' },
-			{ key: 'enableWindowDocking', name: 'Window Docking', help: 'Enable window docking' },
-			{ key: 'showLinkIcons', name: 'Show Link Icons', help: 'Show link icons on shapes' },
-			{ key: 'showTooltipIcons', name: 'Show Tooltip Icons', help: 'Show tooltip icons on shapes' },
-			{ key: 'showNoteIcons', name: 'Show Note Icons', help: 'Show note icons on shapes' },
-			{ key: 'showConnectHandle', name: 'Show Connect Handle', help: 'Show connection handle on hover' },
-			{ key: 'intersectionSelect', name: 'Intersection Select', help: 'Select cells by intersection rather than containment' },
-			{ key: 'swimlaneSelectionEnabled', name: 'Swimlane Body Selection', help: 'Click an empty swimlane body to select the swimlane (default on)' }
+			{ key: 'defaultPageVisible' },
+			{ key: 'defaultGridEnabled' },
+			{ key: 'enablePositionGuides' },
+			{ key: 'enableDistanceGuides' },
+			{ key: 'enableSizeGuides' },
+			{ key: 'defaultConnectable' },
+			{ key: 'defaultConnectionArrowsEnabled' },
+			{ key: 'copyOnConnect' },
+			{ key: 'defaultFoldingEnabled' },
+			{ key: 'defaultTransparentGroups' },
+			{ key: 'zoomWheel' },
+			{ key: 'simpleLabels' },
+			{ key: 'optimizeHtmlLabels' },
+			{ key: 'stopEditingOnEnter' },
+			{ key: 'pasteAtMousePointer' },
+			{ key: 'fitDiagramOnLoad' },
+			{ key: 'fitDiagramOnPage' },
+			{ key: 'selectParentLayer' },
+			{ key: 'enableInlineToolbar' },
+			{ key: 'enableWindowDocking' },
+			{ key: 'showLinkIcons' },
+			{ key: 'showTooltipIcons' },
+			{ key: 'showNoteIcons' },
+			{ key: 'showConnectHandle' },
+			{ key: 'intersectionSelect' },
+			{ key: 'swimlaneSelectionEnabled' }
 		],
 		'appearance-toggles': [
-			{ key: 'enableCssDarkMode', name: 'CSS Dark Mode', help: 'Use CSS for dark mode rendering' },
-			{ key: 'enableLightDarkColors', name: 'Light/Dark Colors', help: 'Use CSS light-dark() color function' },
-			{ key: 'enableAnimations', name: 'Enable Animations', help: 'Enable shape and layout animations' },
-			{ key: 'insertAnimations', name: 'Insert Animations', help: 'Show pop animation when inserting shapes from the sidebar' }
+			{ key: 'enableCssDarkMode' },
+			{ key: 'enableLightDarkColors' },
+			{ key: 'enableAnimations' },
+			{ key: 'insertAnimations' }
 		],
 		'sidebar-toggles': [
-			{ key: 'sidebarTitles', name: 'Sidebar Titles', help: 'Show titles in the sidebar' },
-			{ key: 'expandLibraries', name: 'Expand Libraries', help: 'Libraries expanded by default' }
+			{ key: 'sidebarTitles' },
+			{ key: 'expandLibraries' }
 		],
 		'library-toggles': [
-			{ key: 'enableCustomLibraries', name: 'Enable Custom Libraries', help: 'Allow open and new library functions' },
-			{ key: 'inlineExtIcons', name: 'Inline Icon Search Results', help: 'Insert icon search results as embedded images instead of remote references' },
-			{ key: 'appendCustomLibraries', name: 'Append Custom Libraries', help: 'Custom libraries appear after built-in ones' }
+			{ key: 'enableCustomLibraries' },
+			{ key: 'inlineExtIcons' },
+			{ key: 'appendCustomLibraries' }
 		],
 		'export-toggles': [
-			{ key: 'compressXml', name: 'Compress XML', help: 'Compress XML output in saved files' },
-			{ key: 'compressStyles', name: 'Compress Styles', help: 'Deduplicate repeated inline images and stencils into a shared lookup table. Only readable by draw.io 29.3.1 and later.', experimental: true, helpLink: 'https://www.drawio.com/docs/reference/style-compression/' },
-			{ key: 'includeDiagram', name: 'Include Diagram in Export', help: 'Include diagram data in export dialogs' },
-			{ key: 'enableExportUrl', name: 'Enable Export URL', help: 'Enable the export URL feature' },
-			{ key: 'lockdown', name: 'Lockdown', help: 'Disable data transmission apart from storage' },
-			{ key: 'restrictExport', name: 'Restrict Export', help: 'Disable exporting diagrams to other formats' },
-			{ key: 'enableNativeClipboard', name: 'Native Clipboard', help: 'Use native system clipboard' },
-			{ key: 'replaceSvgDataUris', name: 'Replace SVG Data URIs', help: 'Replace data URIs with SVG sub-trees in export' },
-			{ key: 'foreignObjectImages', name: 'Foreign Object Images', help: 'Replace foreignObject with images' },
-			{ key: 'embedSvgFonts', name: 'Embed SVG Fonts', help: 'Default for embedding fonts as data URIs in exported and saved SVG files, can be overridden per file in the file properties' },
-			{ key: 'removeImageMetadata', name: 'Remove Image Metadata', help: 'Strip metadata from images' },
-			{ key: 'expandPatternsForPrint', name: 'Expand Patterns for Print', help: 'Expand patterns to visible graphics during print/PDF export' }
+			{ key: 'compressXml' },
+			{ key: 'compressStyles', experimental: true, helpLink: 'https://www.drawio.com/docs/reference/style-compression/' },
+			{ key: 'includeDiagram' },
+			{ key: 'enableExportUrl' },
+			{ key: 'lockdown' },
+			{ key: 'restrictExport' },
+			{ key: 'enableNativeClipboard' },
+			{ key: 'replaceSvgDataUris' },
+			{ key: 'foreignObjectImages' },
+			{ key: 'embedSvgFonts' },
+			{ key: 'removeImageMetadata' },
+			{ key: 'expandPatternsForPrint' }
 		],
 		'advanced-toggles': [
-			{ key: 'shareCursorPosition', name: 'Share Cursor Position', help: 'Share cursor in real-time collaboration' },
-			{ key: 'showRemoteCursors', name: 'Show Remote Cursors', help: 'Display other users\' cursors' },
-			{ key: 'oneDriveInlinePicker', name: 'OneDrive Inline Picker', help: 'Use inline picker for OneDrive' },
-			{ key: 'enableCustomGitLabUrl', name: 'Enable Custom GitLab URL', help: 'Allow ?gitlab= / ?gitlab-id= URL parameters to override the default GitLab server. Enable only for self-hosted GitLab deployments.' }
+			{ key: 'shareCursorPosition' },
+			{ key: 'showRemoteCursors' },
+			{ key: 'oneDriveInlinePicker' },
+			{ key: 'enableCustomGitLabUrl' }
 		],
 		'embedding-toggles': [
-			{ key: 'passiveScroll', name: 'Passive Scroll', help: 'Enable passive scroll event listeners' },
-			{ key: 'noResizers', name: 'No Resizers', help: 'Hide shape resize handles' },
-			{ key: 'preserveViewState', name: 'Preserve View State', help: 'Preserve view state in embed mode' },
-			{ key: 'useInternalClipboard', name: 'Use Internal Clipboard', help: 'Use internal clipboard instead of native' }
+			{ key: 'passiveScroll' },
+			{ key: 'noResizers' },
+			{ key: 'preserveViewState' },
+			{ key: 'useInternalClipboard' }
 		],
 		'ai-toggles': [
-			{ key: 'enableAi', name: 'Enable AI', help: 'Enable AI diagram generation' }
+			{ key: 'enableAi' }
 		],
 		'confluence-cloud-toggles': [
-			{ key: 'simpleViewer', name: 'Simple Viewer', help: 'Use simple viewer for all diagrams' },
-			{ key: 'disableVersioning', name: 'Disable Versioning', help: 'Disable diagram versioning' },
-			{ key: 'hiResPreview', name: 'Hi-Res Preview', help: 'Generate high-resolution preview images' },
-			{ key: 'autoCropViewer', name: 'Auto Crop Viewer', help: 'Auto-crop viewer to fit diagram bounds' },
-			{ key: 'enableCssDarkMode', name: 'CSS Dark Mode', help: 'Enable CSS-based dark mode for viewer diagrams' },
-			{ key: 'viewerCanExceedPageWidth', name: 'Viewer Can Exceed Page Width', help: 'Allow the viewer to exceed the page width' },
-			{ key: 'inplaceEdits', name: 'In-place Edits', help: 'Allow launching the editor from the viewer' },
-			{ key: 'lockdown', name: 'Lockdown', help: 'Disable data transmission outside Confluence' },
-			{ key: 'translateDiagrams', name: 'Translate Diagrams', help: 'Enable automatic translation of diagram labels' },
-			{ key: 'generateSVGs', name: 'Generate SVGs', help: 'Generate SVG previews for diagrams' }
+			{ key: 'simpleViewer' },
+			{ key: 'disableVersioning' },
+			{ key: 'hiResPreview' },
+			{ key: 'autoCropViewer' },
+			{ key: 'enableCssDarkMode', i18n: 'cfgEnableCssDarkMode2' },
+			{ key: 'viewerCanExceedPageWidth' },
+			{ key: 'inplaceEdits' },
+			{ key: 'lockdown' },
+			{ key: 'translateDiagrams' },
+			{ key: 'generateSVGs' },
+			{ key: 'debug' }
 		],
 		'confluence-toggles': [
-			{ key: 'debug', name: 'Debug', help: 'Enable debug output' },
-			{ key: 'inplaceEdits', name: 'In-place Edits', help: 'Allow launching editor from viewer' },
-			{ key: 'forceSimpleViewer', name: 'Force Simple Viewer', help: 'Force simple viewer for all diagrams' }
+			{ key: 'debug' },
+			{ key: 'inplaceEdits' },
+			{ key: 'forceSimpleViewer' }
 		]
 	};
 
 	if (isDesktop)
 	{
 		toggleGroups['font-toggles'] = [
-			{ key: 'enableLocalFonts', name: 'Local Fonts', help: 'Scan and list locally installed fonts in the font picker' }
+			{ key: 'enableLocalFonts' }
 		];
 		toggleGroups['desktop-toggles'] = [
-			{ key: 'desktopAutoSync', name: 'Desktop Auto Sync', help: 'Auto-sync when local file changes' }
+			{ key: 'desktopAutoSync' }
 		];
 	}
 
@@ -203,10 +367,13 @@ DrawioConfigEditor.install = function(container, options)
 				var helpIcon = toggle.helpLink ?
 					' <a class="toggle-field__helplink" href="' + toggle.helpLink + '" target="_blank" rel="noopener" title="Learn more">?</a>' : '';
 
+				// Names and help texts come from the resources and are
+				// filled in as text nodes by localizeToggles - resource
+				// values must never be concatenated into this markup
 				html += '<div class="toggle-field">' +
 					'<div class="toggle-field__label">' +
-						'<span class="toggle-field__name">' + toggle.name + badge + '</span>' +
-						'<span class="toggle-field__help">' + toggle.help + ' <code>' + toggle.key + '</code>' + helpIcon + '</span>' +
+						'<span class="toggle-field__name">' + badge + '</span>' +
+						'<span class="toggle-field__help"><code>' + toggle.key + '</code>' + helpIcon + '</span>' +
 					'</div>' +
 					'<div class="tri-toggle" data-key="' + toggle.key + '">' +
 						'<button type="button" data-value="unset" class="active--unset" title="Not set (use default)">&#8212;</button>' +
@@ -218,6 +385,8 @@ DrawioConfigEditor.install = function(container, options)
 			el.innerHTML = html;
 		});
 
+		localizeToggles();
+
 		qAll('.tri-toggle').forEach(function(toggle)
 		{
 			toggle.querySelectorAll('button').forEach(function(btn)
@@ -227,8 +396,13 @@ DrawioConfigEditor.install = function(container, options)
 					var key = toggle.getAttribute('data-key');
 					var value = btn.getAttribute('data-value');
 
-					toggle.querySelectorAll('button').forEach(function(b) { b.className = ''; });
-					btn.className = 'active--' + value;
+					// Update every toggle with this key so duplicates in
+					// other sections (e.g. lockdown, debug) stay in sync
+					qAll('.tri-toggle[data-key="' + key + '"]').forEach(function(t)
+					{
+						t.querySelectorAll('button').forEach(function(b) { b.className = ''; });
+						t.querySelector('[data-value="' + value + '"]').className = 'active--' + value;
+					});
 
 					if (value === 'unset') { delete config[key]; }
 					else { config[key] = value === 'true'; }
@@ -237,6 +411,47 @@ DrawioConfigEditor.install = function(container, options)
 				});
 			});
 		});
+	}
+
+	// ============================================
+	// JSON FIELD VALIDATION
+	// ============================================
+	function fieldLabel(el)
+	{
+		var field = el.closest('.field');
+		var label = (field != null) ? field.querySelector('label') : null;
+
+		return (label != null) ? label.textContent : el.getAttribute('data-key');
+	}
+
+	function markFieldInvalid(el)
+	{
+		invalidFields[el.getAttribute('data-key')] = fieldLabel(el);
+		el.classList.add('input--invalid');
+		el.setAttribute('aria-invalid', 'true');
+
+		if (el.nextElementSibling == null ||
+			!el.nextElementSibling.classList.contains('field__error'))
+		{
+			var err = document.createElement('p');
+			err.className = 'field__error';
+			err.textContent = 'Invalid JSON';
+			el.insertAdjacentElement('afterend', err);
+		}
+	}
+
+	function clearFieldInvalid(el)
+	{
+		delete invalidFields[el.getAttribute('data-key')];
+		el.classList.remove('input--invalid');
+		el.removeAttribute('aria-invalid');
+
+		var err = el.nextElementSibling;
+
+		if (err != null && err.classList.contains('field__error'))
+		{
+			err.parentNode.removeChild(err);
+		}
 	}
 
 	// ============================================
@@ -255,7 +470,11 @@ DrawioConfigEditor.install = function(container, options)
 			{
 				var val = el.value.trim();
 
-				if (val === '') { delete config[key]; }
+				if (val === '')
+				{
+					delete config[key];
+					if (isJson) { clearFieldInvalid(el); }
+				}
 				else if (el.type === 'number')
 				{
 					var num = parseFloat(val);
@@ -263,8 +482,8 @@ DrawioConfigEditor.install = function(container, options)
 				}
 				else if (isJson)
 				{
-					try { config[key] = JSON.parse(val); }
-					catch (e) { /* keep typing */ }
+					try { config[key] = JSON.parse(val); clearFieldInvalid(el); }
+					catch (e) { markFieldInvalid(el); }
 				}
 				else { config[key] = val; }
 
@@ -291,7 +510,11 @@ DrawioConfigEditor.install = function(container, options)
 	{
 		var pairs = [
 			{ picker: 'cfg-darkColorPicker', text: 'cfg-darkColor' },
-			{ picker: 'cfg-shadowColorPicker', text: 'cfg-shadowColor' }
+			{ picker: 'cfg-shadowColorPicker', text: 'cfg-shadowColor' },
+			{ picker: 'cfg-defaultGridColorPicker', text: 'cfg-defaultGridColor' },
+			{ picker: 'cfg-defaultDarkGridColorPicker', text: 'cfg-defaultDarkGridColor' },
+			{ picker: 'cfg-defaultPageBackgroundColorPicker', text: 'cfg-defaultPageBackgroundColor' },
+			{ picker: 'cfg-defaultDarkPageBackgroundColorPicker', text: 'cfg-defaultDarkPageBackgroundColor' }
 		];
 
 		pairs.forEach(function(pair)
@@ -380,9 +603,17 @@ DrawioConfigEditor.install = function(container, options)
 		var el = q('#' + listKey + '-tags');
 		var html = '';
 
+		// Entries are kept in their original form: plain font names or
+		// {fontFamily, fontUrl} objects for web fonts (e.g. Google Fonts)
 		fontLists[listKey].forEach(function(font, i)
 		{
-			html += '<span class="tag"><span>' + escapeHtml(font) + '</span>' +
+			var isObj = (font !== null && typeof font === 'object');
+			var name = isObj ? String(font.fontFamily || '') : String(font);
+			var url = (isObj && font.fontUrl) ? String(font.fontUrl) : null;
+
+			html += '<span class="tag"' + ((url != null) ? ' title="' + escapeAttr(url) + '"' : '') + '>' +
+				'<span>' + escapeHtml(name) + '</span>' +
+				((url != null) ? '<span class="tag__link">&#8599;</span>' : '') +
 				'<button type="button" class="tag__remove" data-list="' + listKey + '" data-index="' + i + '">&times;</button></span>';
 		});
 
@@ -409,16 +640,29 @@ DrawioConfigEditor.install = function(container, options)
 	function setupFontList(listKey)
 	{
 		var input = q('#' + listKey + '-input');
+		var urlInput = q('#' + listKey + '-url');
 		var addBtn = q('#' + listKey + '-add');
 
 		function addFont()
 		{
-			var val = input.value.trim();
-			if (val) { fontLists[listKey].push(val); input.value = ''; syncFontList(listKey); renderFontTags(listKey); }
+			var name = input.value.trim();
+			var url = urlInput.value.trim();
+
+			if (name)
+			{
+				fontLists[listKey].push((url) ? { fontFamily: name, fontUrl: url } : name);
+				input.value = '';
+				urlInput.value = '';
+				syncFontList(listKey);
+				renderFontTags(listKey);
+			}
 		}
 
+		function onEnter(e) { if (e.key === 'Enter') { e.preventDefault(); addFont(); } }
+
 		addBtn.addEventListener('click', addFont);
-		input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); addFont(); } });
+		input.addEventListener('keydown', onEnter);
+		urlInput.addEventListener('keydown', onEnter);
 		renderFontTags(listKey);
 	}
 
@@ -736,35 +980,93 @@ DrawioConfigEditor.install = function(container, options)
 	// ============================================
 	// DEFAULT MACRO PARAMETERS
 	// ============================================
-	function setupMacroParams()
+	// A defaultMacroParameters editor appears in both the Confluence Cloud and
+	// Server/DC sections, distinguished by id prefix. The two sections expose
+	// different parameter sets (e.g. Cloud has zoom/center/hiResPreview, DC has
+	// width/border) but both edit the single config.defaultMacroParameters
+	// object. Each editor only touches the keys in its own spec and preserves
+	// the rest, and edits are mirrored into the other section's UI so the two
+	// stay in sync for the keys they share.
+	var macroParamSpecs = {
+		'cfg-dmp': { selects: ['toolbarStyle', 'links'], numbers: ['width'], booleans: ['border', 'lightbox', 'simpleViewer'] },
+		'cfg-cdmp': { selects: ['tbstyle', 'links'], numbers: ['zoom'], booleans: ['lbox', 'simple', 'pCenter', 'hiResPreview'] }
+	};
+	var macroParamPrefixes = ['cfg-cdmp', 'cfg-dmp'];
+
+	function populateMacroParams(prefix)
 	{
-		var toolbarStyle = q('#cfg-dmp-toolbarStyle');
-		var links = q('#cfg-dmp-links');
-		var width = q('#cfg-dmp-width');
-		var border = q('#cfg-dmp-border');
-		var lightbox = q('#cfg-dmp-lightbox');
-		var simpleViewer = q('#cfg-dmp-simpleViewer');
+		var dmp = config.defaultMacroParameters || {};
+		var spec = macroParamSpecs[prefix];
+
+		spec.selects.forEach(function(prop)
+		{
+			q('#' + prefix + '-' + prop).value = dmp[prop] || '';
+		});
+
+		spec.numbers.forEach(function(prop)
+		{
+			q('#' + prefix + '-' + prop).value = (dmp[prop] !== undefined) ? dmp[prop] : '';
+		});
+
+		spec.booleans.forEach(function(prop)
+		{
+			var cb = q('#' + prefix + '-' + prop);
+
+			if (dmp[prop] !== undefined)
+			{
+				cb.checked = dmp[prop]; cb.indeterminate = false;
+				cb.dataset.cycleState = dmp[prop] ? 'checked' : 'unchecked';
+			}
+			else
+			{
+				cb.checked = false; cb.indeterminate = true;
+				cb.dataset.cycleState = 'indeterminate';
+			}
+		});
+	}
+
+	function setupMacroParams(prefix)
+	{
+		var spec = macroParamSpecs[prefix];
 
 		function updateMacroParams()
 		{
-			var params = {};
-			var hasValue = false;
+			// Preserve keys owned by the other section's spec
+			var params = config.defaultMacroParameters ?
+				JSON.parse(JSON.stringify(config.defaultMacroParameters)) : {};
 
-			if (toolbarStyle.value) { params.toolbarStyle = toolbarStyle.value; hasValue = true; }
-			if (links.value) { params.links = links.value; hasValue = true; }
-			if (width.value) { params.width = parseInt(width.value); hasValue = true; }
-			if (border.indeterminate === false) { params.border = border.checked; hasValue = true; }
-			if (lightbox.indeterminate === false) { params.lightbox = lightbox.checked; hasValue = true; }
-			if (simpleViewer.indeterminate === false) { params.simpleViewer = simpleViewer.checked; hasValue = true; }
+			spec.selects.forEach(function(prop)
+			{
+				var el = q('#' + prefix + '-' + prop);
+				if (el.value) { params[prop] = el.value; } else { delete params[prop]; }
+			});
 
-			if (hasValue) { config.defaultMacroParameters = params; }
+			spec.numbers.forEach(function(prop)
+			{
+				var el = q('#' + prefix + '-' + prop);
+				if (el.value) { params[prop] = parseInt(el.value); } else { delete params[prop]; }
+			});
+
+			spec.booleans.forEach(function(prop)
+			{
+				var el = q('#' + prefix + '-' + prop);
+				if (el.indeterminate === false) { params[prop] = el.checked; } else { delete params[prop]; }
+			});
+
+			if (Object.keys(params).length > 0) { config.defaultMacroParameters = params; }
 			else { delete config.defaultMacroParameters; }
+
+			macroParamPrefixes.forEach(function(other)
+			{
+				if (other !== prefix) { populateMacroParams(other); }
+			});
 
 			notifyChange();
 		}
 
-		[border, lightbox, simpleViewer].forEach(function(cb)
+		spec.booleans.forEach(function(prop)
 		{
+			var cb = q('#' + prefix + '-' + prop);
 			cb.indeterminate = true;
 			cb.dataset.cycleState = 'indeterminate';
 
@@ -788,9 +1090,15 @@ DrawioConfigEditor.install = function(container, options)
 			cb.addEventListener('mousedown', function(e) { e.preventDefault(); });
 		});
 
-		toolbarStyle.addEventListener('change', updateMacroParams);
-		links.addEventListener('change', updateMacroParams);
-		width.addEventListener('input', updateMacroParams);
+		spec.selects.forEach(function(prop)
+		{
+			q('#' + prefix + '-' + prop).addEventListener('change', updateMacroParams);
+		});
+
+		spec.numbers.forEach(function(prop)
+		{
+			q('#' + prefix + '-' + prop).addEventListener('input', updateMacroParams);
+		});
 	}
 
 	// ============================================
@@ -802,7 +1110,7 @@ DrawioConfigEditor.install = function(container, options)
 		config = {};
 		fontLists = { defaultFonts: [], customFonts: [] };
 		colorLists = { presetColors: [], customPresetColors: [], defaultColors: [] };
-		tagLists = { enabledLibraries: [], defaultCustomLibraries: [], hideMenuItems: [], hideMenus: [], enabledTemplateSections: [] };
+		tagLists = { enabledLibraries: [], defaultCustomLibraries: [], hideMenuItems: [], hideMenus: [], enabledTemplateSections: [], defaultLanguages: [] };
 		schemeData = { defaultColorSchemes: [], customColorSchemes: [] };
 
 		Object.keys(obj).forEach(function(key)
@@ -813,7 +1121,9 @@ DrawioConfigEditor.install = function(container, options)
 			{
 				if (Array.isArray(val))
 				{
-					fontLists[key] = val.map(function(f) { return typeof f === 'object' ? f.fontFamily || '' : String(f); });
+					// Keep entries as-is so {fontFamily, fontUrl} objects
+					// survive chip editing (names derived in renderFontTags)
+					fontLists[key] = val.slice();
 					config[key] = val;
 				}
 				return;
@@ -831,7 +1141,7 @@ DrawioConfigEditor.install = function(container, options)
 				return;
 			}
 
-			if (key === 'enabledLibraries' || key === 'defaultCustomLibraries' || key === 'hideMenuItems' || key === 'hideMenus' || key === 'enabledTemplateSections')
+			if (key === 'enabledLibraries' || key === 'defaultCustomLibraries' || key === 'hideMenuItems' || key === 'hideMenus' || key === 'enabledTemplateSections' || key === 'defaultLanguages')
 			{
 				if (Array.isArray(val)) { tagLists[key] = val.map(function(v) { return String(v); }); config[key] = val; }
 				return;
@@ -845,6 +1155,9 @@ DrawioConfigEditor.install = function(container, options)
 
 	function populateFields()
 	{
+		qAll('.input--invalid').forEach(clearFieldInvalid);
+		invalidFields = {};
+
 		qAll('[data-key]').forEach(function(el)
 		{
 			if (el.closest('.tri-toggle')) return;
@@ -896,6 +1209,13 @@ DrawioConfigEditor.install = function(container, options)
 		var shadowColor = config.shadowColor || '';
 		if (/^#[0-9A-Fa-f]{6}$/.test(shadowColor)) { q('#cfg-shadowColorPicker').value = shadowColor; }
 
+		['defaultGridColor', 'defaultDarkGridColor', 'defaultPageBackgroundColor',
+			'defaultDarkPageBackgroundColor'].forEach(function(key)
+		{
+			var color = config[key] || '';
+			if (/^#[0-9A-Fa-f]{6}$/.test(color)) { q('#cfg-' + key + 'Picker').value = color; }
+		});
+
 		qAll('.tri-toggle').forEach(function(toggle)
 		{
 			var key = toggle.getAttribute('data-key');
@@ -910,30 +1230,10 @@ DrawioConfigEditor.install = function(container, options)
 
 		['defaultFonts', 'customFonts'].forEach(renderFontTags);
 		['presetColors', 'customPresetColors', 'defaultColors'].forEach(renderColorSwatches);
-		['enabledLibraries', 'defaultCustomLibraries', 'hideMenuItems', 'hideMenus', 'enabledTemplateSections'].forEach(renderTagList);
+		['enabledLibraries', 'defaultCustomLibraries', 'hideMenuItems', 'hideMenus', 'enabledTemplateSections', 'defaultLanguages'].forEach(renderTagList);
 		['defaultColorSchemes', 'customColorSchemes'].forEach(renderSchemeEditor);
 
-		if (config.defaultMacroParameters)
-		{
-			var dmp = config.defaultMacroParameters;
-			if (dmp.toolbarStyle) q('#cfg-dmp-toolbarStyle').value = dmp.toolbarStyle;
-			if (dmp.links) q('#cfg-dmp-links').value = dmp.links;
-			if (dmp.width) q('#cfg-dmp-width').value = dmp.width;
-
-			['border', 'lightbox', 'simpleViewer'].forEach(function(prop)
-			{
-				var cb = q('#cfg-dmp-' + prop);
-				if (dmp[prop] !== undefined)
-				{
-					cb.checked = dmp[prop]; cb.indeterminate = false;
-					cb.dataset.cycleState = dmp[prop] ? 'checked' : 'unchecked';
-				}
-				else
-				{
-					cb.indeterminate = true; cb.dataset.cycleState = 'indeterminate';
-				}
-			});
-		}
+		macroParamPrefixes.forEach(populateMacroParams);
 	}
 
 	// ============================================
@@ -963,7 +1263,8 @@ DrawioConfigEditor.install = function(container, options)
 			if (el.parentElement.classList.contains('field-row')) return;
 			var section = el.closest('.config-section');
 			var text = el.textContent.toLowerCase();
-			el.querySelectorAll('[data-key]').forEach(function(inp) { text += ' ' + inp.getAttribute('data-key'); });
+			el.querySelectorAll('[data-key]').forEach(function(inp) { text += ' ' + inp.getAttribute('data-key').toLowerCase(); });
+			if (el.hasAttribute('data-search')) { text += ' ' + el.getAttribute('data-search').toLowerCase(); }
 			searchIndex.push({ element: el, section: section, keywords: text, type: 'field' });
 		});
 
@@ -971,11 +1272,12 @@ DrawioConfigEditor.install = function(container, options)
 		{
 			var section = el.closest('.config-section');
 			var text = el.textContent.toLowerCase();
-			el.querySelectorAll('[data-key]').forEach(function(inp) { text += ' ' + inp.getAttribute('data-key'); });
+			el.querySelectorAll('[data-key]').forEach(function(inp) { text += ' ' + inp.getAttribute('data-key').toLowerCase(); });
 			el.querySelectorAll('input, select, textarea').forEach(function(inp)
 			{
-				if (inp.id) text += ' ' + inp.id.replace('cfg-', '').replace('cfg-dmp-', '');
+				if (inp.id) text += ' ' + inp.id.replace('cfg-', '').replace('cfg-dmp-', '').toLowerCase();
 			});
+			if (el.hasAttribute('data-search')) { text += ' ' + el.getAttribute('data-search').toLowerCase(); }
 			searchIndex.push({ element: el, section: section, keywords: text, type: 'field-row' });
 		});
 
@@ -1101,9 +1403,10 @@ DrawioConfigEditor.install = function(container, options)
 	setupTagList('hideMenuItems');
 	setupTagList('hideMenus');
 	setupTagList('enabledTemplateSections');
+	setupTagList('defaultLanguages');
 	setupSchemeEditor('defaultColorSchemes');
 	setupSchemeEditor('customColorSchemes');
-	setupMacroParams();
+	macroParamPrefixes.forEach(setupMacroParams);
 	setupCurrentStyleButtons();
 	buildSearchIndex();
 
@@ -1122,6 +1425,10 @@ DrawioConfigEditor.install = function(container, options)
 	return {
 		setConfig: function(obj) { importConfig(obj || {}); },
 		getConfig: function() { return JSON.parse(JSON.stringify(config)); },
+		getInvalidFields: function()
+		{
+			return Object.keys(invalidFields).map(function(key) { return invalidFields[key]; });
+		},
 		setDarkMode: function(dark)
 		{
 			container.classList.toggle('dark', !!dark);
@@ -1208,6 +1515,8 @@ DrawioConfigEditor.css = [
 	'  box-shadow: 0 0 0 2px rgba(41, 182, 242, 0.15);',
 	'}',
 	'.geConfigEditor textarea { font-family: var(--font-family-mono); resize: vertical; min-height: 60px; }',
+	'.geConfigEditor input.input--invalid, .geConfigEditor textarea.input--invalid { border-color: var(--color-error); }',
+	'.geConfigEditor input.input--invalid:focus, .geConfigEditor textarea.input--invalid:focus { border-color: var(--color-error); box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.15); }',
 	'.geConfigEditor label { display: block; font-weight: 500; margin-bottom: 2px; font-size: var(--font-size-sm); }',
 	'.geConfigEditor .btn {',
 	'  display: inline-flex; align-items: center; padding: 4px 8px;',
@@ -1230,6 +1539,7 @@ DrawioConfigEditor.css = [
 	'.geConfigEditor .card__body { padding: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-md); }',
 	'.geConfigEditor .field { display: flex; flex-direction: column; gap: 2px; }',
 	'.geConfigEditor .field__help { font-size: var(--font-size-xs); color: light-dark(var(--color-text-secondary), var(--color-text-secondary-dark)); margin: 0; line-height: 1.3; }',
+	'.geConfigEditor .field__error { font-size: var(--font-size-xs); color: var(--color-error); margin: 0; line-height: 1.3; font-weight: 500; }',
 	'.geConfigEditor .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); }',
 	'.geConfigEditor .toggle-field {',
 	'  display: flex; align-items: center; justify-content: space-between;',
@@ -1325,6 +1635,7 @@ DrawioConfigEditor.css = [
 	'  color: light-dark(var(--color-text-secondary), var(--color-text-secondary-dark)); font-size: 13px; padding: 0 1px; line-height: 1;',
 	'}',
 	'.geConfigEditor .tag__remove:hover { color: var(--color-error); }',
+	'.geConfigEditor .tag__link { color: light-dark(var(--color-text-secondary), var(--color-text-secondary-dark)); font-size: 9px; line-height: 1; }',
 	'.geConfigEditor .tag-input-wrap { display: flex; gap: 4px; margin-top: 4px; }',
 	'.geConfigEditor .tag-input-wrap input { flex: 1; }',
 	'.geConfigEditor .search-box { position: sticky; top: 0; z-index: 50; background: light-dark(var(--color-bg), var(--color-bg-dark)); padding: 6px 0 8px; }',
@@ -1427,34 +1738,43 @@ DrawioConfigEditor.css = [
 // ============================================
 DrawioConfigEditor.html = [
 	'<div class="search-box" id="searchBox">',
-	'  <input type="text" id="searchInput" placeholder="Search settings (e.g. grid, font, dark mode, compressXml...)">',
+	'  <input type="text" id="searchInput" placeholder="">',
 	'  <div class="search-box__count" id="searchCount"></div>',
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">General</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionGeneral"></h3></div>',
 	'    <div class="card__body">',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-version">Version</label>',
+	'          <label for="cfg-version"></label>',
 	'          <input type="text" id="cfg-version" data-key="version" placeholder="e.g. 1.0">',
-	'          <p class="field__help">Configuration version identifier</p>',
+	'          <p class="field__help"></p>',
 	'        </div>',
 	'        <div class="field">',
-	'          <label for="cfg-settingsName">Settings Name</label>',
+	'          <label for="cfg-settingsName"></label>',
 	'          <input type="text" id="cfg-settingsName" data-key="settingsName" placeholder=".drawio-config">',
-	'          <p class="field__help">Key for storing user settings in local storage</p>',
+	'          <p class="field__help"></p>',
 	'        </div>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-keyboardShortcuts">Keyboard Shortcuts (JSON)</label>',
+	'        <label for="cfg-keyboardShortcuts"></label>',
 	'        <textarea id="cfg-keyboardShortcuts" data-key="keyboardShortcuts" data-type="json" placeholder=\'[{"keyCode": "T", "control": true, "shift": true, "action": "tags"}]\' style="min-height: 60px;"></textarea>',
-	'        <p class="field__help">Custom keyboard shortcuts. Entries are {keyCode, control, shift, alt, action} where keyCode is a key code or single character and action is an action name, or null to remove a binding.</p>',
+	'        <p class="field__help"></p>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-resources">Language Resources (JSON)</label>',
+	'        <label for="cfg-resources"></label>',
 	'        <textarea id="cfg-resources" data-key="resources" data-type="json" placeholder=\'{"saveAs": {"main": "Save a Copy", "de": "Kopie speichern"}, "myKey": "My Text"}\' style="min-height: 60px;"></textarea>',
-	'        <p class="field__help">Overrides existing or adds new language resources for user interface text. Maps resource keys to strings, or to objects with one entry per language code and main as the fallback.</p>',
+	'        <p class="field__help"></p>',
+	'      </div>',
+	'      <div class="field">',
+	'        <label data-i18n="cfgDefaultLanguages"></label>',
+	'        <div class="tag-list" id="defaultLanguages-tags"></div>',
+	'        <div class="tag-input-wrap">',
+	'          <input type="text" id="defaultLanguages-input" placeholder="e.g. de, fr">',
+	'          <button type="button" class="btn btn--secondary btn--sm" id="defaultLanguages-add" data-i18n="add"></button>',
+	'        </div>',
+	'        <p class="field__help" data-i18n="cfgDefaultLanguagesHelp"></p>',
 	'      </div>',
 	'      <div id="general-toggles"></div>',
 	'    </div>',
@@ -1462,42 +1782,58 @@ DrawioConfigEditor.html = [
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Canvas &amp; Grid</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionCanvasGrid"></h3></div>',
 	'    <div class="card__body">',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-defaultGridSize">Default Grid Size</label>',
+	'          <label for="cfg-defaultGridSize"></label>',
 	'          <input type="number" id="cfg-defaultGridSize" data-key="defaultGridSize" placeholder="10" min="1">',
 	'        </div>',
 	'        <div class="field">',
-	'          <label for="cfg-gridSteps">Grid Steps</label>',
+	'          <label for="cfg-gridSteps"></label>',
 	'          <input type="number" id="cfg-gridSteps" data-key="gridSteps" placeholder="e.g. 4" min="1">',
 	'        </div>',
 	'      </div>',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-zoomFactor">Zoom Factor</label>',
+	'          <label for="cfg-defaultGridColor"></label>',
+	'          <div style="display: flex; gap: 6px; align-items: center;">',
+	'            <input type="color" id="cfg-defaultGridColorPicker" value="#E6E6E6" style="width: 36px; height: 28px; padding: 2px; border: 1px solid var(--color-border); border-radius: var(--radius-sm);">',
+	'            <input type="text" id="cfg-defaultGridColor" data-key="defaultGridColor" placeholder="#E6E6E6" style="flex: 1;">',
+	'          </div>',
+	'        </div>',
+	'        <div class="field">',
+	'          <label for="cfg-defaultDarkGridColor"></label>',
+	'          <div style="display: flex; gap: 6px; align-items: center;">',
+	'            <input type="color" id="cfg-defaultDarkGridColorPicker" value="#424242" style="width: 36px; height: 28px; padding: 2px; border: 1px solid var(--color-border); border-radius: var(--radius-sm);">',
+	'            <input type="text" id="cfg-defaultDarkGridColor" data-key="defaultDarkGridColor" placeholder="#424242" style="flex: 1;">',
+	'          </div>',
+	'        </div>',
+	'      </div>',
+	'      <div class="field-row">',
+	'        <div class="field">',
+	'          <label for="cfg-zoomFactor"></label>',
 	'          <input type="number" id="cfg-zoomFactor" data-key="zoomFactor" placeholder="1.2" min="1.01" step="0.05">',
 	'        </div>',
 	'        <div class="field">',
-	'          <label for="cfg-defaultEdgeLength">Default Edge Length</label>',
+	'          <label for="cfg-defaultEdgeLength"></label>',
 	'          <input type="number" id="cfg-defaultEdgeLength" data-key="defaultEdgeLength" placeholder="80" min="1">',
 	'        </div>',
 	'      </div>',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-foldingIconSize">Folding Icon Size</label>',
+	'          <label for="cfg-foldingIconSize"></label>',
 	'          <input type="number" id="cfg-foldingIconSize" data-key="foldingIconSize" placeholder="9" min="1">',
 	'        </div>',
 	'        <div class="field"></div>',
 	'      </div>',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-tooltipFontSize">Tooltip Font Size (px)</label>',
+	'          <label for="cfg-tooltipFontSize"></label>',
 	'          <input type="number" id="cfg-tooltipFontSize" data-key="tooltipFontSize" placeholder="11" min="1">',
 	'        </div>',
 	'        <div class="field">',
-	'          <label for="cfg-tooltipMaxWidth">Tooltip Max Width (px)</label>',
+	'          <label for="cfg-tooltipMaxWidth"></label>',
 	'          <div style="display: flex; gap: 6px; align-items: center;">',
 	'            <input type="number" id="cfg-tooltipMaxWidth" placeholder="360" min="1" style="flex: 1;">',
 	'            <label class="checkbox" style="white-space: nowrap;"><input type="checkbox" id="cfg-tooltipMaxWidthEnabled"> <span>Limit</span></label>',
@@ -1506,33 +1842,49 @@ DrawioConfigEditor.html = [
 	'      </div>',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-pageFormatWidth">Page Width (1/10 inch)</label>',
+	'          <label for="cfg-pageFormatWidth"></label>',
 	'          <input type="number" id="cfg-pageFormatWidth" placeholder="850" min="1">',
 	'        </div>',
 	'        <div class="field">',
-	'          <label for="cfg-pageFormatHeight">Page Height (1/10 inch)</label>',
+	'          <label for="cfg-pageFormatHeight"></label>',
 	'          <input type="number" id="cfg-pageFormatHeight" placeholder="1100" min="1">',
 	'        </div>',
 	'      </div>',
-	'      <p class="field__help">Page format: US Letter = 850 x 1100, A4 = 827 x 1169</p>',
+	'      <p class="field__help" data-i18n="cfgPageFormatHeightHelp"></p>',
+	'      <div class="field-row">',
+	'        <div class="field">',
+	'          <label for="cfg-defaultPageBackgroundColor"></label>',
+	'          <div style="display: flex; gap: 6px; align-items: center;">',
+	'            <input type="color" id="cfg-defaultPageBackgroundColorPicker" value="#FFFFFF" style="width: 36px; height: 28px; padding: 2px; border: 1px solid var(--color-border); border-radius: var(--radius-sm);">',
+	'            <input type="text" id="cfg-defaultPageBackgroundColor" data-key="defaultPageBackgroundColor" placeholder="#FFFFFF" style="flex: 1;">',
+	'          </div>',
+	'        </div>',
+	'        <div class="field">',
+	'          <label for="cfg-defaultDarkPageBackgroundColor"></label>',
+	'          <div style="display: flex; gap: 6px; align-items: center;">',
+	'            <input type="color" id="cfg-defaultDarkPageBackgroundColorPicker" value="#121212" style="width: 36px; height: 28px; padding: 2px; border: 1px solid var(--color-border); border-radius: var(--radius-sm);">',
+	'            <input type="text" id="cfg-defaultDarkPageBackgroundColor" data-key="defaultDarkPageBackgroundColor" placeholder="#121212" style="flex: 1;">',
+	'          </div>',
+	'        </div>',
+	'      </div>',
 	'      <div id="canvas-toggles"></div>',
 	'    </div>',
 	'  </div>',
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Appearance</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionAppearance"></h3></div>',
 	'    <div class="card__body">',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-darkColor">Dark Mode Background</label>',
+	'          <label for="cfg-darkColor"></label>',
 	'          <div style="display: flex; gap: 6px; align-items: center;">',
 	'            <input type="color" id="cfg-darkColorPicker" value="#2A2A2A" style="width: 36px; height: 28px; padding: 2px; border: 1px solid var(--color-border); border-radius: var(--radius-sm);">',
 	'            <input type="text" id="cfg-darkColor" data-key="darkColor" placeholder="#2A2A2A" style="flex: 1;">',
 	'          </div>',
 	'        </div>',
 	'        <div class="field">',
-	'          <label for="cfg-defaultAdaptiveColors">Adaptive Colors</label>',
+	'          <label for="cfg-defaultAdaptiveColors"></label>',
 	'          <select id="cfg-defaultAdaptiveColors" data-key="defaultAdaptiveColors">',
 	'            <option value="">- Not set -</option>',
 	'            <option value="auto">auto</option>',
@@ -1542,34 +1894,34 @@ DrawioConfigEditor.html = [
 	'        </div>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-darkColorVar">Dark Color CSS Variable</label>',
+	'        <label for="cfg-darkColorVar"></label>',
 	'        <input type="text" id="cfg-darkColorVar" data-key="darkColorVar" placeholder="--ge-dark-color">',
 	'      </div>',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-shadowColor">Shadow Color</label>',
+	'          <label for="cfg-shadowColor"></label>',
 	'          <div style="display: flex; gap: 6px; align-items: center;">',
 	'            <input type="color" id="cfg-shadowColorPicker" value="#808080" style="width: 36px; height: 28px; padding: 2px; border: 1px solid var(--color-border); border-radius: var(--radius-sm);">',
 	'            <input type="text" id="cfg-shadowColor" data-key="shadowColor" placeholder="#808080" style="flex: 1;">',
 	'          </div>',
 	'        </div>',
 	'        <div class="field">',
-	'          <label for="cfg-shadowOpacity">Shadow Opacity</label>',
+	'          <label for="cfg-shadowOpacity"></label>',
 	'          <input type="number" id="cfg-shadowOpacity" data-key="shadowOpacity" placeholder="1" min="0" max="1" step="0.1">',
 	'        </div>',
 	'      </div>',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-shadowOffsetX">Shadow Offset X</label>',
+	'          <label for="cfg-shadowOffsetX"></label>',
 	'          <input type="number" id="cfg-shadowOffsetX" data-key="shadowOffsetX" placeholder="e.g. 2">',
 	'        </div>',
 	'        <div class="field">',
-	'          <label for="cfg-shadowOffsetY">Shadow Offset Y</label>',
+	'          <label for="cfg-shadowOffsetY"></label>',
 	'          <input type="number" id="cfg-shadowOffsetY" data-key="shadowOffsetY" placeholder="e.g. 3">',
 	'        </div>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-shadowBlur">Shadow Blur</label>',
+	'        <label for="cfg-shadowBlur"></label>',
 	'        <input type="number" id="cfg-shadowBlur" data-key="shadowBlur" placeholder="e.g. 6" min="0">',
 	'      </div>',
 	'      <div id="appearance-toggles"></div>',
@@ -1578,32 +1930,32 @@ DrawioConfigEditor.html = [
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Sidebar &amp; Panels</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionSidebarPanels"></h3></div>',
 	'    <div class="card__body">',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-thumbWidth">Thumbnail Width</label>',
+	'          <label for="cfg-thumbWidth"></label>',
 	'          <input type="number" id="cfg-thumbWidth" data-key="thumbWidth" placeholder="46" min="1">',
 	'        </div>',
 	'        <div class="field">',
-	'          <label for="cfg-thumbHeight">Thumbnail Height</label>',
+	'          <label for="cfg-thumbHeight"></label>',
 	'          <input type="number" id="cfg-thumbHeight" data-key="thumbHeight" placeholder="46" min="1">',
 	'        </div>',
 	'      </div>',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-sidebarWidth">Sidebar Width</label>',
+	'          <label for="cfg-sidebarWidth"></label>',
 	'          <input type="number" id="cfg-sidebarWidth" data-key="sidebarWidth" placeholder="e.g. 250" min="1">',
 	'        </div>',
 	'        <div class="field">',
-	'          <label for="cfg-sidebarTitleSize">Title Font Size (pt)</label>',
+	'          <label for="cfg-sidebarTitleSize"></label>',
 	'          <input type="number" id="cfg-sidebarTitleSize" data-key="sidebarTitleSize" placeholder="8" min="1">',
 	'        </div>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-shapePicker">Shape Picker (JSON)</label>',
+	'        <label for="cfg-shapePicker"></label>',
 	'        <textarea id="cfg-shapePicker" data-key="shapePicker" data-type="json" placeholder=\'{"shapes": [...]}\' style="min-height: 60px;"></textarea>',
-	'        <p class="field__help">Custom shape picker entries for the sidebar</p>',
+	'        <p class="field__help"></p>',
 	'      </div>',
 	'      <div id="sidebar-toggles"></div>',
 	'    </div>',
@@ -1611,12 +1963,12 @@ DrawioConfigEditor.html = [
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Libraries</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionLibraries"></h3></div>',
 	'    <div class="card__body">',
 	'      <div class="field">',
-	'        <label for="cfg-defaultLibraries">Default Libraries</label>',
+	'        <label for="cfg-defaultLibraries"></label>',
 	'        <input type="text" id="cfg-defaultLibraries" data-key="defaultLibraries" placeholder="general;uml;er;bpmn;flowchart;basic;arrows2">',
-	'        <p class="field__help">Semicolon-separated library keys shown in sidebar on startup</p>',
+	'        <p class="field__help"></p>',
 	'      </div>',
 	'      <div class="field">',
 	'        <label>Enabled Libraries</label>',
@@ -1637,7 +1989,7 @@ DrawioConfigEditor.html = [
 	'        <p class="field__help">IDs or URLs of custom libraries to load on startup</p>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-templateFile">Template File URL</label>',
+	'        <label for="cfg-templateFile"></label>',
 	'        <input type="url" id="cfg-templateFile" data-key="templateFile" placeholder="https://app.diagrams.net/templates/index.xml">',
 	'      </div>',
 	'      <div class="field">',
@@ -1647,12 +1999,17 @@ DrawioConfigEditor.html = [
 	'          <input type="text" id="enabledTemplateSections-input" placeholder="Add section (e.g. business, charts)...">',
 	'          <button type="button" class="btn btn--secondary btn--sm" id="enabledTemplateSections-add">Add</button>',
 	'        </div>',
-	'        <p class="field__help">Sections shown in the template dialog. Leave empty for all.</p>',
+	'        <p class="field__help" data-i18n="cfgTemplateFileHelp"></p>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-libraries">Libraries (JSON)</label>',
+	'        <label for="cfg-customTemplates"></label>',
+	'        <textarea id="cfg-customTemplates" data-key="customTemplates" data-type="json" placeholder=\'[{"section": "basic", "url": "https://example.com/template.xml", "title": "My Template", "preview": "https://example.com/template.png"}]\' style="min-height: 60px;"></textarea>',
+	'        <p class="field__help"></p>',
+	'      </div>',
+	'      <div class="field">',
+	'        <label for="cfg-libraries"></label>',
 	'        <textarea id="cfg-libraries" data-key="libraries" data-type="json" placeholder=\'[{"title": {"main": "Company"}, "entries": [...]}]\' style="min-height: 60px;"></textarea>',
-	'        <p class="field__help">Custom library sections for the left panel</p>',
+	'        <p class="field__help"></p>',
 	'      </div>',
 	'      <div id="library-toggles"></div>',
 	'    </div>',
@@ -1660,28 +2017,30 @@ DrawioConfigEditor.html = [
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Fonts</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionFonts"></h3></div>',
 	'    <div class="card__body">',
 	'      <div class="field">',
 	'        <label>Default Fonts</label>',
 	'        <div class="tag-list" id="defaultFonts-tags"></div>',
 	'        <div class="tag-input-wrap">',
 	'          <input type="text" id="defaultFonts-input" placeholder="Add font name...">',
+	'          <input type="text" id="defaultFonts-url" placeholder="Font URL (optional)">',
 	'          <button type="button" class="btn btn--secondary btn--sm" id="defaultFonts-add">Add</button>',
 	'        </div>',
-	'        <p class="field__help">Font names for the format panel font picker</p>',
+	'        <p class="field__help">Font names for the format panel font picker; add a URL for web fonts (e.g. a Google Fonts CSS link)</p>',
 	'      </div>',
 	'      <div class="field">',
 	'        <label>Custom Fonts</label>',
 	'        <div class="tag-list" id="customFonts-tags"></div>',
 	'        <div class="tag-input-wrap">',
 	'          <input type="text" id="customFonts-input" placeholder="Add font name...">',
+	'          <input type="text" id="customFonts-url" placeholder="Font URL (optional)">',
 	'          <button type="button" class="btn btn--secondary btn--sm" id="customFonts-add">Add</button>',
 	'        </div>',
-	'        <p class="field__help">Additional fonts added before default fonts</p>',
+	'        <p class="field__help">Additional fonts added before default fonts; add a URL for web fonts (e.g. a Google Fonts CSS link)</p>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-fontCss">Font CSS (@font-face rules)</label>',
+	'        <label for="cfg-fontCss"></label>',
 	'        <textarea id="cfg-fontCss" data-key="fontCss" placeholder="@font-face { font-family: \'MyFont\'; src: url(\'...\'); }" style="min-height: 60px;"></textarea>',
 	'      </div>',
 	'      <div id="font-toggles"></div>',
@@ -1690,7 +2049,7 @@ DrawioConfigEditor.html = [
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Colors</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionColors"></h3></div>',
 	'    <div class="card__body">',
 	'      <div class="field">',
 	'        <label>Preset Colors (upper palette)</label>',
@@ -1709,7 +2068,7 @@ DrawioConfigEditor.html = [
 	'          <input type="text" id="customPresetColors-input" placeholder="Hex without # (e.g. FF5733)" style="flex: 1;">',
 	'          <button type="button" class="btn btn--secondary btn--sm" id="customPresetColors-add">Add</button>',
 	'        </div>',
-	'        <p class="field__help">Added before preset colors in the colour dialog</p>',
+	'        <p class="field__help" data-i18n="cfgFontCssHelp"></p>',
 	'      </div>',
 	'      <div class="field">',
 	'        <label>Default Colors (lower palette)</label>',
@@ -1721,16 +2080,16 @@ DrawioConfigEditor.html = [
 	'        </div>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-colorNames">Color Names (JSON)</label>',
+	'        <label for="cfg-colorNames"></label>',
 	'        <textarea id="cfg-colorNames" data-key="colorNames" data-type="json" placeholder=\'{"FFFFFF": "White", "000000": "Black"}\' style="min-height: 60px;"></textarea>',
-	'        <p class="field__help">Map of colour codes to display names (tooltips)</p>',
+	'        <p class="field__help"></p>',
 	'      </div>',
 	'    </div>',
 	'  </div>',
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Color Schemes</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionColorSchemes"></h3></div>',
 	'    <div class="card__body">',
 	'      <div class="field">',
 	'        <label>Default Color Schemes</label>',
@@ -1753,20 +2112,20 @@ DrawioConfigEditor.html = [
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Default Styles</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionDefaultStyles"></h3></div>',
 	'    <div class="card__body">',
-	'      <div class="field">',
-	'        <label for="cfg-defaultTextStyle">Default Text Style</label>',
+	'      <div class="field" data-search="font fontFamily fontSize fontColor">',
+	'        <label for="cfg-defaultTextStyle"></label>',
 	'        <input type="text" id="cfg-defaultTextStyle" data-key="defaultTextStyle" placeholder="text;html=1;whiteSpace=wrap;...">',
 	'      </div>',
-	'      <div class="field">',
+	'      <div class="field" data-search="font fontFamily fontSize fontColor fillColor strokeColor rounded shape">',
 	'        <div style="display: flex; align-items: center; justify-content: space-between;">',
 	'          <label for="cfg-defaultVertexStyle" style="margin-bottom: 0;">Default Vertex Style (JSON)</label>',
 	'          <button type="button" class="btn btn--secondary btn--sm" id="useCurrentVertexStyle" style="display: none;">Use Current</button>',
 	'        </div>',
 	'        <textarea id="cfg-defaultVertexStyle" data-key="defaultVertexStyle" data-type="json" placeholder=\'{"fontFamily": "Arial"}\' style="min-height: 60px;"></textarea>',
 	'      </div>',
-	'      <div class="field">',
+	'      <div class="field" data-search="font fontFamily fontSize fontColor edgeStyle orthogonal endArrow connection">',
 	'        <div style="display: flex; align-items: center; justify-content: space-between;">',
 	'          <label for="cfg-defaultEdgeStyle" style="margin-bottom: 0;">Default Edge Style (JSON)</label>',
 	'          <button type="button" class="btn btn--secondary btn--sm" id="useCurrentEdgeStyle" style="display: none;">Use Current</button>',
@@ -1774,33 +2133,38 @@ DrawioConfigEditor.html = [
 	'        <textarea id="cfg-defaultEdgeStyle" data-key="defaultEdgeStyle" data-type="json" placeholder=\'{"edgeStyle": "orthogonalEdgeStyle"}\' style="min-height: 60px;"></textarea>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-styles">Styles (JSON)</label>',
+	'        <label for="cfg-styles"></label>',
 	'        <textarea id="cfg-styles" data-key="styles" data-type="json" placeholder=\'[{}, {"commonStyle": {"fontColor": "#5C5C5C"}}]\' style="min-height: 60px;"></textarea>',
-	'        <p class="field__help">Colours for the Style tab. Keys: commonStyle, vertexStyle, edgeStyle, graph.</p>',
+	'        <p class="field__help"></p>',
+	'      </div>',
+	'      <div class="field" data-search="mermaid theme themeVariables flowchart sequence">',
+	'        <label for="cfg-mermaid"></label>',
+	'        <textarea id="cfg-mermaid" data-key="mermaid" data-type="json" placeholder=\'{"theme": "neutral"}\' style="min-height: 60px;"></textarea>',
+	'        <p class="field__help"></p>',
 	'      </div>',
 	'    </div>',
 	'  </div>',
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Custom CSS</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionCustomCSS"></h3></div>',
 	'    <div class="card__body">',
 	'      <div class="field">',
-	'        <label for="cfg-css">CSS Rules</label>',
+	'        <label for="cfg-css"></label>',
 	'        <textarea id="cfg-css" data-key="css" placeholder=".geMenubarContainer { background-color: #2A2A2A !important; }" style="min-height: 80px;"></textarea>',
-	'        <p class="field__help">CSS rules to customize the draw.io user interface</p>',
+	'        <p class="field__help"></p>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-customCss">Custom CSS (alternative)</label>',
+	'        <label for="cfg-customCss"></label>',
 	'        <textarea id="cfg-customCss" data-key="customCss" placeholder="Additional CSS rules..." style="min-height: 60px;"></textarea>',
-	'        <p class="field__help">Injected as a separate style element</p>',
+	'        <p class="field__help"></p>',
 	'      </div>',
 	'    </div>',
 	'  </div>',
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Embedding</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionEmbedding"></h3></div>',
 	'    <div class="card__body">',
 	'      <div id="embedding-toggles"></div>',
 	'    </div>',
@@ -1808,7 +2172,7 @@ DrawioConfigEditor.html = [
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Menu Customization</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionMenuCustomization"></h3></div>',
 	'    <div class="card__body">',
 	'      <div class="field">',
 	'        <label>Hidden Menu Items</label>',
@@ -1833,42 +2197,42 @@ DrawioConfigEditor.html = [
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">AI Configuration</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionAIConfiguration"></h3></div>',
 	'    <div class="card__body">',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-gptApiKey">OpenAI API Key</label>',
+	'          <label for="cfg-gptApiKey"></label>',
 	'          <input type="text" id="cfg-gptApiKey" data-key="gptApiKey" placeholder="sk-...">',
 	'        </div>',
 	'        <div class="field">',
-	'          <label for="cfg-gptUrl">Custom GPT URL</label>',
+	'          <label for="cfg-gptUrl"></label>',
 	'          <input type="url" id="cfg-gptUrl" data-key="gptUrl" placeholder="https://api.openai.com/v1/chat/completions">',
 	'        </div>',
 	'      </div>',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-geminiApiKey">Gemini API Key</label>',
+	'          <label for="cfg-geminiApiKey"></label>',
 	'          <input type="text" id="cfg-geminiApiKey" data-key="geminiApiKey" placeholder="AI...">',
 	'        </div>',
 	'        <div class="field">',
-	'          <label for="cfg-claudeApiKey">Claude API Key</label>',
+	'          <label for="cfg-claudeApiKey"></label>',
 	'          <input type="text" id="cfg-claudeApiKey" data-key="claudeApiKey" placeholder="sk-ant-...">',
 	'        </div>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-aiActions">AI Actions (JSON)</label>',
+	'        <label for="cfg-aiActions"></label>',
 	'        <textarea id="cfg-aiActions" data-key="aiActions" data-type="json" placeholder=\'{"myAction": {"prompt": "..."}}\' style="min-height: 60px;"></textarea>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-aiGlobals">AI Globals (JSON)</label>',
+	'        <label for="cfg-aiGlobals"></label>',
 	'        <textarea id="cfg-aiGlobals" data-key="aiGlobals" data-type="json" placeholder=\'{}\' style="min-height: 60px;"></textarea>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-aiConfigs">AI Configs (JSON)</label>',
+	'        <label for="cfg-aiConfigs"></label>',
 	'        <textarea id="cfg-aiConfigs" data-key="aiConfigs" data-type="json" placeholder=\'{}\' style="min-height: 60px;"></textarea>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-aiModels">AI Models (JSON)</label>',
+	'        <label for="cfg-aiModels"></label>',
 	'        <textarea id="cfg-aiModels" data-key="aiModels" data-type="json" placeholder=\'{}\' style="min-height: 60px;"></textarea>',
 	'      </div>',
 	'      <div id="ai-toggles"></div>',
@@ -1877,25 +2241,25 @@ DrawioConfigEditor.html = [
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Export &amp; Security</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionExportSecurity"></h3></div>',
 	'    <div class="card__body">',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-maxImageBytes">Max Image Bytes</label>',
+	'          <label for="cfg-maxImageBytes"></label>',
 	'          <input type="number" id="cfg-maxImageBytes" data-key="maxImageBytes" placeholder="1000000" min="0">',
 	'        </div>',
 	'        <div class="field">',
-	'          <label for="cfg-maxImageSize">Max Image Size (px)</label>',
+	'          <label for="cfg-maxImageSize"></label>',
 	'          <input type="number" id="cfg-maxImageSize" data-key="maxImageSize" placeholder="520" min="0">',
 	'        </div>',
 	'      </div>',
 	'      <div class="field-row">',
 	'        <div class="field">',
-	'          <label for="cfg-autosaveDelay">Autosave Delay (ms)</label>',
+	'          <label for="cfg-autosaveDelay"></label>',
 	'          <input type="number" id="cfg-autosaveDelay" data-key="autosaveDelay" placeholder="e.g. 2000" min="0">',
 	'        </div>',
 	'        <div class="field">',
-	'          <label for="cfg-defaultFileType">Default File Type</label>',
+	'          <label for="cfg-defaultFileType"></label>',
 	'          <select id="cfg-defaultFileType" data-key="defaultFileType">',
 	'            <option value="">- Not set -</option>',
 	'            <option value="drawio">XML (.drawio)</option>',
@@ -1911,19 +2275,19 @@ DrawioConfigEditor.html = [
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Collaboration &amp; Advanced</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionCollaborationAdvanced"></h3></div>',
 	'    <div class="card__body">',
 	'      <div class="field">',
-	'        <label for="cfg-globalVars">Global Variables (JSON)</label>',
+	'        <label for="cfg-globalVars"></label>',
 	'        <textarea id="cfg-globalVars" data-key="globalVars" data-type="json" placeholder=\'{"companyName": "Acme Corp"}\' style="min-height: 60px;"></textarea>',
-	'        <p class="field__help">Global placeholders available in all diagrams</p>',
+	'        <p class="field__help"></p>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-emptyDiagramXml">Empty Diagram XML</label>',
+	'        <label for="cfg-emptyDiagramXml"></label>',
 	'        <textarea id="cfg-emptyDiagramXml" data-key="emptyDiagramXml" placeholder="<mxGraphModel>...</mxGraphModel>" style="min-height: 60px;"></textarea>',
 	'      </div>',
 	'      <div class="field">',
-	'        <label for="cfg-emptyLibraryXml">Empty Library XML</label>',
+	'        <label for="cfg-emptyLibraryXml"></label>',
 	'        <textarea id="cfg-emptyLibraryXml" data-key="emptyLibraryXml" placeholder="<mxlibrary>[]</mxlibrary>" style="min-height: 60px;"></textarea>',
 	'      </div>',
 	'      <div id="advanced-toggles"></div>',
@@ -1933,11 +2297,11 @@ DrawioConfigEditor.html = [
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Confluence Cloud</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionConfluenceCloud"></h3></div>',
 	'    <div class="card__body">',
 	'      <p class="field__help mb-sm">These options only apply to <strong>Confluence Cloud</strong>.</p>',
 	'      <div class="field">',
-	'        <label for="cfg-ui">UI Theme</label>',
+	'        <label for="cfg-ui"></label>',
 	'        <select id="cfg-ui" data-key="ui">',
 	'          <option value="">- Not set -</option>',
 	'          <option value="kennedy">Kennedy</option>',
@@ -1949,16 +2313,54 @@ DrawioConfigEditor.html = [
 	'      </div>',
 	'      <div id="confluence-cloud-toggles"></div>',
 	'      <div class="field">',
-	'        <label for="cfg-viewerTimeout">Viewer Timeout</label>',
+	'        <label for="cfg-viewerTimeout"></label>',
 	'        <input type="number" id="cfg-viewerTimeout" data-key="viewerTimeout" placeholder="e.g. 30000" min="0">',
 	'        <p class="field__help">Timeout in milliseconds before the viewer gives up loading <code>viewerTimeout</code></p>',
+	'      </div>',
+	'      <div class="field">',
+	'        <label>Default Macro Parameters</label>',
+	'        <div class="field-row">',
+	'          <div class="field">',
+	'            <label for="cfg-cdmp-tbstyle" style="font-weight: normal;">Toolbar Style</label>',
+	'            <select id="cfg-cdmp-tbstyle">',
+	'              <option value="">- Not set -</option>',
+	'              <option value="top">top</option>',
+	'              <option value="inline">inline</option>',
+	'              <option value="hidden">hidden</option>',
+	'            </select>',
+	'          </div>',
+	'          <div class="field">',
+	'            <label for="cfg-cdmp-links" style="font-weight: normal;">Links</label>',
+	'            <select id="cfg-cdmp-links">',
+	'              <option value="">- Not set -</option>',
+	'              <option value="auto">auto</option>',
+	'              <option value="blank">blank</option>',
+	'              <option value="self">self</option>',
+	'            </select>',
+	'          </div>',
+	'        </div>',
+	'        <div class="field-row">',
+	'          <div class="field">',
+	'            <label for="cfg-cdmp-zoom" style="font-weight: normal;">Zoom</label>',
+	'            <input type="number" id="cfg-cdmp-zoom" placeholder="e.g. 100" min="1">',
+	'          </div>',
+	'          <div class="field" style="padding-top: 16px;">',
+	'            <div id="cdmp-toggles-container"></div>',
+	'          </div>',
+	'        </div>',
+	'        <div style="display: flex; flex-wrap: wrap; gap: 12px; padding-top: 6px;" id="cdmp-booleans">',
+	'          <label class="checkbox"><input type="checkbox" id="cfg-cdmp-lbox" data-tristate="true"> <span>Lightbox</span></label>',
+	'          <label class="checkbox"><input type="checkbox" id="cfg-cdmp-simple" data-tristate="true"> <span>Simple Viewer</span></label>',
+	'          <label class="checkbox"><input type="checkbox" id="cfg-cdmp-pCenter" data-tristate="true"> <span>Center</span></label>',
+	'          <label class="checkbox"><input type="checkbox" id="cfg-cdmp-hiResPreview" data-tristate="true"> <span>High Resolution Preview</span></label>',
+	'        </div>',
 	'      </div>',
 	'    </div>',
 	'  </div>',
 	'</div>',
 	'<div class="config-section">',
 	'  <div class="card">',
-	'    <div class="card__header"><h3 class="card__title">Confluence Server / Data Center</h3></div>',
+	'    <div class="card__header"><h3 class="card__title" data-i18n="cfgSectionConfluenceServerDataCenter"></h3></div>',
 	'    <div class="card__body">',
 	'      <p class="field__help mb-sm">These options only apply to <strong>Confluence Server / Data Center</strong>.</p>',
 	'      <div id="confluence-toggles"></div>',

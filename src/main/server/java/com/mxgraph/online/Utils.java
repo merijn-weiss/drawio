@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -22,6 +23,11 @@ import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.security.SecureRandom;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -67,6 +73,117 @@ public class Utils
 	 * Alphabet for global unique IDs.
 	 */
 	public static final String TOKEN_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
+
+	/**
+	 * Connect and read timeout in milliseconds for outbound connections. The
+	 * GAE request deadline is 30s so time out before that to avoid
+	 * HardDeadlineExceeded errors.
+	 *
+	 * Every outbound connection must set both: the JDK default of 0 means
+	 * "wait forever", so an unresponsive remote host pins the calling servlet
+	 * thread indefinitely and enough concurrent requests exhaust the
+	 * container's thread pool (CWE-400).
+	 */
+	public static final int HTTP_TIMEOUT = 29000;
+
+	/**
+	 * Applies HTTP_TIMEOUT as both the connect and the read timeout. Note the
+	 * read timeout is per socket read, not a budget for the whole exchange, so
+	 * this bounds a stalled peer but not one that trickles bytes slowly - pair
+	 * it with copyRestricted so the response is bounded in size as well.
+	 */
+	public static void setTimeouts(URLConnection connection)
+	{
+		connection.setConnectTimeout(HTTP_TIMEOUT);
+		connection.setReadTimeout(HTTP_TIMEOUT);
+	}
+
+	/**
+	 * Budget for a complete outbound exchange - connect, headers and body.
+	 * Generous on purpose: it is not there to police slow-but-honest peers,
+	 * only to stop one that never finishes. Anything legitimate that needs
+	 * more than two minutes of remote wait is already a problem elsewhere.
+	 */
+	public static final long HTTP_TOTAL_BUDGET = 120000; // 2 min
+
+	/**
+	 * Watchdog used by setDeadline. One daemon thread, created on first use,
+	 * shared by every servlet.
+	 */
+	private static ScheduledExecutorService deadlineWatchdog;
+
+	private static synchronized ScheduledExecutorService getDeadlineWatchdog()
+	{
+		if (deadlineWatchdog == null)
+		{
+			deadlineWatchdog = Executors
+					.newSingleThreadScheduledExecutor(new ThreadFactory()
+					{
+						public Thread newThread(Runnable r)
+						{
+							Thread t = new Thread(r, "drawio-http-deadline");
+							// Must never hold shutdown open
+							t.setDaemon(true);
+
+							return t;
+						}
+					});
+		}
+
+		return deadlineWatchdog;
+	}
+
+	/**
+	 * Schedules con.disconnect() once budgetMs has elapsed, and returns a
+	 * handle the caller must cancel (see clearDeadline) once the exchange is
+	 * done.
+	 *
+	 * setReadTimeout only bounds a single socket read, so it resets on every
+	 * byte: a peer that trickles one byte just inside the timeout holds the
+	 * thread indefinitely without ever tripping it, and the size limits do not
+	 * help because it never sends enough to reach them. HttpURLConnection has
+	 * no total-timeout setting, and the header phase cannot be interrupted by
+	 * a check in the read loop, so the only way to bound the whole exchange is
+	 * to close the socket from another thread, which surfaces in the blocked
+	 * thread as an IOException.
+	 *
+	 * Returns null if the watchdog is unavailable, in which case the caller is
+	 * still protected by the per-read timeout. That is the expected outcome on
+	 * runtimes that refuse application threads, and is harmless there because
+	 * the platform imposes its own request deadline.
+	 */
+	public static ScheduledFuture<?> setDeadline(final HttpURLConnection con,
+			long budgetMs)
+	{
+		try
+		{
+			return getDeadlineWatchdog().schedule(new Runnable()
+			{
+				public void run()
+				{
+					con.disconnect();
+				}
+			}, budgetMs, TimeUnit.MILLISECONDS);
+		}
+		catch (Exception e)
+		{
+			// Thread creation refused, fall back to the per-read timeout
+			return null;
+		}
+	}
+
+	/**
+	 * Cancels a deadline scheduled by setDeadline. Always call this in a
+	 * finally block, otherwise the connection is disconnected later while it
+	 * may already be back in the keep-alive pool.
+	 */
+	public static void clearDeadline(ScheduledFuture<?> deadline)
+	{
+		if (deadline != null)
+		{
+			deadline.cancel(false);
+		}
+	}
 
 	private static Set<Integer> allowedPorts = new HashSet<>();
 	
@@ -650,6 +767,82 @@ public class Utils
 	}
 
 	/**
+	 * Returns true if the address lies in one of the IPv6 transition prefixes
+	 * that embed an IPv4 address: 6to4 (2002::/16, RFC 3056, deprecated by
+	 * RFC 7526), Teredo (2001::/32, RFC 4380), the NAT64 Well-Known Prefix
+	 * (64:ff9b::/96, RFC 6052) and its local-use companion (64:ff9b:1::/48,
+	 * RFC 8215), the deprecated IPv4-compatible form (::/96) and the
+	 * IPv4-mapped form (::ffff:0:0/96, normally already unwrapped to an
+	 * Inet4Address by the JDK, kept for completeness).
+	 *
+	 * The private-range checks in {@link #validatedAddress(String)} only see
+	 * the outer IPv6 address, so e.g. 64:ff9b::a9fe:a9fe passes them while a
+	 * NAT64 translator on the server's network would turn it into a connection
+	 * to 169.254.169.254. Rather than extracting and re-checking the embedded
+	 * IPv4 (each mechanism encodes it differently and Teredo inverts it), the
+	 * whole prefix is rejected: none of these is ever a legitimate host for a
+	 * resource a diagram fetches. A network-specific NAT64 prefix (RFC 6052
+	 * section 2.2) cannot be recognised here and remains the translator's
+	 * job - RFC 6052 section 3.1 requires it to drop non-global embedded
+	 * addresses.
+	 *
+	 * @param address the resolved address to test
+	 * @return true if the address is in an IPv4-embedding transition prefix
+	 */
+	private static boolean isIPv6TransitionAddress(InetAddress address)
+	{
+		if (address instanceof Inet6Address)
+		{
+			byte[] b = address.getAddress();
+
+			if (b.length != 16)
+			{
+				return false;
+			}
+
+			// 6to4 2002::/16
+			if ((b[0] & 0xFF) == 0x20 && (b[1] & 0xFF) == 0x02)
+			{
+				return true;
+			}
+
+			// Teredo 2001:0000::/32
+			if ((b[0] & 0xFF) == 0x20 && (b[1] & 0xFF) == 0x01
+					&& b[2] == 0 && b[3] == 0)
+			{
+				return true;
+			}
+
+			// NAT64 well-known prefix 64:ff9b::/96 and local-use 64:ff9b:1::/48
+			if (b[0] == 0 && (b[1] & 0xFF) == 0x64
+					&& (b[2] & 0xFF) == 0xFF && (b[3] & 0xFF) == 0x9B)
+			{
+				boolean wellKnown = true;
+
+				for (int i = 4; i < 12 && wellKnown; i++)
+				{
+					wellKnown = (b[i] == 0);
+				}
+
+				return wellKnown || (b[4] == 0 && (b[5] & 0xFF) == 0x01);
+			}
+
+			// IPv4-compatible ::/96 and IPv4-mapped ::ffff:0:0/96
+			boolean leadingZero = true;
+
+			for (int i = 0; i < 10 && leadingZero; i++)
+			{
+				leadingZero = (b[i] == 0);
+			}
+
+			return leadingZero && ((b[10] == 0 && b[11] == 0)
+					|| ((b[10] & 0xFF) == 0xFF && (b[11] & 0xFF) == 0xFF));
+		}
+
+		return false;
+	}
+
+	/**
 	 * Resolves and validates the host of the given URL exactly once and returns
 	 * the resolved address, or null if the URL is not permitted (malformed,
 	 * unknown host, non-http(s), disallowed port, or pointing at a private,
@@ -720,6 +913,7 @@ public class Utils
 						|| hostAddress.startsWith("198.19.")
 						|| isSharedCgnatIPv4(address)
 						|| isUniqueLocalIPv6(address)
+						|| isIPv6TransitionAddress(address)
 						|| host.endsWith(".arpa");
 	
 				return ((protocol.equals("http") || protocol.equals("https"))
@@ -764,6 +958,11 @@ public class Utils
 		// resolved again at connection time.
 		URL ipUrl = new URL(url.getProtocol(), ipHost, port, url.getFile());
 		URLConnection connection = ipUrl.openConnection();
+
+		// Timeouts by construction: callers fetch remote, attacker-supplied
+		// URLs here, so a host that accepts the connection and then never
+		// answers must not be able to pin the servlet thread forever.
+		setTimeouts(connection);
 
 		if (connection instanceof HttpsURLConnection)
 		{

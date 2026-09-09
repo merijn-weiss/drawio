@@ -337,8 +337,8 @@ mxVsdxCodec.decodeVsdx(file, callback)
   → For each entry in ZIP:
       .xml/.rels  → parseXml() → docData[path]
                     (handles UTF-8 BOM, UTF-16LE fallback, entity fixing)
-      .emf        → POST to EMF_CONVERT_URL → PNG base64 → mediaData[path]
-                    (chunked: window.EMF_CHUNK_SIZE = 10, retries: 3)
+      .emf        → window.emfToSvg() → SVG base64 → mediaData[path]
+                    (client-side, ../emf/emf-svg.js; no server involved)
       .bmp        → BmpDecoder → canvas → JPEG base64 → mediaData[path]
       other media → base64 encode → mediaData[path]
 ```
@@ -575,12 +575,29 @@ Master shapes provide template geometry and styling. Instance shapes inherit fro
 
 ### Import Limitations
 - **Layer model mismatch**: VSDX layers are virtual groupings where parts of a group can belong to different layers. draw.io cannot represent this — layers are mapped to tags instead.
+- **Shape-data attribute names are sanitized** (`mxVsdxCodec.sanitizeAttributeName`):
+  Visio property labels are arbitrary text (`Input Voltage (V)`), but they become
+  XML attribute names on the UserObject. Browsers' `setAttribute` accepts names
+  that strict XML parsers reject (parentheses!), and one bad attribute used to
+  make the WHOLE encoded model unparseable — library entries and pages silently
+  came back empty (seen with VisioCafe Dell stencils). Names are reduced to an
+  NCName subset; do not bypass the sanitizer when adding attributes.
+- **Image crop detection uses an epsilon** (`getForm`, `cropEps = 1e-6`): stencil
+  files carry FP noise (ImgHeight vs Height differing in the 13th decimal), and
+  an exact compare used to send those into the async crop path. Cropping is
+  canvas-based (SVG → JPEG), so a false-positive crop also degrades EMF-derived
+  vector images. Zero/negative ImgWidth/ImgHeight must not crop (div by zero).
+- **VSSX masters never get the async crop pass** (`postImportPage` runs for
+  pages only): masters with genuinely cropped images get them appended
+  UNCROPPED by `mxVssxCodec.applyUncroppedImages` instead — losing the crop but
+  keeping the image. `vertexMap` is cleared per master in the VSSX loop so
+  shape-ID lookups cannot match a previous master's cells.
 - **MoveTo inside edge paths**: Not supported. Edge geometry assumes a single continuous path.
 - **Connection constraint rotation**: Incomplete support for rotated connection points (fromPart/toPart).
 - **Theme interpretation**: Gradient fills, effects, and variant styles are "best efforts" interpretations of the VSDX spec.
 - **Edge groups**: Groups containing edges may produce suboptimal results — hard to detect edges that should be vertices when groups have children.
 - **HTML text**: Complex HTML formatting is only partially preserved.
-- **EMF images**: Require server-side conversion (EMF_CONVERT_URL). Without server, EMF images are lost.
+- **EMF images**: Converted client-side by `window.emfToSvg` (`../emf/emf-svg.js`, bundled in `extensions.min.js`). A conversion failure is logged and that image is dropped from `mediaData`, so unsupported EMF records mean a lost image, not a failed import.
 - **Charset**: Full charset support is incomplete; UTF-16LE has a basic decoder, other encodings may fail.
 - **Extremely large txtPinX/Y values**: Can cause browser hangs during import.
 - **HTML `</li>` tag placement**: May appear after font/formatting tags instead of before them.

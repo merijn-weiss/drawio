@@ -86,10 +86,10 @@
 							  'Database', 'Desktop App Streaming', 'Developer Tools', 'Game Development', 'Internet of Things', 'IoT Things', 'IoT Resources', 'Machine Learning', 'Management Tools',
 							  'Media Services', 'Migration', 'Mobile Services', 'Network Content Delivery', 'Security Identity Compliance', 'Storage'];
 	
-	Sidebar.prototype.aws4 = ['Arrows', 'General Resources', 'Illustrations', 'Groups', 'Analytics', 'Application Integration', 'AR VR', 'Artificial Intelligence', 'Cloud Financial Management', 'Blockchain', 
+	Sidebar.prototype.aws4 = ['Arrows', 'General Resources', 'Illustrations', 'Groups', 'Analytics', 'Application Integration', 'Artificial Intelligence', 'Cloud Financial Management', 'Blockchain',
 							  'Business Applications', 'Compute', 'Contact Center', 'Containers', 'Customer Enablement', 'Customer Engagement',
-							  'Database', 'Developer Tools', 'End User Computing', 'Front End Web Mobile', 'Games', 'Internet of Things', 'IoT Things', 'IoT Resources', 'Management Governance',
-							  'Media Services', 'Migration Modernization', 'Network Content Delivery', 'Quantum Technologies', 'Robotics', 'Satellite', 'Serverless', 'Security Identity Compliance', 'Storage'];
+							  'Database', 'Developer Tools', 'End User Computing', 'Front End Web Mobile', 'Games', 'Internet of Things', 'Management Governance',
+							  'Media Services', 'Migration Modernization', 'Network Content Delivery', 'Quantum Technologies', 'Satellite', 'Serverless', 'Security Identity Compliance', 'Storage'];
 
 	Sidebar.prototype.office = ['Clouds', 'Communications', 'Concepts', 'Databases', 'Devices', 'Security', 'Servers', 'Services', 'Sites', 'Users'];
 	Sidebar.prototype.openstack = ['Blue', 'Grey', 'Green', 'Red'];
@@ -98,6 +98,8 @@
 	Sidebar.prototype.veeam2 = ['Auxiliary', 'Data Center', 'Features', 'General', 'Products and Components', 'Software', 'States', 'Storage', '3D'];
 
 	Sidebar.prototype.archimate3 = ['Application', 'Business', 'Generic', 'Implementation and Migration', 'Motivation', 'Relationships', 'Strategy', 'Technology'];
+
+	Sidebar.prototype.archimate4 = ['Common', 'Relationships and Junctions', 'Motivation', 'Strategy', 'Business', 'Application', 'Technology', 'Implementation and Migration'];
 
 	Sidebar.prototype.electrical = ['LogicGates', 'Resistors', 'Capacitors', 'Inductors', 'SwitchesRelays', 'Diodes', 'Sources', 'Transistors', 'Misc', 'Audio', 'PlcLadder', 'Abstract', 'Optical', 'VacuumTubes', 'Waveforms', 'Instruments', 'RotMech', 'Transmission'];
 
@@ -163,6 +165,7 @@
            	                           {id: 'aws4b', prefix: 'aws4b', libs: Sidebar.prototype.aws4b},
            	                           {id: 'sap', prefix: 'sap', libs: Sidebar.prototype.sap},
            	                           {id: 'aws4', prefix: 'aws4', libs: Sidebar.prototype.aws4},
+           	                           {id: 'aws4r', libs: ['aws4r']},
            	                           {id: 'pid', prefix: 'pid', libs: Sidebar.prototype.pids},
            	                           {id: 'cisco', prefix: 'cisco', libs: Sidebar.prototype.cisco},
            	                           {id: 'cisco_safe', prefix: 'cisco_safe', libs: Sidebar.prototype.cisco_safe},
@@ -174,8 +177,10 @@
            	                           {id: 'floorplan', libs: ['floorplan']},
            	                           {id: 'bootstrap', libs: ['bootstrap']},
            	                           {id: 'atlassian', libs: ['atlassian']},
+           	                           {id: 'atlassian2', prefix: 'atlassian2', libs: ['Apps', 'Work Types', 'Logos']},
 	                                   {id: 'fluid_power', libs: ['fluid_power']},
 	                                   {id: 'gmdl', prefix: 'gmdl', libs: Sidebar.prototype.gmdl},
+           	                           {id: 'archimate4', prefix: 'archimate4', libs: Sidebar.prototype.archimate4},
            	                           {id: 'archimate3', prefix: 'archimate3', libs: Sidebar.prototype.archimate3},
            	                           {id: 'archimate', libs: ['archimate']},
            	                           {id: 'webicons', libs: ['webicons', 'weblogos']},
@@ -506,7 +511,8 @@
             			{title: mxResources.get('software'),
             			entries: [{title: 'Active Directory', id: 'active_directory', image: IMAGE_PATH + '/sidebar-active_directory.png'},
 								{title: mxResources.get('android'), id: 'android', image: IMAGE_PATH + '/sidebar-android.png'},
-								{title: 'Atlassian', id: 'atlassian', image: IMAGE_PATH + '/sidebar-atlassian.png'},
+								{title: 'Atlassian', id: 'atlassian2', image: IMAGE_PATH + '/sidebar-atlassian2.png'},
+								{title: 'Atlassian (legacy)', id: 'atlassian', image: IMAGE_PATH + '/sidebar-atlassian.png'},
 								{title: mxResources.get('bootstrap'), id: 'bootstrap', image: IMAGE_PATH + '/sidebar-bootstrap.png'},
 								{title: 'C4', id: 'c4', image: IMAGE_PATH + '/sidebar-c4.png'},
 								{title: 'Data Flow Diagram', id: 'dfd', image: IMAGE_PATH + '/sidebar-dfd.png'},
@@ -523,6 +529,7 @@
 								{title: 'AWS17', id: 'aws3', image: IMAGE_PATH + '/sidebar-aws3.png'},
 								{title: 'AWS18', id: 'aws4b', image: IMAGE_PATH + '/sidebar-aws4b.png'},
 								{title: 'AWS ' + year, id: 'aws4', image: IMAGE_PATH + '/sidebar-aws4.png'},
+								{title: 'AWS (retired)', id: 'aws4r', image: IMAGE_PATH + '/sidebar-aws4r.png'},
 								// TODO: Add isometric containers  		                          
 								{title: mxResources.get('aws3d'), id: 'aws3d', image: IMAGE_PATH + '/sidebar-aws3d.png'},
 								{title: mxResources.get('azure'), id: 'azure2', image: IMAGE_PATH + '/sidebar-azure.png'},
@@ -549,7 +556,8 @@
 								{title: 'Veeam', id: 'veeam2', image: IMAGE_PATH + '/sidebar-veeam.png'},
 								{title: 'VMware', id: 'vvd', image: IMAGE_PATH + '/sidebar-vvd.png'}]},
             			{title: mxResources.get('business'),
-            			entries: [{title: 'ArchiMate 3.2', id: 'archimate3', image: IMAGE_PATH + '/sidebar-archimate3.png'},
+            			entries: [{title: 'ArchiMate 4', id: 'archimate4', image: IMAGE_PATH + '/sidebar-archimate4.png'},
+								{title: 'ArchiMate 3.2', id: 'archimate3', image: IMAGE_PATH + '/sidebar-archimate3.png'},
 								{title: mxResources.get('archiMate21'), id: 'archimate', image: IMAGE_PATH + '/sidebar-archimate.png'},
 								{title: mxResources.get('bpmn') + ' 2.0', id: 'bpmn2', image: IMAGE_PATH + '/sidebar-bpmn.png'},
 								{title: mxResources.get('sysml'), id: 'sysml', image: IMAGE_PATH + '/sidebar-sysml.png'},
@@ -585,7 +593,14 @@
 			var btn = document.createElement('button');
 			btn.style.margin = '0 4px';
 			mxUtils.write(btn, 'Save');
-			
+
+			// Palettes that start expanded never enter the expand branch
+			// below, so the button must be added at install time
+			if (content.style.display != 'none')
+			{
+				title.appendChild(btn);
+			}
+
 			mxEvent.addListener(title, 'click', mxUtils.bind(this, function(evt)
 			{
 				if (mxEvent.getSource(evt).nodeName == 'BUTTON')
@@ -606,12 +621,21 @@
 					canvas.setFontColor('rgb(80, 80, 80)');
 					canvas.setFontSize(14);
 
-					// Extracts title text
+					// Extracts title text from the first span that contains
+					// text, as the first span in the title element is the
+					// invisible collapse/expand hit-area overlay added in
+					// Sidebar.createTitle
 					var spans = title.getElementsByTagName('span');
 
-					if (spans.length > 0)
+					for (var i = 0; i < spans.length; i++)
 					{
-						canvas.text(6, 0, 0, 0, mxUtils.getTextContent(spans[0]));
+						var text = mxUtils.getTextContent(spans[i]);
+
+						if (text != '')
+						{
+							canvas.text(6, 0, 0, 0, text);
+							break;
+						}
 					}
 
 					for (var i = 0; i < svgs.length; i++)
@@ -1564,6 +1588,7 @@
 		this.addActiveDirectoryPalette();
 		this.addAndroidPalette();
 		this.addAtlassianPalette();
+		this.addAtlassian2Palette();
 		this.addBootstrapPalette();
 		this.addDFDPalette();
 		this.addErPalette();
@@ -1580,6 +1605,7 @@
 		this.addAWS3Palette();
 		this.addAWS4bPalette();
 		this.addAWS4Palette();
+		this.addAWS4RetiredPalette();
 		this.addAWS3DPalette();
 		this.addAzurePalette();
 		this.addAzure2Palette();
@@ -1606,6 +1632,7 @@
 		this.addVeeamPalette();
 		this.addVeeam2Palette();
 		this.addVVDPalette();
+		this.addArchimate4Palette();
 		this.addArchimate3Palette();
 		this.addArchiMatePalette();
 		this.addBpmn2Palette();
@@ -1925,8 +1952,21 @@
 	 * versions where only the latest library of a family should be
 	 * suggested (all remain available via More Shapes and search).
 	 */
-	Sidebar.prototype.libraryChipExcluded = ['uml', 'aws3', 'aws4b', 'cisco',
+	Sidebar.prototype.libraryChipExcluded = ['uml', 'aws3', 'aws4b', 'aws4r', 'cisco',
 		'network', 'citrix', 'gcp2', 'archimate'];
+
+	/**
+	 * Search ranking weights for superseded libraries - on equal search
+	 * scores, shapes from the latest library of a family rank above the
+	 * ones from its predecessors (eg. "aws" lists AWS 2026 shapes before
+	 * AWS18 and AWS17), independent of the order in which the palettes
+	 * were added to the search index. Only breaks ties, so a demoted
+	 * shape that matches the search terms better still ranks first. The
+	 * default UML library is not demoted as it is enabled by default.
+	 */
+	Sidebar.prototype.librarySearchWeights = {aws3: -2, aws4b: -1, aws4r: -1,
+		azure: -1, cisco: -1, citrix: -1, gcp2: -1, network: -1,
+		veeam: -1, archimate: -1};
 
 	/**
 	 * Stores the icon sets returned for the given search terms and shows
@@ -2180,7 +2220,7 @@
 			(mxUtils.bind(this, function(set)
 			{
 				var chip = this.createSearchResultChip(set.name + ' (' + set.iconCount + ')',
-					mxResources.get('addToLibrary', null, 'Add to Library') + ': ' +
+					mxResources.get('addToLibrary') + ': ' +
 					set.name + ' (' + set.iconCount + ')');
 
 				mxEvent.addListener(chip, 'click', mxUtils.bind(this, function(evt)

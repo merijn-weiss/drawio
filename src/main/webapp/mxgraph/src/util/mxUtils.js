@@ -287,8 +287,52 @@ var mxUtils =
 		{
 			value = 0;
 		}
-		
+
 		return value;
+	},
+
+	/**
+	 * Function: parseCssSpacing
+	 *
+	 * Parses the given CSS-style spacing shorthand of 1-4 space-separated
+	 * numbers (top, right, bottom, left with the usual CSS shorthand
+	 * expansion) and returns an object with top, right, bottom and left
+	 * set to the resolved non-negative numbers, or null if the value is
+	 * null, cannot be parsed or resolves to zero on all sides.
+	 */
+	parseCssSpacing: function(value)
+	{
+		var result = null;
+
+		if (value != null && value !== '')
+		{
+			var tokens = String(value).split(/\s+/);
+			var values = [];
+
+			for (var i = 0; i < tokens.length && values.length < 4; i++)
+			{
+				if (tokens[i].length > 0)
+				{
+					var v = parseFloat(tokens[i]);
+					values.push((isFinite(v)) ? Math.max(0, v) : 0);
+				}
+			}
+
+			if (values.length > 0)
+			{
+				var top = values[0];
+				var right = (values.length > 1) ? values[1] : top;
+				var bottom = (values.length > 2) ? values[2] : top;
+				var left = (values.length > 3) ? values[3] : right;
+
+				if (top > 0 || right > 0 || bottom > 0 || left > 0)
+				{
+					result = {top: top, right: right, bottom: bottom, left: left};
+				}
+			}
+		}
+
+		return result;
 	},
 
 	/**
@@ -3614,7 +3658,12 @@ var mxUtils =
 	/**
 	 * Function: removeJavascriptProtocol
 	 * 
-	 * Removes leading javascript: protocol from the given link.
+	 * Removes leading javascript: protocol from the given link. TAB, LF and CR
+	 * are removed from the whole link before the check as the URL parser drops
+	 * them before parsing, so java<TAB>script: is read as javascript: by the
+	 * browser but is not matched by the check. They are kept by zapGremlins as
+	 * that is used for general text where they are legitimate content, and no
+	 * real URL can carry them through a parser that removes them.
 	 * 
 	 * Parameters:
 	 * 
@@ -3622,7 +3671,7 @@ var mxUtils =
 	 */
 	removeJavascriptProtocol: function(link)
 	{
-		link = (link != null) ? mxUtils.zapGremlins(link) : null;
+		link = (link != null) ? mxUtils.zapGremlins(link).replace(/[\t\n\r]/g, '') : null;
 
 		while (link != null && mxUtils.ltrim(link.toLowerCase()).substring(0, 11) === 'javascript:')
 		{
@@ -4531,6 +4580,14 @@ var mxUtils =
 				}
 				else
 				{
+					// Skips empty entries after the removed key so that the
+					// remaining style does not start with a semicolon, which
+					// would ignore the default style of the cell
+					while (next >= 0 && style.charAt(next + 1) == ';')
+					{
+						next++;
+					}
+
 					style = (next < 0 || next == style.length - 1) ? '' : style.substring(next + 1);
 				}
 			}

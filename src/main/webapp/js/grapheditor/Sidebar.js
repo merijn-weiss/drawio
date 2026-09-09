@@ -14,7 +14,9 @@ function Sidebar(editorUi, container)
 	// and surfaces when the user hovers over empty sidebar space.
 	this.container.setAttribute('title', mxResources.get('sidebarTooltip'));
 	this.palettes = new Object();
-	this.taglist = new Object();
+	// Null prototype as the taglist is looked up with user-typed search
+	// terms, eg. __proto__ must not resolve to inherited members
+	this.taglist = Object.create(null);
 	this.lastCreated = 0;
 	this.showTooltips = true;
 	this.graph = editorUi.createTemporaryGraph(this.editorUi.editor.graph.getStylesheet());
@@ -239,6 +241,15 @@ Sidebar.prototype.searchClosedLibraries = true;
  * Opacity for search results from closed libraries. Default is null.
  */
 Sidebar.prototype.closedLibraryOpacity = null;
+
+/**
+ * Optional map from library ID to a search ranking weight (default
+ * weight is 0). The weight breaks ties between equally scored search
+ * results, eg. to rank shapes from the latest library of a family
+ * above the same shapes from its superseded predecessors. Default
+ * is null (no weights).
+ */
+Sidebar.prototype.librarySearchWeights = null;
 
 /**
  * Whether an image-only search (eg. via an external icon provider) is
@@ -1224,6 +1235,28 @@ Sidebar.prototype.isEntryIgnored = function(entry, searchClosedLibraries)
 };
 
 /**
+ * Returns the search ranking weight for the given entry, ie. the
+ * highest librarySearchWeights value of its parent libraries.
+ * Returns 0 for entries without a weighted parent library.
+ */
+Sidebar.prototype.getEntrySearchWeight = function(entry)
+{
+	var weight = 0;
+
+	if (this.librarySearchWeights != null && entry.parentLibraries != null)
+	{
+		for (var i = 0; i < entry.parentLibraries.length; i++)
+		{
+			var temp = this.librarySearchWeights[entry.parentLibraries[i].id];
+			temp = (typeof temp === 'number') ? temp : 0;
+			weight = (i == 0) ? temp : Math.max(weight, temp);
+		}
+	}
+
+	return weight;
+};
+
+/**
  * Splits a token on camelCase and letter-digit boundaries.
  * e.g. "pid2misc" → ["pid", "misc"], "discInst" → ["disc", "inst"]
  */
@@ -1336,6 +1369,7 @@ Sidebar.prototype.matchTermEntries = function(term, reverseMap)
 	var prefix = [];
 	var substring = [];
 	var phonetic = [];
+	var english = null;
 
 	var found = this.taglist[term];
 
@@ -1347,7 +1381,7 @@ Sidebar.prototype.matchTermEntries = function(term, reverseMap)
 	// Checks English translation for localized search terms
 	if (reverseMap != null)
 	{
-		var english = reverseMap[term];
+		english = reverseMap[term];
 
 		if (english != null && english !== term)
 		{
@@ -1364,6 +1398,10 @@ Sidebar.prototype.matchTermEntries = function(term, reverseMap)
 				}
 			}
 		}
+		else
+		{
+			english = null;
+		}
 	}
 
 	// Adds partial matches on tags, eg. for searching parts of shape
@@ -1377,6 +1415,14 @@ Sidebar.prototype.matchTermEntries = function(term, reverseMap)
 
 	this.matchPartialEntries(term, seen, prefix, substring);
 
+	// Tags may differ from the resource key in inflection, eg. the
+	// mockups resource key resolves to the singular mockup tag, so
+	// partial and Soundex matching must also run on the translation
+	if (english != null)
+	{
+		this.matchPartialEntries(english, seen, prefix, substring);
+	}
+
 	var normalized = Editor.soundex(term.replace(/\.*\d*$/, ''));
 
 	if (normalized.length > 0 && normalized !== term)
@@ -1386,6 +1432,30 @@ Sidebar.prototype.matchTermEntries = function(term, reverseMap)
 		if (found != null)
 		{
 			phonetic = found.entries.slice();
+		}
+	}
+
+	// Soundex of the raw term cannot match for non-Latin scripts, so
+	// localized terms rely on the Soundex of the translation
+	if (english != null)
+	{
+		var englishNormalized = Editor.soundex(english.replace(/\.*\d*$/, ''));
+
+		if (englishNormalized.length > 0 && englishNormalized !== english &&
+			englishNormalized !== normalized)
+		{
+			found = this.taglist[englishNormalized];
+
+			if (found != null)
+			{
+				for (var i = 0; i < found.entries.length; i++)
+				{
+					if (mxUtils.indexOf(phonetic, found.entries[i]) < 0)
+					{
+						phonetic.push(found.entries[i]);
+					}
+				}
+			}
 		}
 	}
 
@@ -1403,7 +1473,8 @@ Sidebar.prototype.getResourceReverseMap = function()
 
 	if (this.resourceReverseMap == null || this.resourceReverseLang !== lang)
 	{
-		this.resourceReverseMap = {};
+		// Null prototype as the map is looked up with user-typed search terms
+		this.resourceReverseMap = Object.create(null);
 		this.resourceReverseLang = lang;
 
 		if (lang !== 'en' && mxResources.resources != null)
@@ -1414,9 +1485,12 @@ Sidebar.prototype.getResourceReverseMap = function()
 
 				if (value != null && typeof value === 'string' && value !== key)
 				{
-					var lower = value.toLowerCase();
+					// Strips Unicode directional formatting characters that
+					// wrap the values in the RTL resource files as they never
+					// appear in typed search terms
+					var lower = value.replace(/[\u200e\u200f\u202a-\u202e]/g, '').toLowerCase();
 
-					if (lower !== key && this.resourceReverseMap[lower] == null)
+					if (lower.length > 0 && lower !== key && this.resourceReverseMap[lower] == null)
 					{
 						this.resourceReverseMap[lower] = key;
 					}
@@ -1445,7 +1519,7 @@ Sidebar.prototype.searchEntries = function(searchTerms, count, page, success, er
 		// Normalize: split compound tokens like "pid2misc" → ["pid", "misc"]
 		var rawTerms = searchTerms.toLowerCase().split(' ');
 		var tmp = [];
-		var seenTerms = {};
+		var seenTerms = Object.create(null);
 
 		for (var i = 0; i < rawTerms.length; i++)
 		{
@@ -1468,6 +1542,24 @@ Sidebar.prototype.searchEntries = function(searchTerms, count, page, success, er
 
 		// Builds reverse map for localized search term translation
 		var reverseMap = this.getResourceReverseMap();
+
+		// Translates multi-word localized names as a whole, eg. "balon kata"
+		// (id) resolves to the callout tag while its single tokens do not.
+		// Soundex covers translations that only match a tag phonetically,
+		// eg. "miundo ya majaribio" (sw) resolves to the mockups resource
+		// key while the tag is the singular mockup
+		if (tmp.length > 1)
+		{
+			var english = reverseMap[searchTerms.toLowerCase().replace(/\s+/g, ' ').trim()];
+
+			if (english != null && !seenTerms[english] &&
+				(this.taglist[english] != null ||
+				this.taglist[Editor.soundex(english.replace(/\.*\d*$/, ''))] != null))
+			{
+				seenTerms[english] = true;
+				tmp.push(english);
+			}
+		}
 
 		var max = (page + 1) * count;
 
@@ -1567,17 +1659,20 @@ Sidebar.prototype.searchEntries = function(searchTerms, count, page, success, er
 			}
 		}
 
-		// Collect and sort by score descending
+		// Collect and sort by score descending, using the library search
+		// weights to break ties so that entries from superseded libraries
+		// appear after equally scored entries from their replacements
 		var candidates = [];
 
-		allEntries.visit(function(key, entry)
+		allEntries.visit(mxUtils.bind(this, function(key, entry)
 		{
-			candidates.push({ entry: entry, score: scores.get(entry) || 0 });
-		});
+			candidates.push({ entry: entry, score: scores.get(entry) || 0,
+				weight: this.getEntrySearchWeight(entry) });
+		}));
 
 		candidates.sort(function(a, b)
 		{
-			return b.score - a.score;
+			return (b.score - a.score) || (b.weight - a.weight);
 		});
 
 		var results = [];
@@ -2456,7 +2551,11 @@ Sidebar.prototype.addSearchPalette = function(expand)
 			if (input.value == '')
 			{
 				complete = true;
-				center.style.display = 'none';
+
+				// Deleting the term clears the results like Escape does
+				// (resetSearch also resets searchTerm so that repeating
+				// the previous search runs again)
+				resetSearch();
 			}
 			else if (input.value != searchTerm)
 			{
@@ -2567,29 +2666,30 @@ Sidebar.prototype.addGeneralPalette = function(expand)
 	 	this.createVertexTemplateEntry('text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;', 180, 120,
 			'<h1 style="margin-top: 0px;">Heading</h1><p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ' +
 			'ut labore et dolore magna aliqua.</p>', 'Textbox', null, null, 'text textbox textarea'),
- 		this.createVertexTemplateEntry('ellipse;whiteSpace=wrap;html=1;', 120, 80, '', 'Ellipse', null, null, 'oval ellipse state'),
+ 		this.createVertexTemplateEntry('ellipse;whiteSpace=wrap;html=1;shapeInside=1;', 120, 80, '', 'Ellipse', null, null, 'oval ellipse state'),
 		this.createVertexTemplateEntry('whiteSpace=wrap;html=1;aspect=fixed;', 80, 80, '', 'Square', null, null, 'square'),
-		this.createVertexTemplateEntry('ellipse;whiteSpace=wrap;html=1;aspect=fixed;', 80, 80, '', 'Circle', null, null, 'circle'),
+		this.createVertexTemplateEntry('ellipse;whiteSpace=wrap;html=1;shapeInside=1;aspect=fixed;', 80, 80, '', 'Circle', null, null, 'circle'),
 	 	this.createVertexTemplateEntry('shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;', 120, 60, '', 'Process', null, null, 'process task'),
-	 	this.createVertexTemplateEntry('rhombus;whiteSpace=wrap;html=1;', 80, 80, '', 'Diamond', null, null, 'diamond rhombus if condition decision conditional question test'),
-	 	this.createVertexTemplateEntry('shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;', 120, 60, '', 'Parallelogram'),
-	 	this.createVertexTemplateEntry('shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;', 120, 80, '', 'Hexagon', null, null, 'hexagon preparation'),
-	 	this.createVertexTemplateEntry('triangle;whiteSpace=wrap;html=1;', 60, 80, '', 'Triangle', null, null, 'triangle logic inverter buffer'),
+	 	this.createVertexTemplateEntry('rhombus;whiteSpace=wrap;html=1;shapeInside=1;', 80, 80, '', 'Diamond', null, null, 'diamond rhombus if condition decision conditional question test'),
+	 	this.createVertexTemplateEntry('shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;', 120, 60, '', 'Parallelogram'),
+	 	this.createVertexTemplateEntry('shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;', 120, 80, '', 'Hexagon', null, null, 'hexagon preparation'),
+	 	this.createVertexTemplateEntry('triangle;whiteSpace=wrap;html=1;shapeInside=1;', 60, 80, '', 'Triangle', null, null, 'triangle logic inverter buffer'),
 	 	this.createVertexTemplateEntry('shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;', 60, 80, '', 'Cylinder', null, null, 'cylinder data database'),
 	 	this.createVertexTemplateEntry('ellipse;shape=cloud;whiteSpace=wrap;html=1;', 120, 80, '', 'Cloud', null, null, 'cloud network'),
 	 	this.createVertexTemplateEntry('shape=document;whiteSpace=wrap;html=1;boundedLbl=1;', 120, 80, '', 'Document'),
 	 	this.createVertexTemplateEntry('shape=internalStorage;whiteSpace=wrap;html=1;backgroundOutline=1;', 80, 80, '', 'Internal Storage'),
 	 	this.createVertexTemplateEntry('shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;', 120, 80, '', 'Cube'),
-	 	this.createVertexTemplateEntry('shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;', 120, 80, '', 'Step'),
-	 	this.createVertexTemplateEntry('shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;', 120, 60, '', 'Trapezoid'),
+	 	this.createVertexTemplateEntry('shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;', 120, 80, '', 'Step'),
+	 	this.createVertexTemplateEntry('shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;', 120, 60, '', 'Trapezoid'),
 	 	this.createVertexTemplateEntry('shape=tape;whiteSpace=wrap;html=1;', 120, 100, '', 'Tape'),
 	 	this.createVertexTemplateEntry('shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;', 80, 100, '', 'Note'),
 	    this.createVertexTemplateEntry('shape=card;whiteSpace=wrap;html=1;', 80, 100, '', 'Card'),
 	    this.createVertexTemplateEntry('shape=callout;whiteSpace=wrap;html=1;perimeter=calloutPerimeter;', 120, 80, '', 'Callout', null, null, 'bubble chat thought speech message'),
+	    this.createVertexTemplateEntry('shape=wedgeCallout;whiteSpace=wrap;html=1;', 120, 80, '', 'Wedge Callout', null, null, 'bubble chat thought speech message callout annotation pointer wedge'),
 	 	this.createVertexTemplateEntry('shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;', 30, 60, 'Actor', 'Actor', false, null, 'user person human stickman'),
-	 	this.createVertexTemplateEntry('shape=xor;whiteSpace=wrap;html=1;', 60, 80, '', 'Or', null, null, 'logic or'),
-	 	this.createVertexTemplateEntry('shape=or;whiteSpace=wrap;html=1;', 60, 80, '', 'And', null, null, 'logic and'),
-	 	this.createVertexTemplateEntry('shape=dataStorage;whiteSpace=wrap;html=1;fixedSize=1;', 100, 80, '', 'Data Storage'),
+	 	this.createVertexTemplateEntry('shape=xor;whiteSpace=wrap;html=1;shapeInside=1;', 60, 80, '', 'Or', null, null, 'logic or'),
+	 	this.createVertexTemplateEntry('shape=or;whiteSpace=wrap;html=1;shapeInside=1;', 60, 80, '', 'And', null, null, 'logic and'),
+	 	this.createVertexTemplateEntry('shape=dataStorage;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;', 100, 80, '', 'Data Storage'),
 		this.createVertexTemplateEntry('swimlane;startSize=0;', 200, 200, '', 'Container', null, null, 'container swimlane lane pool group'),
 		this.createVertexTemplateEntry('swimlane;whiteSpace=wrap;html=1;', 200, 200, 'Vertical Container', 'Container', null, null, 'container swimlane lane pool group'),
 		this.createVertexTemplateEntry('swimlane;horizontal=0;whiteSpace=wrap;html=1;', 200, 200, 'Horizontal Container', 'Horizontal Container', null, null, 'container swimlane lane pool group'),
@@ -2651,28 +2751,6 @@ Sidebar.prototype.addGeneralPalette = function(expand)
 			edge.geometry.setTerminalPoint(new mxPoint(160, 0), false);
 			edge.geometry.relative = true;
 			edge.edge = true;
-
-	    	var cell0 = new mxCell('Label', new mxGeometry(0, 0, 0, 0), edgeLabelStyle + ';align=center;verticalAlign=middle;');
-	    	cell0.geometry.relative = true;
-	    	cell0.setConnectable(false);
-	    	cell0.vertex = true;
-	    	edge.insert(cell0);
-	    	
-	    	var cell1 = new mxCell('Source', new mxGeometry(-1, 0, 0, 0), edgeLabelStyle + ';align=left;verticalAlign=bottom;');
-	    	cell1.geometry.relative = true;
-	    	cell1.setConnectable(false);
-	    	cell1.vertex = true;
-	    	edge.insert(cell1);
-			
-			return this.createEdgeTemplateFromCells([edge], 160, 0, 'Connector with 2 Labels');
-		})),
-		this.addEntry(lineTags + 'edge title multiplicity', mxUtils.bind(this, function()
-		{
-			var edge = new mxCell('', new mxGeometry(0, 0, 0, 0), 'endArrow=classic;html=1;');
-			edge.geometry.setTerminalPoint(new mxPoint(0, 0), true);
-			edge.geometry.setTerminalPoint(new mxPoint(160, 0), false);
-			edge.geometry.relative = true;
-			edge.edge = true;
 			
 	    	var cell0 = new mxCell('Label', new mxGeometry(0, 0, 0, 0), edgeLabelStyle + ';align=center;verticalAlign=middle;');
 	    	cell0.geometry.relative = true;
@@ -2692,7 +2770,7 @@ Sidebar.prototype.addGeneralPalette = function(expand)
 	    	cell2.vertex = true;
 	    	edge.insert(cell2);
 	    	
-			return this.createEdgeTemplateFromCells([edge], 160, 0, 'Connector with 3 Labels');
+			return this.createEdgeTemplateFromCells([edge], 160, 0, 'Connector with Labels');
 		})),
 	 	this.addEntry(lineTags + 'edge shape symbol message mail email', mxUtils.bind(this, function()
 		{
@@ -3415,8 +3493,7 @@ Sidebar.prototype.createTitle = function(label)
 	// Section titles can be dragged to reorder palettes — surface that
 	// affordance via the tooltip. The broader sidebar-tooltip text now
 	// lives on the container background.
-	elt.setAttribute('title', mxResources.get('reorder',
-		null, 'Drag to reorder'));
+	elt.setAttribute('title', mxResources.get('reorder'));
 	elt.className = 'geTitle';
 
 	// Invisible overlay over the left-edge arrow icon (the icon itself
@@ -3624,7 +3701,7 @@ Sidebar.prototype.createItem = function(cells, title, showLabel, showTitle, widt
 		{
 			var ds = this.createDragSource(elt, this.createDropHandler(cells, true, allowCellsInserted,
 				bounds, startEditing, sourceCell, connectEdge), this.createDragPreview(width, height),
-				cells, bounds, startEditing);
+				cells, bounds, startEditing, sourceCell);
 			this.addClickHandler(elt, ds, cells, clickFn, startEditing);
 		
 			// Uses guides for vertices only if enabled in graph
@@ -3847,7 +3924,14 @@ Sidebar.prototype.createDropHandler = function(cells, allowSplit, allowCellsInse
 	
 					if (select != null && select.length > 0)
 					{
-						graph.scrollCellToVisible(select[0]);
+						// Keeps the scroll position if any part of the
+						// dropped cell is visible, eg. for cells larger
+						// than the viewport or at high zoom levels
+						if (!graph.isCellVisibleInViewport(select[0]))
+						{
+							graph.scrollCellToVisible(select[0]);
+						}
+
 						graph.setSelectionCells(select);
 					}
 
@@ -3877,8 +3961,129 @@ Sidebar.prototype.createDragPreview = function(width, height)
 	elt.className = 'geDragPreview';
 	elt.style.width = width + 'px';
 	elt.style.height = height + 'px';
-	
+
 	return elt;
+};
+
+/**
+ * Creates a live preview of the edge that connects the given source cell
+ * to the dropped cell (see createDropHandler) while dragging from the
+ * hover-icon shape picker. Reuses the connection handler's live preview
+ * (createEdgeState, updateEdgeState and createShape invoked on a minimal
+ * handler stand-in) so the previewed edge matches the edge inserted on
+ * drop, including the current edge style, the source's newEdgeStyle and
+ * preview routing overrides.
+ */
+Sidebar.prototype.createEdgePreview = function(graph, sourceCell, cell)
+{
+	var preview =
+	{
+		handler: null,
+		targetState: null,
+		shape: null
+	};
+
+	// Renders the preview edge from the source cell to the given preview
+	// rectangle (in view coordinates), creating the preview on demand
+	preview.update = function(x, y, w, h)
+	{
+		var sourceState = graph.view.getState(sourceCell);
+
+		if (sourceState == null)
+		{
+			preview.hide();
+			return;
+		}
+
+		if (preview.handler == null)
+		{
+			// Stand-in for the connection handler state read by
+			// createEdgeState, updateEdgeState and convertWaypoint
+			preview.handler = {graph: graph, previous: sourceState,
+				currentState: null, edgeState: null, sourceConstraint: null,
+				constraintHandler: null, waypoints: null,
+				convertWaypoint: mxConnectionHandler.prototype.convertWaypoint};
+			preview.handler.edgeState = mxConnectionHandler.prototype.
+				createEdgeState.call(preview.handler, null);
+
+			var targetCell = graph.cloneCell(cell);
+			preview.targetState = new mxCellState(graph.view, targetCell,
+				graph.getCellStyle(targetCell));
+			preview.handler.currentState = preview.targetState;
+		}
+
+		preview.handler.previous = sourceState;
+		var target = preview.targetState;
+		target.x = x;
+		target.y = y;
+		target.width = w;
+		target.height = h;
+
+		// Keeps the target geometry in model coordinates in sync for
+		// routers that inspect the cell rather than the state
+		var geo = target.cell.geometry;
+
+		if (geo != null)
+		{
+			var s = graph.view.scale;
+			var tr = graph.view.translate;
+			geo.x = x / s - tr.x;
+			geo.y = y / s - tr.y;
+			geo.width = w / s;
+			geo.height = h / s;
+		}
+
+		if (preview.shape == null)
+		{
+			preview.shape = mxConnectionHandler.prototype.createShape.call(
+				{graph: graph, livePreview: true,
+				edgeState: preview.handler.edgeState});
+			preview.shape.apply(preview.handler.edgeState);
+		}
+
+		mxConnectionHandler.prototype.updateEdgeState.call(preview.handler,
+			new mxPoint(x + w / 2, y + h / 2), null);
+
+		var edgeState = preview.handler.edgeState;
+		preview.shape.points = edgeState.absolutePoints;
+		preview.shape.scale = graph.view.scale;
+		edgeState.shape = preview.shape;
+		graph.cellRenderer.postConfigureShape(edgeState);
+		edgeState.shape = null;
+		preview.shape.node.style.display = '';
+		preview.shape.redraw();
+	};
+
+	preview.hide = function()
+	{
+		if (preview.shape != null)
+		{
+			preview.shape.node.style.display = 'none';
+		}
+	};
+
+	// Removes the preview and frees per-drag resources, the next call
+	// to update recreates the preview
+	preview.destroy = function()
+	{
+		if (preview.shape != null)
+		{
+			preview.shape.destroy();
+			preview.shape = null;
+		}
+
+		if (typeof LibavoidRouting !== 'undefined' &&
+			LibavoidRouting.endPreview != null)
+		{
+			// Frees the router of the libavoid connect preview
+			LibavoidRouting.endPreview(preview.handler);
+		}
+
+		preview.handler = null;
+		preview.targetState = null;
+	};
+
+	return preview;
 };
 
 /**
@@ -4500,7 +4705,7 @@ Sidebar.prototype.disablePointerEvents = function(node)
 /**
  * Creates a drag source for the given element.
  */
-Sidebar.prototype.createDragSource = function(elt, dropHandler, preview, cells, bounds, startEditing)
+Sidebar.prototype.createDragSource = function(elt, dropHandler, preview, cells, bounds, startEditing, sourceCell)
 {
 	// Checks if the cells contain any vertices
 	var ui = this.editorUi;
@@ -4510,6 +4715,12 @@ Sidebar.prototype.createDragSource = function(elt, dropHandler, preview, cells, 
 	var sidebar = this;
 	var count = 0;
 	var livePreview = this.livePreview;
+
+	// Previews the edge that createDropHandler inserts between the source
+	// cell and the dropped cell (hover-icon shape picker drags)
+	var edgePreview = (sourceCell != null && graph.model.isVertex(sourceCell) &&
+		cells.length == 1 && graph.model.isVertex(cells[0])) ?
+		this.createEdgePreview(graph, sourceCell, cells[0]) : null;
 
 	for (var i = 0; i < cells.length && livePreview; i++)
 	{
@@ -4718,7 +4929,12 @@ Sidebar.prototype.createDragSource = function(elt, dropHandler, preview, cells, 
 		{
 			ui.hoverIcons.setDisplay('');
 		}
-		
+
+		if (edgePreview != null)
+		{
+			edgePreview.destroy();
+		}
+
 		dragExit.apply(this, arguments);
 	};
 	
@@ -4816,6 +5032,29 @@ Sidebar.prototype.createDragSource = function(elt, dropHandler, preview, cells, 
 					this.previewElement.firstChild.style.display = '';
 					mxUtils.setOpacity(this.previewElement, 50);
 					this.previewElement.className = '';
+				}
+			}
+
+			// Shows the connecting edge for drops that insert it: hidden
+			// while an arrow or replace target is active (dropAndConnect
+			// or style replace) and while splitting a highlighted edge
+			if (edgePreview != null)
+			{
+				if (activeArrow == null && currentStyleTarget == null &&
+					this.previewElement.style.display != 'none' &&
+					this.previewElement.style.visibility != 'hidden' &&
+					(dragSource.currentHighlight == null ||
+					dragSource.currentHighlight.state == null ||
+					!graph.model.isEdge(dragSource.currentHighlight.state.cell)))
+				{
+					edgePreview.update(parseFloat(this.previewElement.style.left),
+						parseFloat(this.previewElement.style.top),
+						parseFloat(this.previewElement.style.width),
+						parseFloat(this.previewElement.style.height));
+				}
+				else
+				{
+					edgePreview.hide();
 				}
 			}
 		}

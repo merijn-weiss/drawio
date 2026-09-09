@@ -968,10 +968,31 @@ function render(data)
 	var origXmlDoc = xmlDoc;
 	var diagrams = null;
 	var from = 0;
+	var singlePage = false;
+
+	// Returns an mxfile with only the exported page for explicit single
+	// page exports of multi-page files, so the embedded XML opens on the
+	// page shown in the exported image (draw.io always opens the first
+	// page of the embedded file) [jgraph/drawio-desktop#2365]
+	function getSinglePageNode()
+	{
+		if (singlePage && diagrams != null && diagrams.length > 1 &&
+			diagrams[from] != null)
+		{
+			var fileNode = origXmlDoc.documentElement.cloneNode(false);
+			fileNode.removeAttribute('pages');
+			fileNode.appendChild(diagrams[from].cloneNode(true));
+
+			return fileNode;
+		}
+
+		return null;
+	};
 
 	function getFileXml(uncompressed)
 	{
-		var xml = mxUtils.getXml(origXmlDoc);
+		var pageNode = getSinglePageNode();
+		var xml = mxUtils.getXml((pageNode != null) ? pageNode : origXmlDoc);
 		var editorUi = new HeadlessEditorUi();
 		var tmpFile = new LocalFile(editorUi, xml);
 		editorUi.setCurrentFile(tmpFile);
@@ -1126,8 +1147,12 @@ function render(data)
 								linkTarget = '_blank';
 							}
 
+							// Page-size export uses the page rectangle as the crop
+							// (see imagePageVisible in renderPage, which installs the
+							// getBackgroundPageBounds override that getSvg uses)
 							var svgRoot = graph.getSvg(bg, expScale, data.border, false, null,
-								true, null, null, linkTarget, null, null, theme);
+								true, null, null, linkTarget, null, null, theme,
+								(data.exportType == 'page') ? 'page' : null);
 							
 							if (graph.shadowVisible)
 							{
@@ -1221,11 +1246,15 @@ function render(data)
 						// Include the resolved diagram XML so the main process can embed it
 						// in PNG/PDF output (-e). For Mermaid/CSV/layout inputs the source
 						// file isn't draw.io XML, so the main process has no (or a pre-layout)
-						// args.xml; data.xml here is the real post-conversion model.
+						// args.xml; data.xml here is the real post-conversion model. For
+						// explicit single page exports only that page is embedded
+						// [jgraph/drawio-desktop#2365]
 						var annotRects = collectAnnotRects();
+						var pageNode = getSinglePageNode();
 
 						electron.sendMessage('render-finished', {bounds: JSON.stringify(bounds),
-							pageCount: pageCount, xml: (data.embedXml == '1') ? data.xml : null,
+							pageCount: pageCount, xml: (data.embedXml == '1') ? ((pageNode != null) ?
+								mxUtils.getXml(pageNode) : data.xml) : null,
 							annots: (annotRects.length > 0) ? JSON.stringify(annotRects) : null});
 					}
 					catch(e)
@@ -1607,55 +1636,77 @@ function render(data)
 		// Sets initial value for PDF page background
 		var gb = graph.getGraphBounds();
 		graph.pdfPageVisible = false;
-		
+
+		// Page-size image export: the output covers the page(s) spanned by the
+		// diagram instead of cropping to the content, as with Size: Page Size
+		// in the image export dialogs [jgraph/drawio-desktop#2481]
+		var imagePageVisible = data.exportType == 'page' && !data.print &&
+			(data.format == 'png' || data.format == 'jpg' ||
+			data.format == 'jpeg' || data.format == 'svg');
+
+		// Page format with the page scale applied for the print output below
+		var printPageFormat = null;
+
 		// Handles PDF output where the output should match the page format if the page is visible
-		if (data.print || data.format == 'pdf')
+		if (data.print || data.format == 'pdf' || imagePageVisible)
 		{
 			var printScale = 1;
-			
+
 			var pw = data.pageWidth || xmlDoc.documentElement.getAttribute('pageWidth');
 			var ph = data.pageHeight || xmlDoc.documentElement.getAttribute('pageHeight');
-			graph.pdfPageVisible = true;
-			
+			graph.pdfPageVisible = !imagePageVisible;
+
 			if (pw != null && ph != null)
 			{
 				graph.pageFormat = new mxRectangle(0, 0, parseFloat(pw), parseFloat(ph));
 			}
-			
+
 			var ps = data.pageScale || xmlDoc.documentElement.getAttribute('pageScale');
-			
+
 			if (ps != null)
 			{
 				graph.pageScale = ps;
 			}
 
-			var pf = graph.pageFormat;
-			var temp = data.reqScale;
-			pf.width = Math.ceil(pf.width * graph.pageScale);
-			pf.height = Math.ceil(pf.height * graph.pageScale);
-			var scale = 1;
-
-			if (data.fit == '1' && data.sheetsAcross != null && data.sheetsDown != null)
+			// The print pipeline pre-multiplies the page format by the page scale
+			// (the pages are rendered larger and shrunk to the paper size by the
+			// print scale factor), while image output uses the page size as shown
+			// in the editor, which getPageSize below derives from the unchanged
+			// page format. The page scale is applied to a copy of the page format
+			// without rounding, as in EditorUi.print, so that the printed page
+			// grid stays aligned with the page breaks on the canvas for fractional
+			// page formats and getPageSize does not apply the page scale twice
+			if (!imagePageVisible)
 			{
-				var h = data.sheetsAcross;
-				var v = data.sheetsDown;
+				var pf = mxRectangle.fromRectangle(graph.pageFormat);
+				var temp = data.reqScale;
+				pf.width = pf.width * graph.pageScale;
+				pf.height = pf.height * graph.pageScale;
+				var scale = 1;
 
-				if (!isNaN(temp))
+				if (data.fit == '1' && data.sheetsAcross != null && data.sheetsDown != null)
 				{
-					pf.width = Math.ceil(pf.width * temp);
-					pf.height = Math.ceil(pf.height * temp);
-				}
-				
-				scale = Math.min((pf.height * v) / (gb.height / graph.view.scale),
-					(pf.width * h) / (gb.width / graph.view.scale));
-			}
-			else
-			{
-				scale = !isNaN(temp) ? temp : 1;
-			}
+					var h = data.sheetsAcross;
+					var v = data.sheetsDown;
 
-			// Applies print scale
-			data.scale = scale * printScale;
+					if (!isNaN(temp))
+					{
+						pf.width = Math.ceil(pf.width * temp);
+						pf.height = Math.ceil(pf.height * temp);
+					}
+
+					scale = Math.min((pf.height * v) / (gb.height / graph.view.scale),
+						(pf.width * h) / (gb.width / graph.view.scale));
+				}
+				else
+				{
+					scale = !isNaN(temp) ? temp : 1;
+				}
+
+				// Applies print scale
+				data.scale = scale * printScale;
+				printPageFormat = pf;
+			}
 
 			graph.getPageSize = function()
 			{
@@ -1713,7 +1764,18 @@ function render(data)
 		if (!graph.pdfPageVisible)
 		{
 			var b = graph.getGraphBounds();
-			
+
+			// Uses the rectangle of the page(s) under the diagram as the export
+			// area (in unscaled graph coordinates, as the view is untransformed
+			// at this point)
+			if (imagePageVisible)
+			{
+				var layout = graph.getPageLayout();
+				var page = graph.getPageSize();
+				b = new mxRectangle(layout.x * page.width, layout.y * page.height,
+					layout.width * page.width, layout.height * page.height);
+			}
+
 			// Floor is needed to keep rendering crisp
 			if (data.w > 0 || data.h > 0)
 			{
@@ -1793,7 +1855,8 @@ function render(data)
 		}
 		
 		// Gets the diagram bounds and sets the document size
-		bounds = (graph.pdfPageVisible) ? graph.view.getBackgroundPageBounds() : graph.getGraphBounds();
+		bounds = (graph.pdfPageVisible || imagePageVisible) ?
+			graph.view.getBackgroundPageBounds() : graph.getGraphBounds();
 		bounds.width = Math.ceil(bounds.width + data.border) + 1; //The 1 extra pixels to prevent cutting the cells on the edges when crop is enabled
 		bounds.height = Math.ceil(bounds.height + data.border) + 1; //The 1 extra pixels to prevent starting a new page. TODO Not working in every case
 		
@@ -1809,7 +1872,8 @@ function render(data)
 		// Converts the graph to a vertical sequence of pages for PDF export
 		if (graph.pdfPageVisible)
 		{
-			var pf = graph.pageFormat || mxConstants.PAGE_FORMAT_A4_PORTRAIT;
+			var pf = (printPageFormat != null) ? printPageFormat : mxRectangle.fromRectangle(
+				graph.pageFormat || mxConstants.PAGE_FORMAT_A4_PORTRAIT);
 			var scale = (data.print || data.format == 'pdf') ? data.scale : 1 / graph.pageScale;
 			var autoOrigin = ((data.print || data.format == 'pdf') && data.fit == '1') ||
 				data.crop == '1' || xmlDoc.documentElement.getAttribute('page') != '1';
@@ -1821,8 +1885,8 @@ function render(data)
 	
 			if (data.crop == '1')
 			{
-				pf.width = (gb.width + 1.5) * scale;
-				pf.height = (gb.height + 1.5) * scale;
+				pf.width = (gb.width + 1) * scale;
+				pf.height = (gb.height + 1) * scale;
 			}
 
 			// Starts at first visible page
@@ -1986,6 +2050,7 @@ function render(data)
 					{
 						from = i;
 						to = i;
+						singlePage = true;
 						break;
 					}
 				}
@@ -1996,6 +2061,7 @@ function render(data)
 				to = parseInt(data.to);
 				//If to is not defined, use from (so one page), otherwise, to is restricted to the range from "from" to diagrams.length - 1
 				to = isNaN(to)? from : Math.max(from, Math.min(to, diagrams.length - 1));
+				singlePage = !isNaN(parseInt(data.from)) && from == to;
 			}
 		}
 		
