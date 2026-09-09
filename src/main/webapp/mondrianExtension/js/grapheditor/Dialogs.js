@@ -373,6 +373,15 @@
         input.id = item.name;
         input.value = item.value || '';
 
+        if (item.mixed) {
+            ctx.mixed[ctx.count] = true;
+
+            input.setAttribute(
+                'placeholder',
+                mxResources.get('multipleValues')
+            );
+        }
+
         row.appendChild(input);
 
         // =========================================================
@@ -463,6 +472,15 @@
 
         textarea.value =
             item.value || '';
+
+        if (item.mixed) {
+            ctx.mixed[ctx.count] = true;
+
+            textarea.setAttribute(
+                'placeholder',
+                mxResources.get('multipleValues')
+            );
+        }
 
         textarea.setAttribute(
             'rows',
