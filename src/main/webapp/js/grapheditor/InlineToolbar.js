@@ -322,7 +322,7 @@ InlineToolbar.prototype.hide = function () {
  * Returns true if the current edge shape supports the curved bend style.
  */
 InlineToolbar.prototype.supportsCurvedBend = function (style) {
-	return Graph.edgeSupportsCurved(style) || shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR;
+	return Graph.edgeSupportsCurved(style)
 };
 
 /**
@@ -1502,10 +1502,10 @@ InlineToolbar.prototype.showLineEndMenu = function (evt) {
 
 			this.showMarkerSubPanel(dropdown, prefix, markerItems, currentMarker,
 				currentFill, cells, shape, function (marker, fill) {
-				currentMarker = marker;
-				currentFill = fill;
-				updatePreview();
-			});
+					currentMarker = marker;
+					currentFill = fill;
+					updatePreview();
+				});
 
 			mxEvent.consume(e);
 		}));

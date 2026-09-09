@@ -72,8 +72,8 @@ Menus.prototype.init = function () {
 			if (typeof LibavoidRouting !== 'undefined') {
 				Format.processMenuIcon(this.edgeStyleChange(menu, '', [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
 					['orthogonalEdgeStyle', null, null, '1'], null, parent, true, Format.libavoidImage.src, function (graph, edges) {
-					LibavoidRouting.autoReroute(graph, edges);
-				})).setAttribute('title', mxResources.get('libavoidAutoRoute'));
+						LibavoidRouting.autoReroute(graph, edges);
+					})).setAttribute('title', mxResources.get('libavoidAutoRoute'));
 			}
 
 			Format.processMenuIcon(this.edgeStyleChange(menu, '', [mxConstants.STYLE_EDGE, mxConstants.STYLE_ELBOW, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
@@ -85,7 +85,7 @@ Menus.prototype.init = function () {
 			Format.processMenuIcon(this.edgeStyleChange(menu, '', [mxConstants.STYLE_EDGE, mxConstants.STYLE_ELBOW, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
 				['isometricEdgeStyle', 'vertical', null, null, null], null, parent, true, Format.verticalIsometricImage.src)).setAttribute('title', mxResources.get('isometric'));
 
-			if (state == null || Graph.edgeSupportsCurved(state.style) || shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR) {
+			if (state == null || Graph.edgeSupportsCurved(state.style)) {
 				Format.processMenuIcon(this.edgeStyleChange(menu, '', [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
 					['orthogonalEdgeStyle', '1', null, null], null, parent, true, Format.curvedImage.src)).setAttribute('title', mxResources.get('curved'));
 			}
@@ -126,21 +126,21 @@ Menus.prototype.init = function () {
 		var addItem = mxUtils.bind(this, function (fontFamily) {
 			var tr = this.styleChange(menu, fontFamily, [mxConstants.STYLE_FONTFAMILY],
 				[fontFamily], null, parent, function () {
-				document.execCommand('fontname', false, fontFamily);
-				ui.fireEvent(new mxEventObject('styleChanged',
-					'keys', [mxConstants.STYLE_FONTFAMILY],
-					'values', [fontFamily],
-					'cells', [graph.cellEditor.getEditingCell()]));
-			}, function () {
-				graph.updateLabelElements(graph.getSelectionCells(), function (elt) {
-					elt.removeAttribute('face');
-					elt.style.fontFamily = null;
+					document.execCommand('fontname', false, fontFamily);
+					ui.fireEvent(new mxEventObject('styleChanged',
+						'keys', [mxConstants.STYLE_FONTFAMILY],
+						'values', [fontFamily],
+						'cells', [graph.cellEditor.getEditingCell()]));
+				}, function () {
+					graph.updateLabelElements(graph.getSelectionCells(), function (elt) {
+						elt.removeAttribute('face');
+						elt.style.fontFamily = null;
 
-					if (elt.nodeName == 'PRE') {
-						graph.replaceElement(elt, 'div');
-					}
+						if (elt.nodeName == 'PRE') {
+							graph.replaceElement(elt, 'div');
+						}
+					});
 				});
-			});
 
 			tr.firstChild.nextSibling.style.fontFamily = mxUtils.parseCssFontFamily(fontFamily);
 		});
@@ -235,8 +235,8 @@ Menus.prototype.init = function () {
 		var addItem = mxUtils.bind(this, function (fontSize) {
 			this.styleChange(menu, fontSize, [mxConstants.STYLE_FONTSIZE],
 				[fontSize], null, parent, function () {
-				setFontSize(fontSize);
-			});
+					setFontSize(fontSize);
+				});
 		});
 
 		for (var i = 0; i < sizes.length; i++) {
@@ -282,10 +282,10 @@ Menus.prototype.init = function () {
 					setFontSize(newValue);
 				}
 			}), null, function () {
-			selState = graph.cellEditor.saveSelection();
+				selState = graph.cellEditor.saveSelection();
 
-			return false;
-		});
+				return false;
+			});
 	})));
 	this.put('direction', new Menu(mxUtils.bind(this, function (menu, parent) {
 		menu.addItem(mxResources.get('flipH'), null, function () { graph.toggleCellStyles(mxConstants.STYLE_FLIPH, false); }, parent);
@@ -1189,10 +1189,10 @@ Menus.prototype.promptChange = function (menu, label, hint, defaultValue, key, p
 				}
 			}), mxResources.get('enterValue') + ((hint.length > 0) ? (' ' + hint) : ''),
 			null, null, null, null, function () {
-			if (fn != null && beforeFn != null) {
-				fn(null);
-			}
-		});
+				if (fn != null && beforeFn != null) {
+					fn(null);
+				}
+			});
 		this.editorUi.showDialog(dlg.container, 300, 80, true, true);
 		dlg.init();
 	}), parent, sprite, enabled);

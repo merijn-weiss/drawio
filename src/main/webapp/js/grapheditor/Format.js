@@ -1138,17 +1138,17 @@ BaseFormatPanel.prototype.createColorOption = function (label, getColorFn, setCo
 			apply(newColor);
 		}, (defaultColor == 'default') ? 'default' : null,
 			actualDefaultValue, singleColorMode, title || label, function () {
-			// Returns NONE rather than null when the new selection has no value
-			// for this key, so the open (non-modal) color window updates to
-			// "none" instead of keeping the previous selection's color, e.g.
-			// switching to a shape with no gradient or one that has no fill.
-			// ColorWindow.refreshColor ignores null, so null would be stale.
-			var current = getColorFn();
-			var refreshValue = (current == 'inherit' && inheritInfo != null) ?
-				getInheritedColorValue() : getActualColorValue(current, true);
+				// Returns NONE rather than null when the new selection has no value
+				// for this key, so the open (non-modal) color window updates to
+				// "none" instead of keeping the previous selection's color, e.g.
+				// switching to a shape with no gradient or one that has no fill.
+				// ColorWindow.refreshColor ignores null, so null would be stale.
+				var current = getColorFn();
+				var refreshValue = (current == 'inherit' && inheritInfo != null) ?
+					getInheritedColorValue() : getActualColorValue(current, true);
 
-			return (refreshValue != null) ? refreshValue : mxConstants.NONE;
-		}, (inheritInfo != null) ? inheritInfo.allow : null);
+				return (refreshValue != null) ? refreshValue : mxConstants.NONE;
+			}, (inheritInfo != null) ? inheritInfo.allow : null);
 
 		mxEvent.consume(evt);
 	}));
@@ -3693,31 +3693,31 @@ TextFormatPanel.prototype.addFont = function (container) {
 
 	var inputUpdate = this.installInputHandler(input, mxConstants.STYLE_FONTSIZE,
 		Menus.prototype.defaultFontSize, 1, 999, ' ' + Editor.fontSizeUnit, function (fontSize) {
-		var node = graph.getSelectedEditingElement();
+			var node = graph.getSelectedEditingElement();
 
-		if (node != null) {
-			input.value = fontSize + ' ' + Editor.fontSizeUnit;
-			document.execCommand('fontSize', false, '1');
+			if (node != null) {
+				input.value = fontSize + ' ' + Editor.fontSizeUnit;
+				document.execCommand('fontSize', false, '1');
 
-			// Finds the new or updated element and sets the actual font size
-			var fonts = graph.cellEditor.textarea.getElementsByTagName('font');
+				// Finds the new or updated element and sets the actual font size
+				var fonts = graph.cellEditor.textarea.getElementsByTagName('font');
 
-			for (var i = 0; i < fonts.length; i++) {
-				if (fonts[i].getAttribute('size') == '1') {
-					fonts[i].removeAttribute('size');
-					fonts[i].style.fontSize = '';
-					var css = mxUtils.getCurrentStyle(fonts[i]);
+				for (var i = 0; i < fonts.length; i++) {
+					if (fonts[i].getAttribute('size') == '1') {
+						fonts[i].removeAttribute('size');
+						fonts[i].style.fontSize = '';
+						var css = mxUtils.getCurrentStyle(fonts[i]);
 
-					if (fontSize != getAbsoluteFontSize(css)) {
-						fonts[i].style.fontSize = fontSize + 'px';
-					}
-					else if (fonts[i].getAttribute('style') == '') {
-						fonts[i].removeAttribute('style');
+						if (fontSize != getAbsoluteFontSize(css)) {
+							fonts[i].style.fontSize = fontSize + 'px';
+						}
+						else if (fonts[i].getAttribute('style') == '') {
+							fonts[i].removeAttribute('style');
+						}
 					}
 				}
 			}
-		}
-	}, true);
+		}, true);
 
 	var stepper = this.createStepper(input, inputUpdate, 1, true, Menus.prototype.defaultFontSize);
 	stepper.style.display = input.style.display;
@@ -3770,10 +3770,10 @@ TextFormatPanel.prototype.addFont = function (container) {
 		// Font background color option for shape
 		this.createCellColorOption(mxResources.get('backgroundColor'),
 			mxConstants.STYLE_LABEL_BACKGROUNDCOLOR, 'default', null, function (color) {
-			graph.updateLabelElements(ss.cells, function (elt) {
-				elt.style.backgroundColor = null;
-			});
-		}, graph.shapeBackgroundColor);
+				graph.updateLabelElements(ss.cells, function (elt) {
+					elt.style.backgroundColor = null;
+				});
+			}, graph.shapeBackgroundColor);
 
 	bgPanel.style.fontWeight = 'bold';
 
@@ -3812,29 +3812,29 @@ TextFormatPanel.prototype.addFont = function (container) {
 		// Font color option for shape
 		this.createCellColorOption(mxResources.get('fontColor'),
 			mxConstants.STYLE_FONTCOLOR, 'default', function (color) {
-			if (color == mxConstants.NONE) {
-				bgPanel.style.display = 'none';
-			}
-			else {
-				bgPanel.style.display = '';
-			}
+				if (color == mxConstants.NONE) {
+					bgPanel.style.display = 'none';
+				}
+				else {
+					bgPanel.style.display = '';
+				}
 
-			borderPanel.style.display = bgPanel.style.display;
-		}, function (color) {
-			if (color == mxConstants.NONE) {
-				graph.setCellStyles(mxConstants.STYLE_NOLABEL, '1', ss.cells);
-			}
-			else {
-				graph.setCellStyles(mxConstants.STYLE_NOLABEL, null, ss.cells);
-			}
+				borderPanel.style.display = bgPanel.style.display;
+			}, function (color) {
+				if (color == mxConstants.NONE) {
+					graph.setCellStyles(mxConstants.STYLE_NOLABEL, '1', ss.cells);
+				}
+				else {
+					graph.setCellStyles(mxConstants.STYLE_NOLABEL, null, ss.cells);
+				}
 
-			graph.setCellStyles(mxConstants.STYLE_FONTCOLOR, color, ss.cells);
+				graph.setCellStyles(mxConstants.STYLE_FONTCOLOR, color, ss.cells);
 
-			graph.updateLabelElements(ss.cells, function (elt) {
-				elt.removeAttribute('color');
-				elt.style.color = null;
-			});
-		}, graph.shapeForegroundColor);
+				graph.updateLabelElements(ss.cells, function (elt) {
+					elt.removeAttribute('color');
+					elt.style.color = null;
+				});
+			}, graph.shapeForegroundColor);
 
 	if (ss.style[mxConstants.STYLE_FONTCOLOR] == 'inherit') {
 		panel.style.display = 'none';
@@ -3908,24 +3908,24 @@ TextFormatPanel.prototype.addFont = function (container) {
 
 	var convertToSvg = this.createCellOption(mxResources.get('lblToSvg'), 'convertToSvg', '0',
 		null, null, function (cells, value) {
-		// Syncs word wrap style when toggling convertToSvg
-		for (var i = 0; i < cells.length; i++) {
-			var cellStyle = graph.getCurrentCellStyle(cells[i]);
+			// Syncs word wrap style when toggling convertToSvg
+			for (var i = 0; i < cells.length; i++) {
+				var cellStyle = graph.getCurrentCellStyle(cells[i]);
 
-			if (value) {
-				// Toggled ON: copy whiteSpace to svgWhiteSpace
-				if (cellStyle[mxConstants.STYLE_WHITE_SPACE] == 'wrap') {
-					graph.setCellStyles('svgWhiteSpace', 'wrap', [cells[i]]);
+				if (value) {
+					// Toggled ON: copy whiteSpace to svgWhiteSpace
+					if (cellStyle[mxConstants.STYLE_WHITE_SPACE] == 'wrap') {
+						graph.setCellStyles('svgWhiteSpace', 'wrap', [cells[i]]);
+					}
+				}
+				else {
+					// Toggled OFF: copy svgWhiteSpace to whiteSpace
+					if (cellStyle['svgWhiteSpace'] == 'wrap') {
+						graph.setCellStyles(mxConstants.STYLE_WHITE_SPACE, 'wrap', [cells[i]]);
+					}
 				}
 			}
-			else {
-				// Toggled OFF: copy svgWhiteSpace to whiteSpace
-				if (cellStyle['svgWhiteSpace'] == 'wrap') {
-					graph.setCellStyles(mxConstants.STYLE_WHITE_SPACE, 'wrap', [cells[i]]);
-				}
-			}
-		}
-	});
+		});
 	convertToSvg.style.fontWeight = 'bold';
 	extraPanel.appendChild(convertToSvg);
 
@@ -5265,16 +5265,16 @@ StyleFormatPanel.prototype.addFill = function (container) {
 
 	var gradientPanel = this.createCellColorOption(mxResources.get('gradient'),
 		mxConstants.STYLE_GRADIENTCOLOR, 'default', function (color) {
-		if (color == null || color == mxConstants.NONE) {
-			gradientSelect.style.display = 'none';
-		}
-		else {
-			gradientSelect.style.display = '';
-		}
-	}, function (color) {
-		graph.updateCellStyles({ 'gradientColor': color }, graph.getSelectionCells());
-	}, graph.getDefaultColor(ss.style, mxConstants.STYLE_GRADIENTCOLOR,
-		graph.shapeForegroundColor, graph.shapeBackgroundColor),
+			if (color == null || color == mxConstants.NONE) {
+				gradientSelect.style.display = 'none';
+			}
+			else {
+				gradientSelect.style.display = '';
+			}
+		}, function (color) {
+			graph.updateCellStyles({ 'gradientColor': color }, graph.getSelectionCells());
+		}, graph.getDefaultColor(ss.style, mxConstants.STYLE_GRADIENTCOLOR,
+			graph.shapeForegroundColor, graph.shapeBackgroundColor),
 		null, null, mxResources.get('gradientColor'));
 
 	gradientPanel.style.fontWeight = 'bold';
@@ -5803,8 +5803,8 @@ StyleFormatPanel.prototype.addStroke = function (container) {
 			if (typeof LibavoidRouting !== 'undefined') {
 				Format.processMenuIcon(this.editorUi.menus.edgeStyleChange(menu, '', [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
 					['orthogonalEdgeStyle', null, null, '1'], null, null, true, Format.libavoidImage.src, function (graph, edges) {
-					LibavoidRouting.autoReroute(graph, edges);
-				})).setAttribute('title', mxResources.get('libavoidAutoRoute'));
+						LibavoidRouting.autoReroute(graph, edges);
+					})).setAttribute('title', mxResources.get('libavoidAutoRoute'));
 			}
 
 			Format.processMenuIcon(this.editorUi.menus.edgeStyleChange(menu, '', [mxConstants.STYLE_EDGE, mxConstants.STYLE_ELBOW, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
@@ -5816,7 +5816,7 @@ StyleFormatPanel.prototype.addStroke = function (container) {
 			Format.processMenuIcon(this.editorUi.menus.edgeStyleChange(menu, '', [mxConstants.STYLE_EDGE, mxConstants.STYLE_ELBOW, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
 				['isometricEdgeStyle', 'vertical', null, null, null], null, null, true, Format.verticalIsometricImage.src)).setAttribute('title', mxResources.get('isometric'));
 
-			if (Graph.edgeSupportsCurved(ss.style) || ss.style.shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR) {
+			if (Graph.edgeSupportsCurved(ss.style)) {
 				Format.processMenuIcon(this.editorUi.menus.edgeStyleChange(menu, '', [mxConstants.STYLE_EDGE, mxConstants.STYLE_CURVED, mxConstants.STYLE_NOEDGESTYLE, 'libavoidRouting'],
 					['orthogonalEdgeStyle', '1', null, null], null, null, true, Format.curvedImage.src)).setAttribute('title', mxResources.get('curved'));
 			}
@@ -6202,7 +6202,7 @@ StyleFormatPanel.prototype.addStroke = function (container) {
 		}
 
 		styleSelect.style.visibility = (ss.edges.length > 0 &&
-			Graph.edgeSupportsCurved(ss.style) || ss.style.shape == mxMondrianConnector.prototype.cst.MONDRIAN_CONNECTOR) ? '' : 'hidden';
+			Graph.edgeSupportsCurved(ss.style)) ? '' : 'hidden';
 
 		if (mxUtils.getValue(ss.style, mxConstants.STYLE_CURVED, null) == '1') {
 			styleSelect.value = 'curved';
